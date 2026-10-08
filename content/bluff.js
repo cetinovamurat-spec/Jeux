@@ -1,0 +1,38 @@
+// 🎭 ÉPREUVE 8 — BLUFF
+// Des questions improbables : personne ne doit (vraiment) connaître la réponse.
+// Seul l'« Initié » la reçoit… et peut mentir. Format : { q, choix: [BONNE, fausse, fausse, fausse], info }
+
+module.exports = [
+  { q: 'Combien de pattes possède un homard (pinces comprises) ?', choix: ['10', '8', '6', '12'], info: 'C’est un décapode : « dix pieds ».' },
+  { q: 'De quelle couleur est le sang d’une pieuvre ?', choix: ['Bleu', 'Vert', 'Transparent', 'Rouge foncé'], info: 'Grâce à l’hémocyanine, à base de cuivre.' },
+  { q: 'Dans quel pays est né l’ancêtre du croissant, le « kipferl » ?', choix: ['L’Autriche', 'La France', 'La Hongrie', 'La Turquie'], info: 'Les boulangers viennois l’ont fait connaître à Paris au XIXe siècle.' },
+  { q: 'Combien de temps a duré la guerre la plus courte de l’histoire (Royaume-Uni – Zanzibar, 1896) ?', choix: ['Environ 38 minutes', 'Environ 3 heures', '2 jours', '6 jours'] },
+  { q: 'Quel animal possède des empreintes digitales presque impossibles à distinguer de celles des humains ?', choix: ['Le koala', 'Le chimpanzé', 'Le raton laveur', 'Le panda'] },
+  { q: 'Comment s’appelait le premier tableur grand public, sorti en 1979 ?', choix: ['VisiCalc', 'Lotus 1-2-3', 'Multiplan', 'SuperCalc'] },
+  { q: 'Quel Écossais a provoqué une banqueroute retentissante en France en 1720 avec son système de papier-monnaie ?', choix: ['John Law', 'Adam Smith', 'David Hume', 'James Watt'] },
+  { q: 'Quelle faillite de 2001 a entraîné la disparition du cabinet d’audit Arthur Andersen ?', choix: ['Enron', 'WorldCom', 'Lehman Brothers', 'Parmalat'] },
+  { q: 'Combien d’heures par jour un koala peut-il dormir ?', choix: ['Jusqu’à 20 heures', 'Environ 8 heures', 'Environ 12 heures', 'Environ 4 heures'] },
+  { q: 'En combien de compartiments est divisé l’estomac d’une vache ?', choix: ['4', '2', '3', '1'], info: 'Panse, bonnet, feuillet et caillette.' },
+  { q: 'Quel pays consomme le plus de café par habitant ?', choix: ['La Finlande', 'L’Italie', 'Le Brésil', 'Les États-Unis'], info: 'Plus de 10 kg par habitant et par an. Les Finlandais feraient d’excellents auditeurs.' },
+  { q: 'De quelle couleur est la « boîte noire » d’un avion ?', choix: ['Orange', 'Noire', 'Rouge', 'Jaune'], info: 'Pour être retrouvée plus facilement.' },
+  { q: 'Combien de touches noires compte un piano standard ?', choix: ['36', '32', '40', '52'], info: '88 touches : 52 blanches et 36 noires.' },
+  { q: 'Il existe une commune française nommée « Y ». Dans quel département se trouve-t-elle ?', choix: ['La Somme', 'L’Yonne', 'Les Yvelines', 'Le Nord'], info: 'Ses habitants sont les Ypsiloniens. Si, si.' },
+  { q: 'Combien de temps met la lumière réfléchie par la Lune pour nous parvenir ?', choix: ['Environ 1,3 seconde', 'Environ 8 minutes', 'Environ 13 secondes', 'C’est instantané'] },
+  { q: 'Quelle était la couleur dominante des carottes cultivées avant le XVIIe siècle ?', choix: ['Violette (ou jaune)', 'Orange', 'Blanche', 'Rouge vif'], info: 'Les carottes orange ont été popularisées par des producteurs néerlandais.' },
+  { q: 'De combien de pièces est composé un ballon de football classique « Telstar » ?', choix: ['32', '24', '36', '20'], info: '12 pentagones noirs et 20 hexagones blancs.' },
+  { q: 'Combien d’yeux possède une abeille ?', choix: ['5', '2', '4', '8'], info: '2 yeux composés et 3 ocelles.' },
+  { q: 'En quelle année a été lancée la première carte de paiement « Diners Club » ?', choix: ['1950', '1920', '1965', '1972'], info: 'Son fondateur avait oublié son portefeuille au restaurant.' },
+  { q: 'Quelle entreprise a inventé le Post-it ?', choix: ['3M', 'Bic', 'Xerox', 'IBM'], info: 'Issu d’une colle « ratée » qui ne collait pas assez.' },
+  { q: 'Quel pourcentage d’eau contient un concombre ?', choix: ['Environ 96 %', 'Environ 70 %', 'Environ 85 %', 'Environ 99,9 %'] },
+  { q: 'Quel est l’animal national de l’Écosse ?', choix: ['La licorne', 'Le cerf', 'L’aigle royal', 'Le monstre du Loch Ness'] },
+  { q: 'Combien de fois par seconde un colibri peut-il battre des ailes ?', choix: ['Jusqu’à 80 fois', 'Environ 10 fois', 'Environ 200 fois', 'Environ 1 000 fois'] },
+  { q: 'Quelle ville a accueilli les tout premiers Jeux olympiques modernes en 1896 ?', choix: ['Athènes', 'Paris', 'Londres', 'Olympie'] },
+  { q: 'Quel est le nom du premier ordinateur à avoir battu un champion du monde d’échecs en match (1997) ?', choix: ['Deep Blue', 'AlphaZero', 'Watson', 'HAL 9000'], info: 'Contre Garry Kasparov.' },
+  { q: 'Quel fruit flotte dans l’eau grâce à ses 25 % d’air ?', choix: ['La pomme', 'La banane', 'Le raisin', 'La mangue'] },
+  { q: 'Combien de litres de lait une vache laitière produit-elle en moyenne par jour en France ?', choix: ['Environ 25 litres', 'Environ 5 litres', 'Environ 60 litres', 'Environ 100 litres'] },
+  { q: 'Dans quel pays a été inventée la monnaie papier, des siècles avant l’Europe ?', choix: ['La Chine', 'L’Égypte', 'La Grèce', 'L’Inde'] },
+  { q: 'Quel organe un poulpe peut-il régénérer s’il le perd ?', choix: ['Un bras', 'Un cœur', 'Un œil', 'Son bec'] },
+  { q: 'Quelle planète du système solaire tourne « couchée » sur le côté, avec un axe incliné d’environ 98° ?', choix: ['Uranus', 'Neptune', 'Saturne', 'Vénus'], info: 'Probablement à cause d’une collision géante il y a des milliards d’années.' },
+  { q: 'Selon le Guinness, combien de temps a duré le plus long match de tennis de l’histoire (Isner–Mahut, 2010) ?', choix: ['11 h 05', '6 h 33', '8 h 11', '14 h 20'], info: 'Sur trois jours à Wimbledon. Plus long qu’une revue d’associé.' },
+  { q: 'Quel est l’ingrédient principal du « wasabi » servi dans la plupart des restaurants hors du Japon ?', choix: ['Du raifort coloré', 'Du vrai wasabi', 'De l’avocat', 'De la moutarde de Dijon'] },
+];

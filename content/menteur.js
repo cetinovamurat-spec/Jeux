@@ -1,0 +1,42 @@
+// 🕵️ ÉPREUVE 3 — TROUVER LE MENTEUR
+// Affirmations à la première personne. Chaque joueur en reçoit une, puis un rôle secret
+// lui dit s'il doit dire la vérité (sur son vécu réel) ou mentir.
+// Gardez-les drôles et anodines : rien de vraiment gênant ou personnel.
+
+module.exports = [
+  { texte: 'J’ai déjà terminé une circularisation à 2h du matin.' },
+  { texte: 'J’ai déjà envoyé un mail au mauvais client.' },
+  { texte: 'J’ai déjà fait semblant de comprendre une question d’un associé.' },
+  { texte: 'J’ai déjà répondu « je regarde ça »… sans jamais regarder.' },
+  { texte: 'J’ai déjà mangé un repas complet devant Excel.' },
+  { texte: 'J’ai déjà oublié de couper mon micro pendant une réunion Teams.' },
+  { texte: 'J’ai déjà fait un inventaire physique dans un entrepôt à moins de 5 °C.' },
+  { texte: 'J’ai déjà rempli ma feuille de temps d’un mois entier en une seule fois.' },
+  { texte: 'J’ai déjà dit « c’est immatériel » pour éviter de chercher un écart.' },
+  { texte: 'J’ai déjà travaillé un 31 décembre au soir.' },
+  { texte: 'J’ai déjà cherché un écart pendant plus d’une heure… avant de découvrir que c’était ma propre erreur de saisie.' },
+  { texte: 'J’ai déjà regardé un match de foot en cachette pendant une réunion.' },
+  { texte: 'J’ai déjà nommé un fichier « VF_def_FINAL_v3_OK ».' },
+  { texte: 'J’ai déjà passé une journée entière chez un client sans trouver la machine à café.' },
+  { texte: 'J’ai déjà relancé un client plus de 5 fois pour le même document.' },
+  { texte: 'J’ai déjà fermé Excel sans enregistrer après deux heures de travail.' },
+  { texte: 'J’ai déjà pris l’ascenseur avec le dirigeant d’un client sans savoir qui c’était.' },
+  { texte: 'J’ai déjà présenté pendant cinq minutes en ayant oublié de partager mon écran.' },
+  { texte: 'J’ai déjà cliqué sur « Répondre à tous » par erreur.' },
+  { texte: 'J’ai déjà mis un réveil à 5h du matin pour finir un dossier.' },
+  { texte: 'J’ai déjà gagné un concours de pronostics foot au bureau.' },
+  { texte: 'J’ai déjà rêvé d’un tableau Excel.' },
+  { texte: 'J’ai déjà apporté des viennoiseries pour me faire pardonner.' },
+  { texte: 'J’ai déjà raté un train à cause d’une clôture.' },
+  { texte: 'J’ai déjà dit « bonne journée » à quelqu’un à 19h.' },
+  { texte: 'J’ai déjà gardé le même post-it collé sur mon écran pendant plus d’un an.' },
+  { texte: 'J’ai déjà eu plus de 40 fichiers Excel ouverts en même temps.' },
+  { texte: 'J’ai déjà fait un tableau croisé dynamique uniquement pour impressionner quelqu’un.' },
+  { texte: 'J’ai déjà fait une visio en chemise… et en bas de pyjama.' },
+  { texte: 'J’ai déjà proposé « un point rapide » qui a duré plus d’une heure.' },
+  { texte: 'J’ai déjà compté des palettes de stock pendant plus de 6 heures d’affilée.' },
+  { texte: 'J’ai déjà appelé un client par le nom d’un autre client.' },
+  { texte: 'J’ai déjà découvert qu’un justificatif demandé depuis trois semaines était… dans ma boîte mail.' },
+  { texte: 'J’ai déjà fait une sieste dans ma voiture sur un parking client.' },
+  { texte: 'J’ai déjà connu la composition de l’équipe de France avant celle de mon équipe de mission.' },
+];

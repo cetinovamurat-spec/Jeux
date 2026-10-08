@@ -1,0 +1,23 @@
+{
+  "name": "olympiades-du-cabinet",
+  "version": "1.0.0",
+  "description": "Les Olympiades du Cabinet — Audit Games 2026 : party game multijoueur en temps réel pour équipes d'audit",
+  "main": "server.js",
+  "private": true,
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node test/simulation.js && node test/content-check.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "qrcode-generator": "^1.4.4",
+    "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "socket.io-client": "^4.8.1"
+  }
+}

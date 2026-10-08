@@ -1,0 +1,87 @@
+// 🧠 ÉPREUVE 1 — QUIZ CULTURE GÉNÉRALE
+// Format : { q: question, choix: [BONNE réponse, fausse, fausse, fausse], d: difficulté, cat: catégorie, info: anecdote }
+//  • La PREMIÈRE réponse de « choix » est la bonne (l'ordre est mélangé automatiquement à l'affichage).
+//  • d : 1 = facile, 2 = moyen, 3 = difficile, 4 = extrême.
+//  • Vrai/Faux : { type: 'vf', q: '...', vrai: true, d: 1, cat: '...' }
+//  • {joueur} est remplacé par le prénom d'un joueur connecté.
+
+module.exports = [
+  // ───── Facile ─────
+  { q: 'Combien de côtés a un hexagone ?', choix: ['6', '5', '7', '8'], d: 1, cat: 'Sciences' },
+  { q: 'Quel est le symbole chimique de l’or ?', choix: ['Au', 'Ag', 'Or', 'Go'], d: 1, cat: 'Sciences', info: 'Du latin « aurum ».' },
+  { q: 'En quelle année a eu lieu la prise de la Bastille ?', choix: ['1789', '1792', '1776', '1815'], d: 1, cat: 'Histoire' },
+  { q: 'Quelle planète est surnommée « la planète rouge » ?', choix: ['Mars', 'Jupiter', 'Vénus', 'Saturne'], d: 1, cat: 'Sciences' },
+  { q: 'Qui a peint « La Joconde » ?', choix: ['Léonard de Vinci', 'Michel-Ange', 'Raphaël', 'Botticelli'], d: 1, cat: 'Art' },
+  { q: 'Quel est le plus grand mammifère du monde ?', choix: ['La baleine bleue', 'L’éléphant d’Afrique', 'Le cachalot', 'La girafe'], d: 1, cat: 'Nature' },
+  { q: 'Combien y a-t-il de minutes dans une journée ?', choix: ['1 440', '1 240', '3 600', '1 400'], d: 1, cat: 'Calcul', info: 'Soit 1 440 occasions de dire « je regarde ça ».' },
+  { q: 'Qui a écrit « Les Misérables » ?', choix: ['Victor Hugo', 'Émile Zola', 'Honoré de Balzac', 'Alexandre Dumas'], d: 1, cat: 'Littérature' },
+  { q: 'Dans quel pays se trouve le Machu Picchu ?', choix: ['Pérou', 'Bolivie', 'Chili', 'Mexique'], d: 1, cat: 'Géographie' },
+  { q: 'Quelle chanteuse a interprété « La Vie en rose » ?', choix: ['Édith Piaf', 'Dalida', 'Barbara', 'Juliette Gréco'], d: 1, cat: 'Musique' },
+  { q: 'Combien de cases compte un échiquier ?', choix: ['64', '81', '49', '100'], d: 1, cat: 'Jeux' },
+  { q: 'Quel est le plus grand océan du monde ?', choix: ['Pacifique', 'Atlantique', 'Indien', 'Arctique'], d: 1, cat: 'Géographie' },
+  { q: 'Quelle est la monnaie du Japon ?', choix: ['Le yen', 'Le won', 'Le yuan', 'Le ringgit'], d: 1, cat: 'Économie' },
+  { q: 'En France, quel est le taux normal de TVA ?', choix: ['20 %', '19,6 %', '21 %', '18 %'], d: 1, cat: 'Audit & Compta', info: 'Il était de 19,6 % jusqu’au 31 décembre 2013.' },
+  { q: 'Dans le Plan comptable général, le compte 411 correspond aux…', choix: ['Clients', 'Fournisseurs', 'Banques', 'Capital'], d: 1, cat: 'Audit & Compta' },
+  { q: 'Que signifie l’acronyme « FEC » ?', choix: ['Fichier des Écritures Comptables', 'Fiche d’Évaluation Comptable', 'Format Électronique Certifié', 'Fichier d’Exercice Clôturé'], d: 1, cat: 'Audit & Compta' },
+  { q: 'En audit, que désigne le « cut-off » ?', choix: ['Le rattachement des opérations au bon exercice', 'La date limite d’envoi des pièces', 'La suppression des écritures en double', 'Le moment où l’on coupe Teams'], d: 1, cat: 'Audit & Compta' },
+  { q: 'Que signifie réellement « je vous envoie ça demain » chez un client en période de clôture ?', choix: ['Après la troisième relance', 'Demain', 'Dans l’heure', 'C’est déjà envoyé'], d: 1, cat: 'Absurde', info: 'Résultat validé par 100 % des auditeurs interrogés (échantillon : nous).' },
+  { type: 'vf', q: 'Dans une balance comptable équilibrée, le total des débits est égal au total des crédits.', vrai: true, d: 1, cat: 'Audit & Compta', info: 'Si ce n’est pas le cas, bon courage pour la soirée.' },
+
+  // ───── Moyen ─────
+  { q: 'Quelle est la capitale de l’Australie ?', choix: ['Canberra', 'Sydney', 'Melbourne', 'Perth'], d: 2, cat: 'Géographie' },
+  { q: 'Quelle est la capitale du Canada ?', choix: ['Ottawa', 'Toronto', 'Montréal', 'Vancouver'], d: 2, cat: 'Géographie' },
+  { q: 'Quel est le plus long fleuve de France ?', choix: ['La Loire', 'La Seine', 'Le Rhône', 'La Garonne'], d: 2, cat: 'France', info: 'Environ 1 000 km, de l’Ardèche à l’Atlantique.' },
+  { q: 'Quel gaz est le plus abondant dans l’atmosphère terrestre ?', choix: ['L’azote', 'L’oxygène', 'L’argon', 'Le dioxyde de carbone'], d: 2, cat: 'Sciences', info: 'Environ 78 % d’azote contre 21 % d’oxygène.' },
+  { q: 'En quelle année les pièces et billets en euros sont-ils entrés en circulation en France ?', choix: ['2002', '1999', '2000', '2001'], d: 2, cat: 'Économie', info: 'L’euro existait comme monnaie scripturale depuis 1999.' },
+  { q: 'Quel duo français a sorti l’album « Random Access Memories » ?', choix: ['Daft Punk', 'Justice', 'Air', 'Cassius'], d: 2, cat: 'Musique' },
+  { q: 'Combien d’os compte le squelette d’un adulte ?', choix: ['206', '186', '216', '306'], d: 2, cat: 'Sciences' },
+  { q: 'Quelle langue compte le plus de locuteurs natifs au monde ?', choix: ['Le mandarin', 'L’anglais', 'L’espagnol', 'L’hindi'], d: 2, cat: 'Culture' },
+  { q: 'Quelle est (environ) la vitesse de la lumière dans le vide ?', choix: ['300 000 km/s', '30 000 km/s', '3 000 000 km/s', '150 000 km/s'], d: 2, cat: 'Sciences' },
+  { q: 'En quelle année la cathédrale Notre-Dame de Paris a-t-elle rouvert au public après l’incendie de 2019 ?', choix: ['2024', '2023', '2025', '2022'], d: 2, cat: 'Actualité', info: 'Réouverture les 7 et 8 décembre 2024.' },
+  { q: 'Quel est le pays le plus peuplé du monde depuis 2023 ?', choix: ['L’Inde', 'La Chine', 'Les États-Unis', 'L’Indonésie'], d: 2, cat: 'Actualité' },
+  { q: 'Combien de temps met la lumière du Soleil pour atteindre la Terre ?', choix: ['Environ 8 minutes', 'Environ 8 secondes', 'Environ 1 heure', 'Environ 8 heures'], d: 2, cat: 'Sciences' },
+  { q: 'Quel est le plus petit pays du monde ?', choix: ['Le Vatican', 'Monaco', 'Saint-Marin', 'Le Liechtenstein'], d: 2, cat: 'Géographie' },
+  { q: 'Qui a réalisé « Le Fabuleux Destin d’Amélie Poulain » ?', choix: ['Jean-Pierre Jeunet', 'Luc Besson', 'Michel Gondry', 'Jacques Audiard'], d: 2, cat: 'Cinéma' },
+  { q: 'Combien d’étoiles figurent sur le drapeau européen ?', choix: ['12', '27', '15', '10'], d: 2, cat: 'Europe', info: 'Le nombre ne dépend pas du nombre de pays membres : 12 symbolise la perfection.' },
+  { q: 'Les flamants roses sont roses à cause…', choix: ['De leur alimentation', 'De leur génétique', 'Du soleil', 'De leur humeur'], d: 2, cat: 'Nature', info: 'Les caroténoïdes des petites crevettes et algues qu’ils mangent.' },
+  { q: 'Quelle est la durée d’un mandat de commissaire aux comptes en France ?', choix: ['6 exercices', '3 exercices', '5 exercices', '4 exercices'], d: 2, cat: 'Audit & Compta' },
+  { q: 'Dans le Plan comptable général, les comptes de tiers sont en classe…', choix: ['4', '2', '5', '6'], d: 2, cat: 'Audit & Compta' },
+  { q: 'Que signifie « IFRS » ?', choix: ['International Financial Reporting Standards', 'International Fiscal Rules System', 'Internal Financial Review Standards', 'International Firm Reporting Statements'], d: 2, cat: 'Audit & Compta' },
+  { q: 'Le compte 512 du PCG, c’est…', choix: ['Banques', 'Caisse', 'Clients', 'Capital social'], d: 2, cat: 'Audit & Compta' },
+  { q: 'Quel est le seul mammifère capable de voler (vol battu) ?', choix: ['La chauve-souris', 'L’écureuil volant', 'Le colugo', 'Le phalanger'], d: 2, cat: 'Nature', info: 'Les autres planent : ça ne compte pas.' },
+  { q: 'Combien de kilomètres mesure un marathon ?', choix: ['42,195 km', '40 km', '42 km', '45,195 km'], d: 2, cat: 'Sport' },
+  { q: 'Quel mathématicien a donné son nom à la suite 1, 1, 2, 3, 5, 8, 13… ?', choix: ['Fibonacci', 'Pascal', 'Euler', 'Gauss'], d: 2, cat: 'Sciences' },
+  { type: 'vf', q: 'Paris a accueilli les Jeux olympiques d’été à trois reprises (2024 inclus).', vrai: true, d: 2, cat: 'Sport', info: '1900, 1924 et 2024.' },
+
+  // ───── Difficile ─────
+  { q: 'Quelle est la capitale du Kazakhstan ?', choix: ['Astana', 'Almaty', 'Bichkek', 'Tachkent'], d: 3, cat: 'Géographie', info: 'Elle s’est appelée Nour-Soultan entre 2019 et 2022.' },
+  { q: 'Quelle est la capitale de la Nouvelle-Zélande ?', choix: ['Wellington', 'Auckland', 'Christchurch', 'Queenstown'], d: 3, cat: 'Géographie' },
+  { q: 'Quel moine franciscain a décrit la comptabilité en partie double dans un traité publié en 1494 ?', choix: ['Luca Pacioli', 'Fibonacci', 'Jacques Cœur', 'Thomas d’Aquin'], d: 3, cat: 'Audit & Compta', info: 'Dans la « Summa de arithmetica » : le grand-père spirituel de tous les auditeurs.' },
+  { q: 'Combien de cœurs possède une pieuvre ?', choix: ['3', '1', '2', '8'], d: 3, cat: 'Nature' },
+  { q: 'Quel élément chimique a pour symbole « K » ?', choix: ['Le potassium', 'Le krypton', 'Le cobalt', 'Le calcium'], d: 3, cat: 'Sciences', info: 'Du latin « kalium ».' },
+  { q: 'Dans quelle ville est né Mozart ?', choix: ['Salzbourg', 'Vienne', 'Munich', 'Prague'], d: 3, cat: 'Musique' },
+  { q: 'Combien de symphonies Beethoven a-t-il composées ?', choix: ['9', '7', '12', '5'], d: 3, cat: 'Musique' },
+  { q: 'Quel instrument répète le même rythme du début à la fin du « Boléro » de Ravel ?', choix: ['La caisse claire', 'Le triangle', 'La grosse caisse', 'Le xylophone'], d: 3, cat: 'Musique' },
+  { q: 'Quel est le plus petit os du corps humain ?', choix: ['L’étrier', 'Le marteau', 'L’enclume', 'Le coccyx'], d: 3, cat: 'Sciences', info: 'Il se trouve dans l’oreille moyenne et mesure environ 3 mm.' },
+  { q: 'En quelle année la société Microsoft a-t-elle été fondée ?', choix: ['1975', '1981', '1976', '1985'], d: 3, cat: 'Tech' },
+  { q: 'Quel pays possède le plus grand nombre de lacs au monde ?', choix: ['Le Canada', 'La Finlande', 'La Russie', 'La Suède'], d: 3, cat: 'Géographie' },
+  { q: 'Qu’est-ce que la « loi de Benford », chère aux auditeurs ?', choix: ['La fréquence d’apparition du premier chiffre dans des données réelles', 'Une règle fiscale sur les dividendes', 'Un ratio de liquidité', 'La règle des 80/20'], d: 3, cat: 'Audit & Compta', info: 'Dans les données « naturelles », le 1 apparaît en premier chiffre bien plus souvent que le 9.' },
+  { q: 'Quel fruit est, botaniquement, une baie ?', choix: ['La banane', 'La fraise', 'La framboise', 'La cerise'], d: 3, cat: 'Nature', info: 'La fraise est un « faux-fruit » et la cerise une drupe.' },
+  { q: 'En quelle année a été signé le traité de Rome instituant la CEE ?', choix: ['1957', '1951', '1962', '1992'], d: 3, cat: 'Histoire' },
+  { q: 'Depuis 2024, comment s’appelle l’ex-H3C, le régulateur de l’audit en France ?', choix: ['La Haute autorité de l’audit (H2A)', 'L’Autorité des marchés financiers', 'La CNCC', 'L’Autorité des normes comptables'], d: 3, cat: 'Audit & Compta' },
+  { q: 'Que signifie « CAC » dans « CAC 40 » ?', choix: ['Cotation Assistée en Continu', 'Commissaires Aux Comptes', 'Compagnie des Agents de Change', 'Capitalisation des Actions Cotées'], d: 3, cat: 'Économie', info: 'Du nom du système de cotation électronique de la Bourse de Paris.' },
+  { q: 'Combien de touches compte un piano standard ?', choix: ['88', '76', '92', '104'], d: 3, cat: 'Musique' },
+  { q: 'Quel navire était le plus grand de l’expédition de Christophe Colomb en 1492 ?', choix: ['La Santa María', 'La Pinta', 'La Niña', 'La Victoria'], d: 3, cat: 'Histoire' },
+
+  // ───── Extrême ─────
+  { q: 'Quelle est la seule lettre de l’alphabet qui n’apparaît dans aucun nom d’État américain ?', choix: ['Q', 'J', 'X', 'Z'], d: 4, cat: 'Absurde', info: 'J : New Jersey. X : Texas. Z : Arizona. Q : rien du tout.' },
+  { q: 'Quel pays compte le plus de fuseaux horaires (territoires compris) ?', choix: ['La France', 'La Russie', 'Les États-Unis', 'Le Royaume-Uni'], d: 4, cat: 'France', info: 'Grâce à l’outre-mer : 12 fuseaux horaires. Cocorico.' },
+  { q: 'Selon la loi de Benford, quelle est la probabilité qu’un montant « naturel » commence par le chiffre 1 ?', choix: ['Environ 30 %', 'Environ 11 %', 'Environ 50 %', 'Environ 20 %'], d: 4, cat: 'Audit & Compta', info: 'log10(2) ≈ 30,1 %. Le 9, lui, plafonne à 4,6 %.' },
+  { q: 'Comment s’écrit 1999 en chiffres romains ?', choix: ['MCMXCIX', 'MIM', 'MCMIC', 'MDCCCCXCIX'], d: 4, cat: 'Histoire' },
+  { q: 'En quelle année est sorti VisiCalc, le premier tableur grand public ?', choix: ['1979', '1985', '1972', '1990'], d: 4, cat: 'Tech', info: 'Six ans avant Excel. Les auditeurs de l’époque cochaient au crayon.' },
+  { q: 'Quel son la girafe émet-elle, d’après des enregistrements réalisés dans des zoos ?', choix: ['Un bourdonnement grave, surtout la nuit', 'Un barrissement', 'Un rugissement', 'Elle ne fait absolument aucun bruit'], d: 4, cat: 'Absurde', info: 'Une étude de 2015 a enregistré des « humming » nocturnes autour de 92 Hz.' },
+  { q: 'Combien de pays la France métropolitaine touche-t-elle par une frontière terrestre ?', choix: ['8', '6', '7', '9'], d: 4, cat: 'France', info: 'Belgique, Luxembourg, Allemagne, Suisse, Italie, Monaco, Espagne, Andorre.' },
+  { q: 'Quel est le seul drapeau national qui n’est ni rectangulaire ni carré ?', choix: ['Celui du Népal', 'Celui de la Suisse', 'Celui du Bhoutan', 'Celui du Vatican'], d: 4, cat: 'Géographie', info: 'La Suisse et le Vatican ont des drapeaux carrés.' },
+  { q: 'Combien de cordes possède une harpe de concert ?', choix: ['47', '36', '52', '61'], d: 4, cat: 'Musique' },
+  { q: 'Quel pays compte le plus de pyramides ?', choix: ['Le Soudan', 'L’Égypte', 'Le Mexique', 'Le Pérou'], d: 4, cat: 'Histoire', info: 'Plus de 200 pyramides nubiennes, contre environ 120 en Égypte.' },
+];
