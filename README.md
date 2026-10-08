@@ -50,7 +50,7 @@ Pour que les collègues hors du réseau local puissent rejoindre, il faut une ad
 | # | Épreuve | Principe | Équipes |
 |---|---------|----------|---------|
 | 1 | 🧠 **Quiz Culture G** | QCM du facile à l'extrême, bonus de rapidité, séries 🔥, questions « Qui est le plus susceptible… » et « Miroir » | bonus d'équipe |
-| 2 | 🔢 **Estimation impossible** | Le plus proche (en ordre de grandeur) gagne ; 🎯 bonus < 10 %, 💀 malus pire estimation, 🎲 pari ×2 | bonus d'équipe |
+| 2 | 🔢 **Estimation impossible** | Le plus proche (en ordre de grandeur) gagne ; 🎯 bonus < 10 %, 💀 malus pire estimation, 🎲 pari ×2 ; + un « Miroir chiffré » (estimer le vrai chiffre d'un collègue) | bonus d'équipe |
 | 3 | 🕵️ **Trouver le menteur** | Affirmation publique + rôle secret (Innocent, Menteur, Double menteur, Manipulateur), plaidoiries à l'oral, votes | bonus d'équipe |
 | 4 | ⚡ **Réaction rapide** | Mini-jeux éclair : réflexe au feu vert, intrus, mémoire, saisie, couleurs piège, écart de saisie, facture en double, inventaire, calcul flash | bonus d'équipe |
 | 5 | 🧮 **Calcul mental** | TVA, marges, EBITDA, ratios, écritures absurdes et pièges vicieux | bonus d'équipe |
@@ -94,10 +94,10 @@ Tout le contenu est dans **`content/`**, en fichiers JS commentés, modifiables 
 | Fichier | Contenu |
 |---------|---------|
 | **`content/team.js`** | ⭐ **À remplir en premier** : collègues (prénom, surnoms, titre, phrase d'entrée) + **vos private jokes** (`questionsPerso`) |
-| `content/perso.js` | Questions « Qui est le plus susceptible… » et « Miroir » (utilisent automatiquement les joueurs connectés) |
+| `content/perso.js` | Questions « Qui est le plus susceptible… », « Miroir » et « Miroir chiffré » (utilisent automatiquement les joueurs connectés) |
 | `content/quiz.js` | 71 questions de culture G (4 niveaux) |
 | `content/estimations.js` | 35 estimations (dont la moitié « Cabinet ») |
-| `content/menteur.js` | 35 affirmations pour « Trouver le menteur » |
+| `content/menteur.js` | 41 affirmations pour « Trouver le menteur » (certaines citent un autre joueur présent) |
 | `content/calcul.js` | 37 calculs et pièges comptables |
 | `content/graphiques.js` | 21 graphiques avec anomalies |
 | `content/mots.js` | 64 mots à faire deviner + mots interdits |
