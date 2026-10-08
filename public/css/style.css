@@ -104,7 +104,7 @@ a { color: var(--gold2); }
 .static .lb-row { transition: none !important; }
 
 /* minuteur */
-.timer { position: sticky; top: 64px; z-index: 19; height: 0; opacity: 0; transition: opacity 0.3s; }
+.timer { position: sticky; top: 64px; z-index: 21; height: 0; opacity: 0; transition: opacity 0.3s; }
 .route-play .timer { top: 58px; }
 .timer.show { opacity: 1; height: 8px; }
 .timer-fill { height: 8px; background: linear-gradient(90deg, var(--green2), var(--gold)); transform-origin: left; transition: transform 0.2s linear; box-shadow: 0 0 12px rgba(47, 207, 120, 0.6); }
@@ -537,6 +537,7 @@ canvas.confetti { position: fixed; inset: 0; pointer-events: none; z-index: 100;
 .champ-stats div { background: rgba(255, 255, 255, 0.05); padding: 8px 12px; border-radius: 10px; }
 .champ-stats strong { color: var(--gold2); font-size: 1.3rem; }
 .champ-quote { font-family: var(--font-hand); font-size: 1.25rem; color: var(--gold2); margin: 8px 0 0; }
+.race .chart { animation: fadeIn 0.8s 3.2s backwards; }
 .trophies { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
 .trophy { background: var(--surface); border-radius: 16px; padding: 14px; text-align: center; border: 1px solid var(--line); animation: flipIn 0.6s backwards; animation-delay: calc(3.4s + var(--i) * 0.15s); }
 .trophy-emoji { font-size: 2.6rem; }

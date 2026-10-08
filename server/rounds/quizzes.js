@@ -33,9 +33,11 @@ class EstimationRound extends QuestionRound {
   buildItems() {
     const c = this.game.content;
     const n = this.count(5, 3);
-    const pro = C.fresh('estim:pro', c.estimations, Math.ceil(n / 2), (e) => e.cat === 'Cabinet');
-    const other = C.fresh('estim:gen', c.estimations, n - pro.length, (e) => e.cat !== 'Cabinet');
-    return U.shuffle([...pro, ...other]).map((e) => ({ ...e, type: 'estimation' }));
+    const mirror = this.players.length >= 3 && c.miroirsChiffres.length ? C.fresh('miroirsChiffres', c.miroirsChiffres, 1) : [];
+    const pro = C.fresh('estim:pro', c.estimations, Math.ceil((n - mirror.length) / 2), (e) => e.cat === 'Cabinet');
+    const other = C.fresh('estim:gen', c.estimations, n - mirror.length - pro.length, (e) => e.cat !== 'Cabinet');
+    const items = U.shuffle([...pro, ...other]).map((e) => ({ ...e, type: 'estimation' }));
+    return spread(items, mirror);
   }
 }
 

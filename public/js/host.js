@@ -216,11 +216,12 @@ function questionsHost(s, p, fresh) {
   const it = p.item;
   const rv = p.reveal;
   if (fresh && rv) sfx.reveal();
-  const head = roundTag(s, `Question ${p.index + 1} / ${p.total}${it.difficultyLabel && !['vote', 'predict', 'estimate', 'order'].includes(it.type) ? ' · ' + it.difficultyLabel : ''}${it.cat ? ' · ' + it.cat : ''}`);
+  const head = roundTag(s, `Question ${p.index + 1} / ${p.total}${it.difficultyLabel && !['vote', 'predict', 'predictNumber', 'estimate', 'order'].includes(it.type) ? ' · ' + it.difficultyLabel : ''}${it.cat ? ' · ' + it.cat : ''}`);
   const target = it.target ? playerById(s, it.target) : null;
   const typeBadge = {
     vote: '🗳️ QUI EST LE PLUS SUSCEPTIBLE…',
     predict: '🪞 MIROIR',
+    predictNumber: '🪞 MIROIR CHIFFRÉ',
     estimate: '🔢 ESTIMATION',
     number: '🧮 RÉPONSE CHIFFRÉE',
     order: '📋 CLASSEMENT',
@@ -228,9 +229,9 @@ function questionsHost(s, p, fresh) {
   const q = h('div.q-card',
     typeBadge ? h('div.q-type', typeBadge) : null,
     h('div.q-text', it.q),
-    it.type === 'predict' && target ? h('div.q-target', avatar(target, { size: 'lg' }), h('span', `${target.name} répond pour lui/elle-même… les autres doivent deviner !`)) : null,
+    (it.type === 'predict' || it.type === 'predictNumber') && target ? h('div.q-target', avatar(target, { size: 'lg' }), h('span', it.type === 'predictNumber' ? `${target.name} donne son VRAI chiffre… les autres estiment !` : `${target.name} répond pour lui/elle-même… les autres doivent deviner !`)) : null,
     it.visual ? h('div.q-visual', it.visual) : null,
-    it.unit && (it.type === 'estimate' || it.type === 'number') ? h('div.q-unit', `Réponse en ${it.unit}`) : null,
+    it.unit && ['estimate', 'number', 'predictNumber'].includes(it.type) ? h('div.q-unit', `Réponse en ${it.unit}`) : null,
   );
   const body = [];
   if (it.chart) body.push(chart(it.chart, { height: 330 }));
@@ -256,14 +257,15 @@ function questionsHost(s, p, fresh) {
   } else if (it.type === 'order') {
     const list = rv ? rv.ordered.map((label, i) => ({ label, i })) : it.items.map((x) => ({ label: x.label }));
     body.push(h('ol.order-list', list.map((x, k) => h(`li${rv ? '.correct' : ''}`, { style: { '--i': k } }, x.label))));
-  } else if ((it.type === 'number' || it.type === 'estimate') && !rv) {
+  } else if (['number', 'estimate', 'predictNumber'].includes(it.type) && !rv) {
     body.push(h('div.big-input-hint', '⌨️ Tapez votre réponse sur votre écran'));
   }
   if (rv && it.type === 'number') {
     body.push(h('div.answer-big', `${fmtNum(rv.answer)}${it.unit ? ' ' + it.unit : ''}`, stamp('VALIDÉ', true, { small: true })));
     body.push(h('div.guess-list', rv.list.slice(0, 12).map((g) => h(`span.guess${g.ok ? '.ok' : ''}`, avatar(playerById(s, g.id), { size: 'sm' }), fmtNum(g.value)))));
   }
-  if (rv && it.type === 'estimate') {
+  if (rv && it.type === 'predictNumber' && rv.cancelled) body.push(h('div.notice', `${target ? target.name : 'La cible'} n’a pas répondu : question annulée.`));
+  if (rv && (it.type === 'estimate' || (it.type === 'predictNumber' && !rv.cancelled))) {
     body.push(h('div.answer-big', `${fmtNum(rv.answer)}${it.unit ? ' ' + it.unit : ''}`));
     body.push(estimateScale(s, rv, it.unit));
     body.push(h('div.est-ranking', rv.list.map((l) => {
@@ -576,6 +578,25 @@ function eventScreen(s, fresh) {
   );
 }
 
+// 📈 Évolution des scores du top 3 (une courbe par joueur, même axe)
+function raceChart(s, f) {
+  const top = f.ranking.slice(0, 3).filter((r) => (r.scoreHistory || []).length >= 2);
+  if (!top.length) return null;
+  const n = Math.max(...top.map((r) => r.scoreHistory.length));
+  const labels = (f.rounds || []).slice(0, n).map((r) => r.emoji);
+  if (labels.length < 2) return null;
+  return h('div.race',
+    h('h2.section-title', '📈 La course au titre'),
+    chart({
+      type: 'courbes',
+      titre: 'Score cumulé après chaque épreuve (top 3)',
+      unite: 'pts',
+      labels,
+      series: top.map((r) => ({ nom: playerById(s, r.id).name, valeurs: labels.map((_, i) => r.scoreHistory[i] ?? r.scoreHistory[r.scoreHistory.length - 1]) })),
+    }, { height: 300 }),
+  );
+}
+
 // ───────────── Finale ─────────────
 function finalScreen(s, isHost, fresh) {
   const f = s.final;
@@ -603,6 +624,7 @@ function finalScreen(s, isHost, fresh) {
         h('blockquote.champ-quote', `« ${champ.quote} »`),
       ),
     ),
+    raceChart(s, f),
     h('h2.section-title', '🎖️ Trophées de la soirée'),
     h('div.trophies', f.trophies.map((t, i) => h('div.trophy', { style: { '--i': i } }, h('div.trophy-emoji', t.emoji), h('div.trophy-title', t.title), h('div.trophy-name', playerById(s, t.id).name), h('div.trophy-detail', t.detail)))),
     f.bestTeam || f.bestDuo ? h('div.final-teams',

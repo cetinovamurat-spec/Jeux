@@ -6,7 +6,7 @@
 const BaseRound = require('./base');
 const U = require('../util');
 
-const DEFAULT_TIME = { mcq: 20, number: 35, estimate: 30, vote: 20, predict: 25, order: 35 };
+const DEFAULT_TIME = { mcq: 20, number: 35, estimate: 30, vote: 20, predict: 25, predictNumber: 35, order: 35 };
 const DIFF_BASE = { 1: 50, 2: 70, 3: 90, 4: 120 };
 const DIFF_LABEL = { 1: 'Facile', 2: 'Moyen', 3: 'Difficile', 4: 'Extrême' };
 
@@ -37,6 +37,8 @@ function normalizeItem(raw) {
       return { ...base, type: 'vote', title: raw.titre || raw.q };
     case 'miroir':
       return { ...base, type: 'predict', options: raw.choix.slice(), keepOrder: true };
+    case 'miroir-nombre':
+      return { ...base, type: 'predictNumber' };
     default: {
       const options = raw.choix.slice();
       const answer = raw.bonne !== undefined ? raw.bonne : 0;
@@ -64,7 +66,7 @@ class QuestionRound extends BaseRound {
   buildItems() { return []; }
 
   start() {
-    this.items = this.buildItems().map((raw) => (raw.type ? normalizeItem(raw) : normalizeItem(raw)));
+    this.items = this.buildItems().map(normalizeItem);
     this.nextItem();
   }
 
@@ -101,7 +103,7 @@ class QuestionRound extends BaseRound {
   prepare(item) {
     const names = U.shuffle(this.players.map((p) => p.name));
     const it = { ...item };
-    if (it.type === 'predict') {
+    if (it.type === 'predict' || it.type === 'predictNumber') {
       const pool = this.connected.filter((p) => !this.targetsUsed.has(p.id));
       const candidates = pool.length ? pool : this.connected;
       if (candidates.length < 2 && this.connected.length < 2) return null;
@@ -159,10 +161,11 @@ class QuestionRound extends BaseRound {
       case 'vote':
         return it.options.includes(v) ? v : undefined;
       case 'number':
-      case 'estimate': {
+      case 'estimate':
+      case 'predictNumber': {
         const n = U.parseNumber(v);
         if (!Number.isFinite(n)) return undefined;
-        if (it.type === 'estimate' && n < 0) return undefined;
+        if (it.type !== 'number' && n < 0) return undefined;
         return n;
       }
       case 'order': {
@@ -288,6 +291,8 @@ class QuestionRound extends BaseRound {
         if (ep) ep.titles.push(it.title);
       }
       this.reveal = { counts, elected, voters: this.voters() };
+    } else if (it.type === 'predictNumber') {
+      this.revealPredictNumber(results);
     } else if (it.type === 'predict') {
       const ta = this.answers[it.target];
       const target = g.getPlayer(it.target);
@@ -356,6 +361,43 @@ class QuestionRound extends BaseRound {
     });
     for (const p of this.players) if (!results[p.id]) results[p.id] = { points: 0, missing: true };
     this.reveal = { answer: it.answer, list };
+  }
+
+  // 🪞 Miroir chiffré : la cible donne SON vrai chiffre, les autres estiment.
+  revealPredictNumber(results) {
+    const it = this.item;
+    const g = this.game;
+    const ta = this.answers[it.target];
+    const target = g.getPlayer(it.target);
+    if (!ta || !target) {
+      for (const p of this.players) results[p.id] = { points: 0 };
+      this.reveal = { cancelled: true, list: [] };
+      return;
+    }
+    const truth = ta.value;
+    const entries = this.players
+      .filter((p) => p.id !== it.target && this.answers[p.id])
+      .map((p) => {
+        const v = this.answers[p.id].value;
+        return { p, value: v, err: Math.abs(Math.log10((v + 1) / (truth + 1))) };
+      })
+      .sort((a, b) => a.err - b.err);
+    const table = [100, 70, 50, 35, 25];
+    let rank = 0;
+    const list = [];
+    entries.forEach((e, i) => {
+      if (i > 0 && e.err > entries[i - 1].err + 1e-12) rank = i;
+      let base = table[rank] ?? 15;
+      const tags = [];
+      if (e.value === truth) { base += 40; tags.push('🎯 Pile !'); }
+      const pts = g.award(e.p, base, { reason: 'Miroir chiffré' });
+      results[e.p.id] = { points: pts, value: e.value, rank: rank + 1, tags, correct: rank === 0 };
+      list.push({ id: e.p.id, value: e.value, rank: rank + 1, points: pts, tags, ratio: (e.value + 1) / (truth + 1) });
+    });
+    const tp = g.award(target, 20, { reason: 'Transparence totale' });
+    results[target.id] = { points: tp, isTarget: true, value: truth };
+    for (const p of this.players) if (!results[p.id]) results[p.id] = { points: 0, missing: true };
+    this.reveal = { answer: truth, list };
   }
 
   distribution(nOptions, exclude) {

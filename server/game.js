@@ -347,10 +347,12 @@ class Game {
     for (const p of active) {
       p.pointsByRound[id] = (p.pointsByRound[id] || 0) + p.roundGain;
     }
-    const best = byGain[0];
-    const worst = byGain[byGain.length - 1];
+    // (une épreuve passée sans aucun point ne désigne ni vainqueur ni boulet)
+    const best = byGain[0] && byGain[0].roundGain > 0 ? byGain[0] : null;
+    const last = byGain[byGain.length - 1];
+    const worst = best && last && last !== best && last.roundGain < best.roundGain ? last : null;
     if (best) best.stats.roundWins = (best.stats.roundWins || 0) + 1;
-    byGain.slice(0, 3).forEach((p) => { p.stats.roundPodiums = (p.stats.roundPodiums || 0) + 1; });
+    if (best) byGain.slice(0, 3).forEach((p) => { if (p.roundGain > 0) p.stats.roundPodiums = (p.stats.roundPodiums || 0) + 1; });
     if (worst && byGain.length >= 3) worst.stats.boulets = (worst.stats.boulets || 0) + 1;
     const ranking = this.ranking();
     for (const p of active) {

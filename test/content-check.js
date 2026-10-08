@@ -44,6 +44,7 @@ checkQuestions('football', c.football);
 checkQuestions('bluff', c.bluff);
 checkQuestions('votes', c.votes);
 checkQuestions('miroirs', c.miroirs);
+checkQuestions('miroirs chiffrés', c.miroirsChiffres);
 c.mots.forEach((m, i) => check(m.mot && Array.isArray(m.interdits) && m.interdits.length >= 3, `mots[${i}] invalide`));
 c.menteur.forEach((m, i) => check(m.texte, `menteur[${i}] invalide`));
 c.encheres.forEach((l, i) => {
@@ -70,6 +71,7 @@ const minimums = {
   'affirmations menteur': [c.menteur.length, 30],
   'votes équipe': [c.votes.length + c.votesFoot.length, 20],
   'miroirs équipe': [c.miroirs.length + c.miroirsFoot.length, 15],
+  'miroirs chiffrés': [c.miroirsChiffres.length, 10],
 };
 console.log('📚 Banque de contenu');
 for (const [k, [n, min]] of Object.entries(minimums)) {

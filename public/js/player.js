@@ -165,7 +165,7 @@ function buildQuestion(s, p, fresh) {
   const it = p.item;
   const me = p.me || {};
   const target = it.target ? playerById(s, it.target) : null;
-  const head = h('div.p-qhead', h('span', `${s.round.emoji} ${p.index + 1}/${p.total}`), it.difficultyLabel && !['vote', 'predict', 'estimate', 'order'].includes(it.type) ? h('span.p-diff', it.difficultyLabel) : null);
+  const head = h('div.p-qhead', h('span', `${s.round.emoji} ${p.index + 1}/${p.total}`), it.difficultyLabel && !['vote', 'predict', 'predictNumber', 'estimate', 'order'].includes(it.type) ? h('span.p-diff', it.difficultyLabel) : null);
   const qText = h('div.p-q', it.q);
   const extras = [];
   if (it.visual) extras.push(h('div.q-visual.small', it.visual));
@@ -179,10 +179,12 @@ function buildQuestion(s, p, fresh) {
     if (it.type === 'mcq') answerText = `Bonne réponse : ${LETTERS[rv.answer]} — ${it.options[rv.answer]}`;
     if (it.type === 'predict' && rv.answer !== undefined) answerText = `${target ? target.name : '?'} a répondu : ${it.options[rv.answer]}`;
     if (it.type === 'number' || it.type === 'estimate') answerText = `Réponse : ${fmtNum(rv.answer)} ${it.unit || ''}`;
+    if (it.type === 'predictNumber' && !rv.cancelled) answerText = `${target ? target.name : '?'} a répondu : ${fmtNum(rv.answer)} ${it.unit || ''}`;
     if (it.type === 'order' && rv.ordered) answerText = `Ordre : ${rv.ordered.join(' › ')}`;
     if (it.type === 'vote' && rv.elected) answerText = `Élu(e) : ${rv.elected.map((id) => playerById(s, id).name).join(', ')}`;
     let banner;
-    if (me.isTarget && res) banner = h('div.p-result.neutral', h('div.p-result-big', '🪞'), h('p', `Tes collègues te connaissent… ${res.points ? `+${res.points} pts` : 'mal !'}`));
+    if (me.isTarget && res && it.type === 'predictNumber') banner = h('div.p-result.neutral', h('div.p-result-big', '🪞'), h('p', `Merci pour ta transparence : +${res.points || 0} pts`));
+    else if (me.isTarget && res) banner = h('div.p-result.neutral', h('div.p-result-big', '🪞'), h('p', `Tes collègues te connaissent… ${res.points ? `+${res.points} pts` : 'mal !'}`));
     else if (it.type === 'vote' && res) banner = resultBanner(res, { ok: res.correct, extra: h('p', res.correct ? 'Tu as voté avec la majorité 🤝' : 'Minorité… tu pensais différemment') });
     else banner = resultBanner(res);
     return h('div.p-question', head, qText, banner, answerText ? h('div.p-answer', answerText) : null, it.chart ? chart(it.chart, { height: 300 }) : null, rv.explain ? h('div.explain', h('span.explain-icon', '📎'), rv.explain) : null);
@@ -209,8 +211,8 @@ function buildQuestion(s, p, fresh) {
       const pl = playerById(s, id);
       return h('button.p-vote-btn', { onclick: () => { sfx.click(); act({ type: 'answer', value: id }); } }, h('span.p-vote-av', pl.avatar), h('span', pl.name));
     }));
-  } else if (it.type === 'number' || it.type === 'estimate') {
-    const field = h('input.input.p-num', { 'data-keep': `num-${p.index}`, inputmode: it.type === 'number' ? 'decimal' : 'text', placeholder: it.type === 'estimate' ? 'ex : 3,5M · 12 000 · 2 milliards' : 'Ta réponse', autocomplete: 'off', enterkeyhint: 'send' });
+  } else if (['number', 'estimate', 'predictNumber'].includes(it.type)) {
+    const field = h('input.input.p-num', { 'data-keep': `num-${p.index}`, inputmode: it.type === 'estimate' ? 'text' : 'decimal', placeholder: it.type === 'estimate' ? 'ex : 3,5M · 12 000 · 2 milliards' : 'Ta réponse', autocomplete: 'off', enterkeyhint: 'send' });
     const risk = it.allowRisk ? h('label.toggle.risk', h('input', { type: 'checkbox', 'data-keep': `risk-${p.index}` }), h('span', '🎲 Pari ×2 (tiers de tête : ×2 · sinon −50)')) : null;
     const send = () => {
       const v = field.value.trim();
@@ -231,8 +233,10 @@ function buildQuestion(s, p, fresh) {
       seq.length ? h('button.btn.btn-small.btn-ghost', { onclick: () => { app.local[k] = []; redraw(); } }, '↺ Recommencer') : null,
     );
   }
-  const preface = it.type === 'predict'
-    ? h(`div.p-banner${me.isTarget ? '.gold' : ''}`, me.isTarget ? '🪞 C’est sur TOI ! Réponds honnêtement… tes collègues doivent deviner.' : `🪞 Que va répondre ${target ? target.name : '?'} ?`)
+  const preface = it.type === 'predict' || it.type === 'predictNumber'
+    ? h(`div.p-banner${me.isTarget ? '.gold' : ''}`, me.isTarget
+      ? (it.type === 'predictNumber' ? '🪞 C’est sur TOI ! Donne ton VRAI chiffre (vérifie si tu peux) : tes collègues doivent l’estimer.' : '🪞 C’est sur TOI ! Réponds honnêtement… tes collègues doivent deviner.')
+      : (it.type === 'predictNumber' ? `🪞 Estime le chiffre de ${target ? target.name : '?'} !` : `🪞 Que va répondre ${target ? target.name : '?'} ?`))
     : it.type === 'vote' ? h('div.p-banner', '🗳️ Vote pour un collègue (tu marques si tu votes comme la majorité)') : null;
   return h('div.p-question', head, preface, qText, extras, input);
 }

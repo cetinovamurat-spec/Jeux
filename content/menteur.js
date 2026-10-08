@@ -39,4 +39,11 @@ module.exports = [
   { texte: 'J’ai déjà découvert qu’un justificatif demandé depuis trois semaines était… dans ma boîte mail.' },
   { texte: 'J’ai déjà fait une sieste dans ma voiture sur un parking client.' },
   { texte: 'J’ai déjà connu la composition de l’équipe de France avant celle de mon équipe de mission.' },
+  // {joueur} = un autre joueur présent : effet garanti
+  { texte: 'J’ai déjà lettré un compte plus vite que {joueur}.' },
+  { texte: 'J’ai déjà fait semblant d’être en réunion pour éviter une question de {joueur}.' },
+  { texte: 'J’ai déjà emprunté le chargeur de {joueur} sans le lui dire.' },
+  { texte: 'J’ai déjà relu un fichier de {joueur} et trouvé une erreur… que je n’ai jamais signalée.' },
+  { texte: 'J’ai déjà copié une formule Excel de {joueur} en la faisant passer pour la mienne.' },
+  { texte: 'J’ai déjà parié en secret sur l’heure d’arrivée de {joueur} un lundi matin.' },
 ];

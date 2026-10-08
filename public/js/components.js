@@ -208,17 +208,19 @@ export function chart(def, opts = {}) {
 // ───────────── Échelle logarithmique des estimations ─────────────
 export function estimateScale(state, reveal, unit) {
   const list = reveal.list || [];
-  const values = [reveal.answer, ...list.map((l) => l.value)].filter((v) => v > 0);
+  // échelle log(1 + x) : gère aussi les réponses à 0
+  const L = (v) => Math.log10(Math.max(0, v) + 1);
+  const values = [reveal.answer, ...list.map((l) => l.value)].filter((v) => v >= 0);
   if (!values.length) return null;
-  const lo = Math.log10(Math.min(...values)) - 0.3;
-  const hi = Math.log10(Math.max(...values)) + 0.3;
-  const pos = (v) => `${((Math.log10(Math.max(v, 1e-9)) - lo) / (hi - lo || 1)) * 100}%`;
+  const lo = Math.min(...values.map(L)) - 0.3;
+  const hi = Math.max(...values.map(L)) + 0.3;
+  const pos = (v) => `${((L(v) - lo) / (hi - lo || 1)) * 100}%`;
   return h('div.est-scale',
     h('div.est-line'),
     h('div.est-answer', { style: { left: pos(reveal.answer) } }, h('span.est-answer-flag', `🎯 ${fmtNum(reveal.answer)}${unit ? ' ' + unit : ''}`)),
     list.map((l, i) => {
       const p = playerById(state, l.id);
-      return h('div.est-dot', { style: { left: pos(Math.max(l.value, 1e-9)), '--row': i % 3, '--d': `${0.3 + i * 0.12}s` }, title: `${p.name} : ${fmtNum(l.value)}` }, avatar(p, { size: 'sm' }));
+      return h('div.est-dot', { style: { left: pos(l.value), '--row': i % 3, '--d': `${0.3 + i * 0.12}s` }, title: `${p.name} : ${fmtNum(l.value)}` }, avatar(p, { size: 'sm' }));
     }),
   );
 }

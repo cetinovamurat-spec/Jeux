@@ -59,6 +59,24 @@ module.exports = {
     { type: 'miroir', q: 'Le premier réflexe de {cible} quand une balance ne tombe pas ?', choix: ['Vérifier les à-nouveaux', 'Chercher un écart divisible par 9', 'Aller prendre un café', 'Appeler à l’aide'] },
   ],
 
+  // MIROIR CHIFFRÉ (épreuve Estimation) : { type: 'miroir-nombre', q (avec {cible}), unite }
+  //   → {cible} donne SON vrai chiffre (vérification en direct encouragée !), les autres estiment.
+  miroirsChiffres: [
+    { type: 'miroir-nombre', q: 'Combien de mails non lus dans la boîte de réception de {cible}, là, maintenant ? (vérification en direct autorisée)', unite: 'mails' },
+    { type: 'miroir-nombre', q: 'Combien de fichiers traînent sur le bureau de l’ordinateur de {cible} ?', unite: 'fichiers' },
+    { type: 'miroir-nombre', q: 'Combien d’onglets sont ouverts dans le navigateur de {cible} en ce moment ?', unite: 'onglets' },
+    { type: 'miroir-nombre', q: 'Combien de cafés par semaine pour {cible} (en période normale, hors busy season) ?', unite: 'cafés' },
+    { type: 'miroir-nombre', q: 'Combien de réunions Teams cette semaine pour {cible} ?', unite: 'réunions' },
+    { type: 'miroir-nombre', q: 'Combien de post-it sont collés autour de l’écran de {cible} ?', unite: 'post-it' },
+    { type: 'miroir-nombre', q: 'Depuis combien d’années {cible} travaille dans l’audit, la compta ou la finance ?', unite: 'ans' },
+    { type: 'miroir-nombre', q: 'Combien de matchs de foot {cible} a regardés le mois dernier ?', unite: 'matchs' },
+    { type: 'miroir-nombre', q: 'Record personnel de {cible} : combien de versions « VF_def » d’un même fichier ?', unite: 'versions' },
+    { type: 'miroir-nombre', q: 'Combien d’applications installées sur le téléphone de {cible} ?', unite: 'applis' },
+    { type: 'miroir-nombre', q: 'Combien de fichiers Excel sont ouverts sur l’ordinateur de {cible} en ce moment ?', unite: 'fichiers' },
+    { type: 'miroir-nombre', q: 'Combien de messages Teams non lus pour {cible} ?', unite: 'messages' },
+    { type: 'miroir-nombre', q: 'Combien de clients différents pour {cible} cette année ?', unite: 'clients' },
+  ],
+
   votesFoot: [
     { type: 'vote', q: 'Qui dans l’équipe ferait le pire arbitre vidéo (VAR) ?', titre: 'Arbitre VAR contesté' },
     { type: 'vote', q: 'Qui est le plus susceptible de crier devant une séance de tirs au but au point d’alerter les voisins ?', titre: 'Supporter décibel' },

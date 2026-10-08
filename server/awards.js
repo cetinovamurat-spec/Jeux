@@ -112,6 +112,7 @@ function compute(game) {
   }
   let bestDuo = null;
   for (const [key, d] of Object.entries(duo)) {
+    if (d.n < 2) continue; // un duo, ça se construit sur au moins deux épreuves
     const score = d.sum / d.n + d.n * 5;
     if (!bestDuo || score > bestDuo.score) bestDuo = { ids: key.split('|'), avg: Math.round(d.sum / d.n), n: d.n, score };
   }

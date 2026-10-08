@@ -45,7 +45,8 @@ class MenteurRound extends BaseRound {
     }
     players.forEach((p, i) => {
       const s = statements[i % statements.length];
-      this.cards[p.id] = { statement: s.texte, role: roles[p.id] };
+      const others = U.shuffle(players.filter((x) => x.id !== p.id).map((x) => x.name));
+      this.cards[p.id] = { statement: U.fillTemplate(s.texte, others), role: roles[p.id] };
     });
     for (const p of players) {
       if (roles[p.id] === 'manipulateur') {

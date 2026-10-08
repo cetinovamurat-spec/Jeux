@@ -49,7 +49,7 @@ function botAct(b) {
     if (it.type === 'mcq' || it.type === 'predict') value = pick(it.options.map((_, i) => i).filter((i) => i !== me.disabled));
     else if (it.type === 'vote') value = pick(it.options);
     else if (it.type === 'number') value = '150';
-    else if (it.type === 'estimate') value = String(Math.round(10 ** (2 + Math.random() * 7)));
+    else if (it.type === 'estimate' || it.type === 'predictNumber') value = String(Math.round(10 ** (Math.random() * 3)));
     else if (it.type === 'order') value = it.items.map((x) => x.id);
     send(b, { type: 'answer', value });
   }
@@ -87,7 +87,7 @@ async function main() {
   const host = await hostCtx.newPage();
   const errors = [];
   host.on('pageerror', (e) => errors.push('host: ' + e.message));
-  host.on('console', (m) => { if (m.type() === 'error') errors.push('host console: ' + m.text()); });
+  host.on('console', (m) => { if (m.type() === 'error' && !/ERR_FAILED/.test(m.text())) errors.push('host console: ' + m.text()); });
   await host.goto(`${URL}/`, { waitUntil: 'domcontentloaded' });
   await sleep(500);
   await host.screenshot({ path: path.join(OUT, '00-accueil.png') });
@@ -99,7 +99,7 @@ async function main() {
   await phoneCtx.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.abort());
   const phone = await phoneCtx.newPage();
   phone.on('pageerror', (e) => errors.push('phone: ' + e.message));
-  phone.on('console', (m) => { if (m.type() === 'error') errors.push('phone console: ' + m.text()); });
+  phone.on('console', (m) => { if (m.type() === 'error' && !/ERR_FAILED/.test(m.text())) errors.push('phone console: ' + m.text()); });
   await phone.goto(`${URL}/play?code=${code}`, { waitUntil: 'domcontentloaded' });
   await sleep(500);
   await phone.screenshot({ path: path.join(OUT, '01-joueur-rejoindre.png') });
@@ -118,8 +118,9 @@ async function main() {
       if (!keep.includes(ORDER[i])) { await host.locator('.set-round').nth(i).click(); await sleep(250); }
     }
   }
-  // Lancement en mode express
-  await host.click('text=⚡ Express');
+  // Durée (LENGTH=court|normal|long, express par défaut)
+  const LABELS = { court: '⚡ Express', normal: '⏱ Normale', long: '🌙 Longue' };
+  await host.click(`text=${LABELS[process.env.LENGTH || 'court']}`);
   await sleep(300);
   await host.click('.start-btn');
   await sleep(1800);
@@ -129,7 +130,7 @@ async function main() {
   const snap = async (label) => {
     const k = label.replace(/[^a-z0-9]+/gi, '-');
     shots[k] = (shots[k] || 0) + 1;
-    if (shots[k] > 2) return;
+    if (shots[k] > Number(process.env.MAXSHOTS || 2)) return;
     const prefix = String(n++).padStart(2, '0');
     await host.screenshot({ path: path.join(OUT, `${prefix}-mc-${k}.png`) });
     await phone.screenshot({ path: path.join(OUT, `${prefix}-joueur-${k}.png`) });
@@ -142,7 +143,7 @@ async function main() {
       return s;
     });
     if (!st) { await sleep(300); continue; }
-    if (st.phase === 'final') { await sleep(6000); await snap('finale'); await host.evaluate(() => window.scrollTo(0, 1400)); await sleep(400); await host.screenshot({ path: path.join(OUT, '99-mc-finale-bas.png') }); break; }
+    if (st.phase === 'final') { await sleep(6000); await snap('finale'); await host.evaluate(() => window.scrollTo(0, 620)); await sleep(400); await host.screenshot({ path: path.join(OUT, '98-mc-finale-milieu.png') }); await host.evaluate(() => window.scrollTo(0, 1400)); await sleep(400); await host.screenshot({ path: path.join(OUT, '99-mc-finale-bas.png') }); break; }
     const label = `r${st.round}-${st.phase}-${st.kind || ''}-${st.stage || ''}${st.itype ? '-' + st.itype : ''}`;
     // Le joueur « navigateur » répond via l'interface
     await phoneAct(phone, st);
@@ -168,7 +169,7 @@ async function phoneAct(phone, st) {
       return;
     }
     if (st.kind === 'questions' && st.stage === 'ask') {
-      if (st.itype === 'number' || st.itype === 'estimate') { await phone.fill('.p-num', '1200'); await phone.click('.p-numwrap .btn-gold'); return; }
+      if (st.itype === 'number' || st.itype === 'estimate' || st.itype === 'predictNumber') { await phone.fill('.p-num', '1200'); await phone.click('.p-numwrap .btn-gold'); return; }
       if (st.itype === 'order') { for (let i = 0; i < 4; i++) { const b = await phone.$('.p-order-items .btn'); if (b) await b.click(); await phone.waitForTimeout(150); } return; }
       const b = await phone.$('.p-opt:not(.disabled), .p-vote-btn');
       if (b) await b.click();

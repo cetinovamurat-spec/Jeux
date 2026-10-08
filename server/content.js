@@ -35,6 +35,7 @@ function all() {
     votes: [...perso.votes, ...(extra.votes || [])],
     miroirs: [...perso.miroirs, ...(extra.miroirs || [])],
     votesFoot: perso.votesFoot || [],
+    miroirsChiffres: [...(perso.miroirsChiffres || []), ...(extra.miroirsChiffres || [])],
     miroirsFoot: perso.miroirsFoot || [],
   };
 }

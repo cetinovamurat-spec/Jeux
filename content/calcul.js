@@ -9,8 +9,8 @@ module.exports = [
   { type: 'nombre', q: '1 000 € HT de livres, TVA à 5,5 %. Montant TTC ?', reponse: 1055, tol: 0, unite: '€', d: 1, cat: 'TVA' },
   { q: 'Un fournisseur facture 1 000 € HT + 200 € de TVA récupérable. Combien passez-vous en charge ?', choix: ['1 000 €', '1 200 €', '800 €', '1 166 €'], d: 1, cat: 'Piège', info: 'La TVA récupérable va en 44566, pas en charge.' },
   { type: 'vf', q: 'Une remise de 10 % suivie d’une autre remise de 10 % équivaut à une remise de 20 %.', vrai: false, d: 1, cat: 'Piège', info: '0,9 × 0,9 = 0,81 → remise de 19 %.' },
-  { q: 'Si 5 auditeurs lettrent 5 comptes en 5 minutes, combien de temps faut-il à 100 auditeurs pour lettrer 100 comptes ?', choix: ['5 minutes', '100 minutes', '20 minutes', '1 minute'], d: 1, cat: 'Logique', info: 'Chaque auditeur lettre un compte en 5 minutes. Le manager, lui, en demande 6.' },
-  { q: 'Le stagiaire a acheté des croissants pour l’équipe avec la carte de la société. Quelle écriture ?', choix: ['Débit 625 (réceptions) / Crédit 512', 'Débit 512 / Crédit 625', 'Débit 411 / Crédit 707', 'Débit 101 (capital) / Crédit 512'], d: 1, cat: 'Écriture absurde', info: 'Compte 6257 « Réceptions ». Le capital social n’a rien demandé.' },
+  { q: 'Si 5 clones de {joueur} lettrent 5 comptes en 5 minutes, combien de temps faut-il à 100 clones de {joueur} pour lettrer 100 comptes ?', choix: ['5 minutes', '100 minutes', '20 minutes', '1 minute'], d: 1, cat: 'Logique', info: 'Chaque auditeur lettre un compte en 5 minutes. Le manager, lui, en demande 6.' },
+  { q: '{joueur} a acheté des croissants pour l’équipe avec la carte de la société. Quelle écriture ?', choix: ['Débit 625 (réceptions) / Crédit 512', 'Débit 512 / Crédit 625', 'Débit 411 / Crédit 707', 'Débit 101 (capital) / Crédit 512'], d: 1, cat: 'Écriture absurde', info: 'Compte 6257 « Réceptions ». Le capital social n’a rien demandé.' },
 
   // ───── Moyen ─────
   { q: 'CA N : 8,4 M€. CA N-1 : 7,2 M€. Quel est le taux de croissance ?', choix: ['+16,7 %', '+14,3 %', '+12 %', '+1,2 %'], d: 2, cat: 'Croissance', info: '(8,4 − 7,2) / 7,2. Le piège : diviser par 8,4 (→ 14,3 %).' },
@@ -32,7 +32,7 @@ module.exports = [
   { type: 'nombre', q: 'Combien font 17 × 23 ?', reponse: 391, tol: 0, d: 2, cat: 'Calcul pur' },
 
   // ───── Difficile ─────
-  { q: 'Un client annonce une marge de 12 %. Son CA augmente de 25 % et ses charges de 40 %. Quel est le problème ?', choix: ['Sa marge s’effondre à environ 1,4 %', 'Sa marge monte à 15 %', 'Aucun : le CA augmente', 'Sa marge reste à 12 %'], d: 3, cat: 'Piège', info: 'CA 100 → 125, charges 88 → 123,2 : résultat 1,8 sur 125.' },
+  { q: 'Le client de {joueur} annonce une marge de 12 %. Son CA augmente de 25 % et ses charges de 40 %. Quel est le problème ?', choix: ['Sa marge s’effondre à environ 1,4 %', 'Sa marge monte à 15 %', 'Aucun : le CA augmente', 'Sa marge reste à 12 %'], d: 3, cat: 'Piège', info: 'CA 100 → 125, charges 88 → 123,2 : résultat 1,8 sur 125.' },
   { q: 'Coût d’achat 80 €, taux de marque (marge / prix de vente) 20 %. Prix de vente ?', choix: ['100 €', '96 €', '104 €', '120 €'], d: 3, cat: 'Marges', info: '80 / (1 − 0,2) = 100. Le piège : appliquer 20 % sur le coût (→ 96 €).' },
   { q: 'CA 10 M€, achats consommés 4 M€, charges externes 2 M€, personnel 2,5 M€, impôts et taxes 0,3 M€, dotations aux amortissements 0,8 M€. EBITDA ?', choix: ['1,2 M€', '0,4 M€', '2,0 M€', '1,5 M€'], d: 3, cat: 'EBITDA', info: 'L’EBITDA s’arrête avant les amortissements : 10 − 4 − 2 − 2,5 − 0,3.' },
   { q: 'Immobilisation de 120 000 € amortie en linéaire sur 5 ans, acquise le 1er juillet N (exercice civil). Dotation N ?', choix: ['12 000 €', '24 000 €', '6 000 €', '20 000 €'], d: 3, cat: 'Amortissements', info: '24 000 € par an × 6/12 (prorata temporis).' },
@@ -43,7 +43,7 @@ module.exports = [
   { q: 'Salaire brut 3 000 €/mois, charges patronales ≈ 45 %. Coût employeur annuel (12 mois) ?', choix: ['52 200 €', '36 000 €', '43 500 €', '49 800 €'], d: 3, cat: 'Masse salariale' },
 
   // ───── Extrême ─────
-  { q: 'Budget mission : 120 h. Vous en êtes à 150 h pour 80 % du travail. Dépassement final si le rythme reste le même ?', choix: ['67,5 h', '30 h', '37,5 h', '54 h'], d: 4, cat: 'Budget', info: '150 / 0,8 = 187,5 h au total. Le manager vous demandera d’en saisir 130.' },
+  { q: 'Budget de la mission de {joueur} : 120 h. Déjà 150 h consommées pour 80 % du travail. Dépassement final si le rythme reste le même ?', choix: ['67,5 h', '30 h', '37,5 h', '54 h'], d: 4, cat: 'Budget', info: '150 / 0,8 = 187,5 h au total. Le manager vous demandera d’en saisir 130.' },
   { type: 'nombre', q: 'Un CA passe de 4 M€ à 6,25 M€ en 2 ans. Taux de croissance annuel moyen (en %) ?', reponse: 25, tol: 0.5, unite: '%', d: 4, cat: 'Croissance', info: '√(6,25 / 4) = 1,25.' },
   { q: 'Marge brute de 40 % sur un CA de 5 M€. Le CA baisse de 10 % mais la marge brute (en €) reste identique. Nouveau taux de marge brute ?', choix: ['≈ 44,4 %', '40 %', '36 %', '50 %'], d: 4, cat: 'Marges', info: '2 M€ / 4,5 M€.' },
   { q: 'Un montant TTC de 1 000 € inclut une TVA à 20 %. Une erreur a appliqué 20 % sur le TTC pour calculer la TVA. De combien la TVA est-elle surévaluée ?', choix: ['≈ 33,33 €', '20 €', '40 €', '0 €'], d: 4, cat: 'TVA', info: 'TVA réelle : 166,67 €. Erronée : 200 €.' },

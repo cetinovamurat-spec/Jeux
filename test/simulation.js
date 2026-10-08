@@ -76,7 +76,7 @@ function act(bot) {
         value = pick(opts);
       } else if (it.type === 'vote') value = pick(it.options);
       else if (it.type === 'number') value = String(Math.round(Math.random() * 500));
-      else if (it.type === 'estimate') value = String(Math.round(10 ** (Math.random() * 9)));
+      else if (it.type === 'estimate' || it.type === 'predictNumber') value = String(Math.round(10 ** (Math.random() * 9)));
       else if (it.type === 'order') value = it.items.map((x) => x.id).sort(() => Math.random() - 0.5);
       send(bot, { type: 'answer', value, risk: Math.random() < 0.2 });
       return;
