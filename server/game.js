@@ -76,6 +76,11 @@ class Game {
     }
     const clean = String(name || '').replace(/\s+/g, ' ').trim().slice(0, 24);
     if (!clean) return { error: 'Choisis un pseudo !' };
+    // Prénom porté par plusieurs membres du trombinoscope (ex. deux « Emma ») : initiale obligatoire
+    const membres = (this.content.team && this.content.team.membres) || [];
+    if (Roster.homonymes(membres).some((x) => U.normalize(x) === U.normalize(clean))) {
+      return { error: `Il y a plusieurs « ${clean} » dans l’équipe : ajoute l’initiale de ton nom (ex. « ${clean} B. »).` };
+    }
     const same = this.players.find((p) => !p.kicked && U.normalize(p.name) === U.normalize(clean));
     if (same) {
       // Reprise de place depuis un autre appareil si l'ancien est déconnecté

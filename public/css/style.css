@@ -661,6 +661,9 @@ canvas.confetti { position: fixed; inset: 0; pointer-events: none; z-index: 100;
 .p-points small { font-size: 0.45em; color: var(--muted); }
 .p-streak { color: #ff9a3c; font-weight: 800; margin-top: 6px; }
 .p-tags { color: var(--gold2); font-weight: 700; margin-top: 6px; }
+.p-rankline { font-weight: 800; margin: 6px 0 0; }
+.p-banner.small { font-size: 0.9rem; padding: 8px 10px; }
+.join-error[hidden] { display: none; }
 .p-answer { background: rgba(47, 207, 120, 0.15); border: 1px solid rgba(47, 207, 120, 0.5); border-radius: 12px; padding: 10px 12px; font-weight: 800; margin: 8px 0; }
 
 .secret { border-radius: 18px; padding: 18px; text-align: left; border: 3px solid; animation: flipIn 0.7s; }

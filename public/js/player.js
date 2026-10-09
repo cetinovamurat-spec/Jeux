@@ -21,13 +21,24 @@ const MOD_LABEL = {
 };
 
 // ───────────── Rejoindre ─────────────
+function homonymesText() {
+  return app.homonymes && app.homonymes.length ? `Homonymes dans l’équipe (${app.homonymes.join(', ')}) : ajoute l’initiale du nom, ex. « ${app.homonymes[0]} B. ».` : '';
+}
+
 export function joinView() {
   if (app.homonymes === undefined && app.code) {
     app.homonymes = null;
     fetch(`/api/game/${app.code}`).then((r) => r.json()).then((d) => {
       app.homonymes = d.homonymes || [];
-      if (!d.exists) app.joinError = app.joinError || 'Code de partie inconnu. Vérifie auprès du MC !';
-      if (!app.joined && (app.homonymes.length || !d.exists)) app.rerender();
+      // mise à jour sur place : on ne reconstruit pas le formulaire (le pseudo en cours de saisie est conservé)
+      const hint = document.getElementById('join-homonymes');
+      if (hint) hint.textContent = homonymesText();
+      if (!d.exists && !app.joinError) {
+        app.joinError = 'Code de partie inconnu. Vérifie auprès du MC !';
+        const err = document.getElementById('join-error');
+        if (err) { err.textContent = `⚠️ ${app.joinError}`; err.hidden = false; }
+        else if (!app.joined) app.rerender();
+      }
     }).catch(() => { app.homonymes = []; });
   }
   if (app.playerToken && !app.joinError) {
@@ -59,10 +70,10 @@ export function joinView() {
       name,
       h('div.join-label', 'Choisis ton avatar (facultatif)'),
       grid,
-      app.joinError ? h('div.join-error', `⚠️ ${app.joinError}`) : null,
+      h('div#join-error.join-error', { hidden: !app.joinError }, app.joinError ? `⚠️ ${app.joinError}` : ''),
       h('button.btn.btn-gold.btn-big.btn-block', { onclick: submit }, 'Entrer dans le vestiaire 🏟️'),
       h('p.muted.small', 'Entre ton prénom (ou « Prénom Nom ») : le jeu te reconnaît grâce au trombinoscope.'),
-      app.homonymes && app.homonymes.length ? h('p.muted.small', `Homonymes dans l’équipe (${app.homonymes.join(', ')}) : ajoute l’initiale du nom, ex. « ${app.homonymes[0]} B. ».`) : null,
+      h('p#join-homonymes.muted.small', homonymesText()),
     ),
   );
 }
@@ -199,6 +210,7 @@ function buildQuestion(s, p, fresh) {
     if (me.isTarget && res && it.type === 'predictNumber') banner = h('div.p-result.neutral', h('div.p-result-big', '🪞'), h('p', `Merci pour ta transparence : +${res.points || 0} pts`));
     else if (me.isTarget && res) banner = h('div.p-result.neutral', h('div.p-result-big', '🪞'), h('p', `Tes collègues te connaissent… ${res.points ? `+${res.points} pts` : 'mal !'}`));
     else if (it.type === 'vote' && res) banner = resultBanner(res, { ok: res.correct, extra: h('p', res.correct ? 'Tu as voté avec la majorité 🤝' : 'Minorité… tu pensais différemment') });
+    else if ((it.type === 'estimate' || it.type === 'predictNumber') && res && res.rank) banner = resultBanner(res, { ok: res.points > 0, extra: h('p.p-rankline', `Ton estimation : #${res.rank} sur ${(rv.list || []).length}`) });
     else banner = resultBanner(res);
     return h('div.p-question', head, qText, banner, answerText ? h('div.p-answer', answerText) : null, it.chart ? chart(it.chart, { height: 300 }) : null, rv.explain ? h('div.explain', h('span.explain-icon', '📎'), rv.explain) : null);
   }
@@ -425,12 +437,22 @@ function wordsEl(s, p) {
   return h('div.words-done', p.words.map((w) => h(`span.word-done.${w.status}`, { found: '✅', stolen: '🦹', passed: '⏭', carton: '🟥', timeout: '⌛' }[w.status] + ' ' + w.mot)));
 }
 
+// Règle spéciale des cartes « collègue » : 2 essais max, pas de vol
+function infoEl(p) {
+  const me = p.me || {};
+  if (!p.wordCollegue) return h('span');
+  const left = Math.max(0, 2 - (me.tries || 0));
+  return h('div.p-banner.small', me.isTeammate ? `👥 Carte collègue : ${left} essai${left > 1 ? 's' : ''} restant${left > 1 ? 's' : ''}` : '👥 Carte collègue : pas de vol possible sur celle-ci');
+}
+
 function updateMot(s) {
   const p = s.play;
   const f = document.getElementById('mot-feed');
   const w = document.getElementById('mot-words');
+  const i = document.getElementById('mot-info');
   if (f) f.replaceChildren(feedEl(s, p));
   if (w) w.replaceChildren(wordsEl(s, p));
+  if (i) i.replaceChildren(infoEl(p));
 }
 
 function buildMot(s, p, fresh) {
@@ -460,6 +482,7 @@ function buildMot(s, p, fresh) {
   return h('div.p-mot',
     h(`div.p-banner${me.isTeammate ? '' : '.red'}`, me.isTeammate ? `✅ Devine le mot de ${d.name} !` : `🦹 ${d.name} parle à son équipe : vole-lui ses mots !`),
     h('div.mot-actions', h('div.mot-timer.small', h('span', { 'data-countdown': '' }, '')), h('span.muted', `Catégorie : ${p.wordCat || '?'}`)),
+    h('div#mot-info', infoEl(p)),
     h('div.p-guess', field, h('button.btn.btn-gold', { onclick: send }, 'Envoyer')),
     h('div#mot-feed', feedEl(s, p)), h('div#mot-words', wordsEl(s, p)),
     !me.isTeammate ? h('button.btn.btn-ghost.btn-small', { disabled: me.claimed, onclick: () => act({ type: 'claim' }) }, me.claimed ? '🚩 Réclamation envoyée' : '🚩 Mot interdit prononcé ! (réclamer)') : null,

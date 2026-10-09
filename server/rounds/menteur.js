@@ -28,7 +28,8 @@ const ROLES = {
 
 class MenteurRound extends BaseRound {
   start() {
-    const all = U.shuffle(this.players);
+    // les joueurs connectés d'abord : une place d'accusé ne doit pas revenir à un téléphone en veille
+    const all = [...U.shuffle(this.connected), ...U.shuffle(this.players.filter((p) => !p.connected))];
     // Grand groupe : seuls quelques « accusés » plaident, tout le monde vote (le jury)
     const cap = this.length < 0.8 ? 8 : this.length > 1.2 ? 14 : 10;
     const players = all.slice(0, cap);

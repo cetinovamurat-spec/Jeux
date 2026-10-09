@@ -8,7 +8,7 @@ const U = require('./util');
 
 // Ordre hiérarchique (du plus senior au plus junior) et libellés affichés
 const GRADES = [
-  { key: 'associes', label: 'Associés', court: 'associé' },
+  { key: 'associes', label: 'Associés', court: 'associé' }, // court : réservé aux libellés génériques (jamais appliqué à une personne)
   { key: 'managers', label: 'Managers', court: 'manager' },
   { key: 'seniors', label: 'Séniors', court: 'sénior' },
   { key: 'assistants-confirmes', label: 'Assistants confirmés', court: 'assistant confirmé' },
@@ -30,6 +30,16 @@ function nomFiable(m) {
   return !!m.nom && !m.nom.includes('…') && !m.nomIncomplet;
 }
 
+// Nom affiché dans les questions : jamais un nom tronqué (nomIncomplet) -> prénom seul
+function label(m) {
+  return nomFiable(m) ? fullName(m) : m.prenom;
+}
+
+// « de Jean » / « d’Hélène »
+function de(prenom) {
+  return /^[aeiouyhàâäéèêëîïôöùûü]/i.test(String(prenom || '')) ? `d’${prenom}` : `de ${prenom}`;
+}
+
 function initiales(m) {
   const part = (s) => String(s || '').split(/[\s-]+/).filter(Boolean)[0] || '';
   return (part(m.prenom)[0] || '') + (part(m.nom)[0] || '');
@@ -49,14 +59,20 @@ function matchProfile(membres, pseudo) {
     const prenom = U.normalize(m.prenom);
     const nom = U.normalize(m.nom || '').replace(/\s+/g, ' ');
     const init = nom ? nom[0] : '';
-    const forms = new Set([
-      `${prenom} ${nom}`.trim(),
-      `${prenom}${nom}`.replace(/\s+/g, ''),
-      init ? `${prenom} ${init}` : null,
-      init ? `${prenom}${init}`.replace(/\s+/g, '') : null,
-      ...(m.alias || []).map((a) => U.normalize(a)),
-    ].filter(Boolean));
+    const nom1 = nom.split(/[\s-]+/)[0] || '';
+    // variantes du prénom : complet, chacune de ses parties (prénoms composés), alias
+    const variantes = new Set([prenom, ...prenom.split(/[\s-]+/), ...(m.alias || []).map((a) => U.normalize(a))].filter(Boolean));
+    const forms = new Set([...(m.alias || []).map((a) => U.normalize(a))]);
+    for (const v of variantes) {
+      if (!nom) continue;
+      for (const f of [`${v} ${nom}`, `${v} ${nom1}`, `${v} ${init}`]) {
+        forms.add(f);
+        forms.add(f.replace(/\s+/g, ''));
+      }
+    }
     if (forms.has(n) || forms.has(compact)) return m;
+    // pseudo long coupé à 24 caractères : « Manuel Felipe Olivera Hi… »
+    if (nom && n.length >= 20 && `${prenom} ${nom}`.startsWith(n)) return m;
     if (prenom === n || prenom.replace(/\s+/g, '') === compact) candidates.push(m);
     // prénoms composés : « Djega » ou « Leila » pour « Djega Leila »
     else if (prenom.split(' ').length > 1 && prenom.split(' ').includes(n)) candidates.push(m);
@@ -97,7 +113,7 @@ function genNom(team) {
   const m = U.pick(pool);
   const wrong = U.sample(pool.filter((x) => x !== m && U.normalize(x.nom) !== U.normalize(m.nom)).map((x) => x.nom), 3);
   if (wrong.length < 3) return null;
-  return { q: `Trombinoscope : quel est le nom de famille de ${m.prenom} ?`, choix: [m.nom, ...wrong], d: 2, cat: 'Trombinoscope', info: `${fullName(m)} — ${grade(m.grade).court}.` };
+  return { q: `Trombinoscope : quel est le nom de famille ${de(m.prenom)} ?`, choix: [m.nom, ...wrong], d: 2, cat: 'Trombinoscope', info: `${fullName(m)} fait partie des ${grade(m.grade).label.toLowerCase()}.` };
 }
 
 function genGrade(team) {
@@ -109,7 +125,7 @@ function genGrade(team) {
   const m = U.pick(inside);
   return {
     q: `Trombinoscope : lequel de ces collègues fait partie des ${g.label.toLowerCase()} ?`,
-    choix: [fullName(m), ...U.sample(outside, 3).map(fullName)],
+    choix: [label(m), ...U.sample(outside, 3).map(label)],
     d: 1, cat: 'Trombinoscope',
     info: `${g.label} : ${inside.map((x) => x.prenom).join(', ')}.`,
   };
@@ -123,9 +139,9 @@ function genIntrus(team) {
   if (!intrus) return null;
   return {
     q: `Trombinoscope : un intrus s’est glissé parmi les ${g.label.toLowerCase()}. Lequel ?`,
-    choix: [fullName(intrus), ...inside.map(fullName)],
+    choix: [label(intrus), ...inside.map(label)],
     d: 2, cat: 'Trombinoscope',
-    info: `${fullName(intrus)} fait partie des ${grade(intrus.grade).label.toLowerCase()}.`,
+    info: `${label(intrus)} fait partie des ${grade(intrus.grade).label.toLowerCase()}.`,
   };
 }
 
@@ -133,7 +149,7 @@ function genGradeDe(team) {
   const m = U.pick(team);
   const g = grade(m.grade);
   const autres = U.sample(GRADES.filter((x) => x.key !== m.grade), 3).map((x) => x.label);
-  return { q: `Trombinoscope : dans quelle catégorie du trombinoscope figure ${fullName(m)} ?`, choix: [g.label, ...autres], d: 1, cat: 'Trombinoscope' };
+  return { q: `Trombinoscope : dans quelle catégorie du trombinoscope figure ${label(m)} ?`, choix: [g.label, ...autres], d: 1, cat: 'Trombinoscope' };
 }
 
 function genInitiales(team) {
@@ -142,7 +158,8 @@ function genInitiales(team) {
   const uniques = Object.entries(byInit).filter(([, l]) => l.length === 1).map(([k, l]) => ({ k, m: l[0] }));
   if (uniques.length < 4) return null;
   const { k, m } = U.pick(uniques);
-  const wrong = U.sample(team.filter((x) => x !== m && initiales(x) !== k), 3).map(fullName);
+  const wrong = U.sample(team.filter((x) => x !== m && nomFiable(x) && initiales(x) !== k), 3).map(fullName);
+  if (wrong.length < 3) return null;
   return { q: `Trombinoscope : à qui appartiennent les initiales « ${k} » ?`, choix: [fullName(m), ...wrong], d: 2, cat: 'Trombinoscope' };
 }
 
@@ -150,10 +167,11 @@ function genInitiales(team) {
 function colleagueWords(membres) {
   return (membres || []).filter((m) => grade(m.grade)).map((m) => {
     const g = grade(m.grade);
-    const forbidden = [m.prenom, nomFiable(m) ? m.nom : null, g.court, initiales(m)].filter(Boolean);
+    // mots interdits neutres (libellé de grade au pluriel, pas d'accord genré)
+    const forbidden = [m.prenom, nomFiable(m) ? m.nom : null, g.label, initiales(m)].filter(Boolean);
     const alts = [m.prenom, nomFiable(m) ? m.nom : null, ...(m.alias || [])].filter(Boolean);
-    return { mot: nomFiable(m) ? fullName(m) : m.prenom, interdits: forbidden, cat: 'Collègue (reste bienveillant 😇)', alts, collegue: true };
+    return { mot: label(m), interdits: forbidden, cat: 'Collègue', alts, collegue: true };
   });
 }
 
-module.exports = { GRADES, grade, matchProfile, homonymes, trombiQuestions, colleagueWords, fullName, initiales };
+module.exports = { GRADES, grade, matchProfile, homonymes, trombiQuestions, colleagueWords, fullName, label, initiales, de };

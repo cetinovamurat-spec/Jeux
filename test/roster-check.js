@@ -29,6 +29,16 @@ expect('Felipe', 'Manuel Felipe Olivera Hidal');
 expect('Alphonse', 'Alphonse Mouende Mou');
 expect('Thomas', null);
 expect('', null);
+expect('Lauryn Betjol', 'Lauryn-Carla Betjol');
+expect('Lauryn B', 'Lauryn-Carla Betjol');
+expect('Leila V', 'Djega Leila Vagba');
+expect('Djega Vagba', 'Djega Leila Vagba');
+expect('Manuel Olivera', 'Manuel Felipe Olivera Hidal');
+expect('Manuel Felipe Olivera Hi', 'Manuel Felipe Olivera Hidal');
+expect('Anna Biondi', 'Anna Biondi-Bernard');
+expect('Anna Biondi-Bernard', 'Anna Biondi-Bernard');
+// genre : aucun grade au masculin singulier appliqué à une personne
+R.colleagueWords(M).forEach((c) => c.interdits.forEach((x) => { if (/^(associé|assistant|alternant|manager|sénior)/.test(x)) errors.push(`Grade genré interdit sur la carte ${c.mot} : ${x}`); }));
 assert.deepStrictEqual(R.homonymes(M), ['Emma']);
 
 // Questions générées : 300 tirages, la bonne réponse doit être juste et les choix uniques
@@ -38,9 +48,11 @@ for (let i = 0; i < 300; i++) {
     if (new Set(q.choix).size !== q.choix.length) errors.push(`Choix en double : ${q.q} ${q.choix}`);
     if (q.choix.length < 4) errors.push(`Moins de 4 choix : ${q.q}`);
     if (q.choix.some((c) => /…/.test(c))) errors.push(`Nom tronqué dans les choix : ${q.q}`);
-    const byName = Object.fromEntries(M.map((m) => [R.fullName(m), m]));
-    if (/nom de famille de (.+) \?/.test(q.q)) {
-      const prenom = q.q.match(/nom de famille de (.+) \?/)[1];
+    const byName = Object.fromEntries(M.map((m) => [R.label(m), m]));
+    // aucun nom tronqué (nomIncomplet) ne doit apparaître
+    M.filter((m) => m.nomIncomplet).forEach((m) => { if ((q.q + q.choix.join('|') + (q.info || '')).includes(m.nom)) errors.push(`Nom tronqué affiché : ${q.q}`); });
+    if (/nom de famille (?:de |d’)(.+) \?/.test(q.q)) {
+      const prenom = q.q.match(/nom de famille (?:de |d’)(.+) \?/)[1];
       const m = M.find((x) => x.prenom === prenom);
       if (!m || m.nom !== ok) errors.push(`Mauvaise réponse : ${q.q} → ${ok}`);
     } else if (/fait partie des (.+) \?/.test(q.q)) {

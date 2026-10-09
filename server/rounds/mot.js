@@ -12,22 +12,22 @@ class MotRound extends BaseRound {
   start() {
     const g = this.game;
     this.teamMode = !!(g.teams && g.teams.length >= 2);
-    // ordre des orateurs : on alterne les équipes
-    let order;
-    if (this.teamMode) {
-      const lists = g.teams.map((t) => U.shuffle(t.members));
-      order = [];
-      const max = Math.max(...lists.map((l) => l.length));
-      for (let i = 0; i < max; i++) for (const l of lists) if (l[i]) order.push(l[i]);
-    } else {
-      order = U.shuffle(this.players.map((p) => p.id));
-    }
-    // Grand groupe : on limite le nombre d'orateurs (même nombre de tours par équipe)
+    // ordre des orateurs : on alterne les équipes, en ne retenant que les joueurs connectés
+    const isOn = (id) => { const p = g.getPlayer(id); return !!(p && p.connected); };
     const cap = this.length < 0.8 ? 6 : this.length > 1.2 ? 16 : 10;
-    if (order.length > cap) {
-      const k = this.teamMode ? g.teams.length : 1;
-      order = order.slice(0, Math.max(k, k * Math.floor(cap / k)));
+    let order = [];
+    if (this.teamMode) {
+      const lists = g.teams.map((t) => U.shuffle(t.members.filter(isOn))).filter((l) => l.length);
+      const total = lists.reduce((n, l) => n + l.length, 0);
+      // petit groupe : tout le monde décrit ; grand groupe : même nombre de tours par équipe
+      const perTeam = total <= cap ? Infinity : Math.max(1, Math.min(Math.floor(cap / lists.length), ...lists.map((l) => l.length)));
+      const max = Math.max(0, ...lists.map((l) => Math.min(l.length, perTeam)));
+      for (let i = 0; i < max; i++) for (const l of lists) if (i < perTeam && l[i]) order.push(l[i]);
+    } else {
+      order = U.shuffle(this.connected.map((p) => p.id)).slice(0, cap);
     }
+    // quand seuls quelques joueurs décrivent, la prime d'orateur est réduite d'autant
+    this.oratorScale = Math.min(1, (2 * order.length) / Math.max(1, this.players.length));
     this.order = order;
     this.usedColleagues = new Set();
     this.turnIdx = -1;
@@ -70,6 +70,7 @@ class MotRound extends BaseRound {
     const w = (Math.random() < 0.25 && this.colleagueCard()) || C.fresh('mots', this.game.content.mots, 1)[0];
     this.word = { ...w, status: 'live' };
     this.feed = [];
+    this.tries = {};
   }
 
   // 👥 Carte « Fais deviner un collègue » (trombinoscope) : en priorité les joueurs présents
@@ -145,6 +146,12 @@ class MotRound extends BaseRound {
       this.lastGuess[player.id] = now;
       const text = String(msg.text || '').slice(0, 40).trim();
       if (!text) return false;
+      // Carte collègue : pas de vol, et 2 essais max par joueur (sinon on trouve en tapant tous les prénoms)
+      if (this.word.collegue) {
+        if (!this.isTeammate(player.id)) return false;
+        this.tries[player.id] = (this.tries[player.id] || 0) + 1;
+        if (this.tries[player.id] > 2) return false;
+      }
       const ok = U.fuzzyMatch(text, [this.word.mot, ...(this.word.alts || [])]);
       if (!ok) {
         this.feed.push({ pid: player.id, text, ok: false });
@@ -153,7 +160,7 @@ class MotRound extends BaseRound {
       }
       if (this.isTeammate(player.id)) {
         const a = this.game.award(player, 50, { reason: 'Mot trouvé' });
-        const b = this.game.award(d, 50, { reason: 'Orateur' });
+        const b = this.game.award(d, Math.round(50 * this.oratorScale), { reason: 'Orateur' });
         player.stats.wordsFound = (player.stats.wordsFound || 0) + 1;
         d.stats.wordsGiven = (d.stats.wordsGiven || 0) + 1;
         this.finishWord('found', { by: player.id, points: a + b });
@@ -207,9 +214,13 @@ class MotRound extends BaseRound {
     };
     const canSee = player ? player.id === (d && d.id) : false;
     if (canSee && this.word) pub.word = { mot: this.word.mot, interdits: this.word.interdits, cat: this.word.cat };
-    if (this.word) pub.wordCat = this.word.cat;
+    if (this.word) {
+      pub.wordCat = this.word.cat;
+      pub.wordCollegue = !!this.word.collegue;
+    }
     if (player) {
       pub.me = {
+        tries: this.tries ? this.tries[player.id] || 0 : 0,
         isDescriber: d && player.id === d.id,
         isTeammate: this.isTeammate(player.id),
         claimed: this.claims.includes(player.id),

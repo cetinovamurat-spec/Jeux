@@ -147,14 +147,15 @@ function compute(game) {
   const byGrade = {};
   for (const p of ranking) {
     const g = p.profile && Roster.grade(p.profile.grade);
-    if (!g) continue;
+    if (!g || p.late) continue; // les retardataires (arrivés en cours de partie) faussent la moyenne
     byGrade[g.key] = byGrade[g.key] || { key: g.key, label: g.label, rang: g.rang, total: 0, n: 0, ids: [] };
     byGrade[g.key].total += p.score;
     byGrade[g.key].n++;
     byGrade[g.key].ids.push(p.id);
   }
   const grades = Object.values(byGrade).map((x) => ({ ...x, avg: Math.round(x.total / x.n) })).sort((a, b) => b.avg - a.avg);
-  if (grades.length >= 2) {
+  const gradesDistincts = grades.length >= 2 && grades[0].avg !== grades[grades.length - 1].avg;
+  if (gradesDistincts) {
     const top = grades[0];
     const bottom = grades[grades.length - 1];
     if (top.rang > bottom.rang) summary.push(`Choc des générations : les ${top.label.toLowerCase()} (${U.fmt(top.avg)} pts de moyenne) devancent les ${bottom.label.toLowerCase()} (${U.fmt(bottom.avg)}). La relève est assurée, le planning de staffing est à revoir.`);
@@ -169,7 +170,7 @@ function compute(game) {
     bestDuo,
     summary,
     rounds: game.history.map((h) => ({ roundId: h.roundId, name: h.name, emoji: h.emoji, best: h.best })),
-    grades: grades.length >= 2 ? grades.map(({ key, label, avg, n, ids }) => ({ key, label, avg, n, ids })) : null,
+    grades: gradesDistincts ? grades.map(({ key, label, avg, n, ids }) => ({ key, label, avg, n, ids })) : null,
     year: new Date().getFullYear(),
   };
 }

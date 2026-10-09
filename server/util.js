@@ -90,12 +90,20 @@ function fmt(n) {
 // Remplace {joueur}, {joueur2}, {joueur3}... par des prénoms de joueurs, {cible} par la cible.
 function fillTemplate(text, names, cible) {
   if (!text) return text;
+  const value = (tag) => {
+    if (tag === 'cible') return cible || names[0] || 'quelqu’un';
+    const n = tag.slice(6);
+    const idx = n ? Number(n) - 1 : 0;
+    return names[idx % Math.max(1, names.length)] || 'quelqu’un';
+  };
+  const voyelle = (s) => /^[aeiouyhàâäéèêëîïôöùûü]/i.test(s);
   return String(text)
-    .replace(/\{joueur(\d?)\}/g, (_, n) => {
-      const idx = n ? Number(n) - 1 : 0;
-      return names[idx % Math.max(1, names.length)] || 'quelqu’un';
+    // élision : « de Anna » -> « d’Anna », « que Hélène » -> « qu’Hélène »
+    .replace(/\b([Dd]e|[Qq]ue) \{(cible|joueur\d?)\}/g, (_, mot, tag) => {
+      const v = value(tag);
+      return voyelle(v) ? `${mot.slice(0, -1)}’${v}` : `${mot} ${v}`;
     })
-    .replace(/\{cible\}/g, cible || names[0] || 'quelqu’un');
+    .replace(/\{(cible|joueur\d?)\}/g, (_, tag) => value(tag));
 }
 
 // « 1 500 000 », « 1,5 », « 12 % », « 3.2M » -> nombre
