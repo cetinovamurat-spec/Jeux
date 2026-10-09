@@ -6,6 +6,7 @@
 const BaseRound = require('./base');
 const C = require('../content');
 const U = require('../util');
+const Roster = require('../roster');
 
 class MotRound extends BaseRound {
   start() {
@@ -21,8 +22,14 @@ class MotRound extends BaseRound {
     } else {
       order = U.shuffle(this.players.map((p) => p.id));
     }
-    if (this.length < 0.8 && order.length > 6) order = order.slice(0, 6);
+    // Grand groupe : on limite le nombre d'orateurs (même nombre de tours par équipe)
+    const cap = this.length < 0.8 ? 6 : this.length > 1.2 ? 16 : 10;
+    if (order.length > cap) {
+      const k = this.teamMode ? g.teams.length : 1;
+      order = order.slice(0, Math.max(k, k * Math.floor(cap / k)));
+    }
     this.order = order;
+    this.usedColleagues = new Set();
     this.turnIdx = -1;
     this.turnTime = this.length < 0.8 ? 40 : this.length > 1.2 ? 60 : 45;
     this.log = [];
@@ -60,9 +67,26 @@ class MotRound extends BaseRound {
   }
 
   drawWord() {
-    const [w] = C.fresh('mots', this.game.content.mots, 1);
+    const w = (Math.random() < 0.25 && this.colleagueCard()) || C.fresh('mots', this.game.content.mots, 1)[0];
     this.word = { ...w, status: 'live' };
     this.feed = [];
+  }
+
+  // 👥 Carte « Fais deviner un collègue » (trombinoscope) : en priorité les joueurs présents
+  colleagueCard() {
+    const team = this.game.content.team || {};
+    if (team.cartesCollegues === false) return null;
+    const cards = Roster.colleagueWords(team.membres || []);
+    if (!cards.length) return null;
+    const d = this.describer;
+    const self = new Set(d && d.profile ? [d.profile.key, d.profile.prenom] : []);
+    const present = new Set(this.connected.filter((p) => p.profile && p !== d).flatMap((p) => [p.profile.key, p.profile.prenom]));
+    const pool = cards.filter((c) => !this.usedColleagues.has(c.mot) && !self.has(c.mot));
+    if (!pool.length) return null;
+    const preferred = pool.filter((c) => present.has(c.mot));
+    const card = U.pick(preferred.length ? preferred : pool);
+    this.usedColleagues.add(card.mot);
+    return card;
   }
 
   play() {

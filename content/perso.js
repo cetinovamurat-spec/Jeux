@@ -36,6 +36,22 @@ module.exports = {
     { type: 'vote', q: 'Qui serait le premier à trouver la machine à café chez un nouveau client ?', titre: 'Radar à café' },
     { type: 'vote', q: 'Qui est le plus susceptible de dire « c’est immatériel » avec un sourire désarmant ?', titre: 'Maître de l’immatériel' },
     { type: 'vote', q: 'À qui confieriez-vous le dossier le plus pourri de l’année ?', titre: 'Démineur officiel' },
+
+    // ───── Spécial hiérarchie du cabinet ─────
+    { type: 'vote', q: 'Qui est le plus susceptible de commenter une clôture comme un multiplex de Ligue 1 ?', titre: 'Voix du multiplex' },
+    { type: 'vote', q: 'Qui oserait tutoyer l’associé signataire dès le premier jour de mission ?', titre: 'Audace de premier jour' },
+    { type: 'vote', q: 'Qui est le plus susceptible de solder 40 points de revue avant la pause déjeuner ?', titre: 'Machine à solder les points de revue' },
+    { type: 'vote', q: 'À qui confieriez-vous l’accueil de la prochaine promo d’alternants ?', titre: 'Guide de la nouvelle promo' },
+    { type: 'vote', q: 'Qui serait le premier recours de l’équipe, tous grades confondus, pour débloquer une formule Excel à 23 h en pleine busy season ?', titre: 'Hotline Excel du cabinet' },
+    { type: 'vote', q: 'Si le cabinet était une équipe de foot, qui composerait le onze de départ de la busy season ?', titre: 'Cerveau du staffing' },
+    { type: 'vote', q: 'Qui garderait le plus de sérénité face à un « petit changement de planning » annoncé la veille d’un départ en mission ?', titre: 'Sérénité de haut niveau' },
+    { type: 'vote', q: 'Qui saurait expliquer une circularisation à une nouvelle recrue en moins de deux minutes ?', titre: 'Pédagogie express' },
+    { type: 'vote', q: 'Qui saurait assurer une réunion de clôture au pied levé si le planning déraille ?', titre: 'Relève assurée' },
+    { type: 'vote', q: 'Qui est le plus susceptible de recevoir un « merci, tu m’as sauvé la clôture ! » ?', titre: 'Bouée de sauvetage de l’équipe' },
+    { type: 'vote', q: 'Qui est le plus susceptible de remplir sa feuille de temps à la minute près… dès le vendredi soir ?', titre: 'Exemplarité horaire' },
+    { type: 'vote', q: 'Qui obtiendrait en un seul coup de fil la réponse de circularisation d’une banque réputée injoignable ?', titre: 'Diplomatie bancaire' },
+    { type: 'vote', q: 'Qui est le plus susceptible de briller devant la direction financière du client en réunion de synthèse ?', titre: 'Voix de la synthèse' },
+    { type: 'vote', q: 'Qui grimpera le plus vite la pyramide… au classement de ces Olympiades ?', titre: 'Ascension express' },
   ],
 
   miroirs: [
@@ -57,6 +73,16 @@ module.exports = {
     { type: 'miroir', q: 'S’il ne devait rester qu’un logiciel dans la vie de {cible} ?', choix: ['Excel', 'Outlook', 'Teams', 'Word (vraiment ?)'] },
     { type: 'miroir', q: 'L’état du bureau de {cible} en ce moment ?', choix: ['Impeccable, tout est lettré', 'Quelques écritures en suspens', 'Un compte d’attente géant', 'Ne pas ouvrir : risque d’avalanche'] },
     { type: 'miroir', q: 'Le premier réflexe de {cible} quand une balance ne tombe pas ?', choix: ['Vérifier les à-nouveaux', 'Chercher un écart divisible par 9', 'Aller prendre un café', 'Appeler à l’aide'] },
+
+    // ───── Spécial hiérarchie du cabinet ─────
+    { type: 'miroir', q: 'Face à un point de revue reçu à 22 h, la réaction de {cible} ?', choix: ['Je traite tout, tout de suite', 'Je lis, je soupire, je dors', '« Bien noté », et j’attaque à 7 h', 'Je découvre ça le lendemain, en toute sérénité'] },
+    { type: 'miroir', q: 'Pour {cible}, le moment le plus redouté d’une mission ?', choix: ['Le premier point d’avancement', 'La revue finale du dossier', 'La réunion de synthèse avec le client', 'Le remplissage de la feuille de temps'] },
+    { type: 'miroir', q: 'Le premier réflexe de {cible} en recevant le planning de busy season ?', choix: ['Chercher mes week-ends (en vain)', 'Compter les missions en parallèle', 'Repérer les meilleures machines à café chez les clients', 'Ne pas l’ouvrir, par prudence'] },
+    { type: 'miroir', q: 'Si {cible} pouvait changer de grade le temps d’une journée, ce serait…', choix: ['Côté associés : signer enfin un rapport', 'Côté managers : faire le staffing', 'Côté alternants : partir en semaine d’école en pleine clôture', 'Aucun changement, mon grade me va très bien'] },
+    { type: 'miroir', q: 'Le message Teams qui déclenche l’alerte rouge chez {cible} ?', choix: ['« Tu as 5 minutes ? »', '« On peut s’appeler ? »', '« Petite question sur ton onglet »', '« Le client a renvoyé une nouvelle balance »'] },
+    { type: 'miroir', q: 'Le conseil de {cible} à une nouvelle recrue pour son premier jour ?', choix: ['Nommer ses fichiers proprement', 'Repérer la machine à café avant tout', 'Toujours calculer le seuil avant de dire « non significatif »', 'Remplir sa feuille de temps chaque soir'] },
+    { type: 'miroir', q: 'Pour {cible}, la meilleure stratégie face à 40 points de revue ?', choix: ['Tout traiter dans l’ordre, ligne par ligne', 'Commencer par les plus faciles, pour le moral', 'Proposer un point rapide pour en discuter', 'Répondre « fait » partout et croiser les doigts'] },
+    { type: 'miroir', q: 'Le plus beau compliment professionnel pour {cible} ?', choix: ['« Dossier propre, rien à redire »', '« Merci, tu m’as sauvé la clôture »', '« Le client a adoré ta présentation »', '« Pas de point de revue cette fois »'] },
   ],
 
   // MIROIR CHIFFRÉ (épreuve Estimation) : { type: 'miroir-nombre', q (avec {cible}), unite }

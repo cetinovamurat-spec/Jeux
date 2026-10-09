@@ -122,6 +122,7 @@ function lobby(s, isHost) {
     players.length ? h('div.player-grid', players.map((p, i) => h(`div.player-card${p.connected ? '' : '.offline'}`, { style: { '--i': i } },
       h('div.pc-avatar', p.avatar),
       h('div.pc-name', p.name),
+      p.profile && p.profile.gradeLabel ? h('div.pc-grade', p.profile.gradeLabel) : null,
       p.profile ? h('div.pc-title', p.profile.titre) : h('div.pc-title.muted', ROOKIE_TITLES[stableIndex(p.id, ROOKIE_TITLES.length)]),
     ))) : h('div.empty', h('div.big-emoji', '🪑'), 'En attente des premiers collègues…'),
   );
@@ -268,7 +269,10 @@ function questionsHost(s, p, fresh) {
   if (rv && (it.type === 'estimate' || (it.type === 'predictNumber' && !rv.cancelled))) {
     body.push(h('div.answer-big', `${fmtNum(rv.answer)}${it.unit ? ' ' + it.unit : ''}`));
     body.push(estimateScale(s, rv, it.unit));
-    body.push(h('div.est-ranking', rv.list.map((l) => {
+    // Grand groupe : top 8 + la pire estimation
+    const shownList = rv.list.length > 10 ? [...rv.list.slice(0, 8), rv.list[rv.list.length - 1]] : rv.list;
+    if (rv.list.length > 10) body.push(h('div.muted.small', `Top 8 et lanterne rouge (${rv.list.length} réponses) — chacun voit son rang sur son écran.`));
+    body.push(h('div.est-ranking', shownList.map((l) => {
       const pl = playerById(s, l.id);
       const ratio = l.ratio >= 1 ? `×${fmtNum(Math.round(l.ratio * 10) / 10)} trop haut` : `÷${fmtNum(Math.round((1 / l.ratio) * 10) / 10)} trop bas`;
       return h('div.est-row', h('span.est-rank', `#${l.rank}`), avatar(pl, { size: 'sm' }), h('span.est-name', pl.name), h('span.est-val', fmtNum(l.value)), h('span.est-ratio', Math.abs(l.ratio - 1) < 0.005 ? 'pile !' : ratio), h('span.est-tags', l.tags.join(' ')), h(`span.est-pts${l.points < 0 ? '.neg' : ''}`, signed(l.points)));
@@ -306,6 +310,7 @@ function menteurHost(s, p, fresh) {
   if (p.stage === 'brief') {
     return h('div.play.menteur', head,
       h('div.big-title', '🤫 Regardez votre écran : votre rôle est SECRET'),
+      p.withJury ? h('div.notice', `🧑‍⚖️ ${p.order.length} accusés tirés au sort plaident ; tous les autres forment le jury et votent.`) : null,
       roles,
       h('div.statement-grid', p.order.map((id, i) => h('div.statement-card', { style: { '--i': i } }, chip(playerById(s, id)), h('p', `« ${p.statements[id]} »`)))),
     );
@@ -325,12 +330,12 @@ function menteurHost(s, p, fresh) {
     );
   }
   if (p.stage === 'vote') {
-    const n = s.players.filter((x) => x.connected).length;
+    const expected = s.players.filter((x) => x.connected).reduce((acc, x) => acc + p.order.length - (p.order.includes(x.id) ? 1 : 0), 0);
     return h('div.play.menteur', head,
       h('div.big-title', '🗳️ Dernier moment pour voter : Vérité ou Mensonge ?'),
       roles,
       h('div.statement-grid', p.order.map((id) => h('div.statement-card', chip(playerById(s, id)), h('p', `« ${p.statements[id]} »`)))),
-      h('div.answered', h('span.answered-count', `Votes : ${Object.values(p.voted).reduce((a, b) => a + b, 0)} / ${n * (p.order.length - 1)}`)),
+      h('div.answered', h('span.answered-count', `Votes : ${Object.values(p.voted).reduce((a, b) => a + b, 0)} / ${expected}`)),
     );
   }
   // reveal
@@ -389,7 +394,8 @@ function reactionHost(s, p, fresh) {
   else if (p.solution !== undefined && g.type !== 'signal') sol = h('div.rx-word.small', `✅ ${p.solution}`);
   return h('div.play.reaction', head,
     h('div.rx-title', `⚡ ${g.title} — résultats`), sol,
-    h('div.rx-results', ranking.map(([id, r], i) => h(`div.rx-row${r.ok ? '' : '.ko'}`, { style: { '--i': i } },
+    ranking.length > 12 ? h('div.muted.small', `Top 12 sur ${ranking.length} — chacun voit son temps sur son écran.`) : null,
+    h('div.rx-results', ranking.slice(0, 12).map(([id, r], i) => h(`div.rx-row${r.ok ? '' : '.ko'}`, { style: { '--i': i } },
       h('span.rx-rank', r.ok ? (i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`) : r.early ? '🟥' : '❌'),
       avatar(playerById(s, id)), h('span.rx-name', playerById(s, id).name),
       h('span.rx-ms', r.early ? 'Faux départ !' : r.ok ? `${r.ms} ms` : 'Raté'),
@@ -474,7 +480,7 @@ function bluffHost(s, p, fresh) {
   const owners = Object.entries(p.cards || {});
   return h('div.play.bluff', head, question, opts(true),
     h('div.bluff-reveal',
-      h('div.card-owners', owners.map(([id, c]) => h('span.owner', avatar(playerById(s, id), { size: 'sm' }), h('span', playerById(s, id).name), h('span.owner-card', `${c.emoji} ${c.name}`), p.results && p.results[id] ? h(`strong${p.results[id] < 0 ? '.neg' : ''}`, signed(p.results[id])) : null))),
+      h(`div.card-owners${owners.length > 10 ? '.many' : ''}`, owners.map(([id, c]) => h('span.owner', avatar(playerById(s, id), { size: 'sm' }), h('span', playerById(s, id).name), h('span.owner-card', `${c.emoji} ${c.name}`), p.results && p.results[id] ? h(`strong${p.results[id] < 0 ? '.neg' : ''}`, signed(p.results[id])) : null))),
       h('div.bluff-log', (p.log || []).map((l, i) => h('div.log-line', { style: { '--i': i } }, l))),
     ),
     p.info ? h('div.explain', h('span.explain-icon', '📎'), p.info) : null,
@@ -550,7 +556,7 @@ function roundEnd(s, fresh) {
   }
   return h('div.round-end',
     h('h1.re-title', `🏆 CLASSEMENT — après ${lr ? lr.emoji + ' ' + lr.name : ''}`),
-    h('div.re-grid', h('div.re-board', leaderboard(s, { animate: fresh })), h('div.re-side', side)),
+    h('div.re-grid', h('div.re-board', leaderboard(s, { animate: fresh, max: s.players.length > 16 ? 10 : 12, compact: s.players.length > 8 })), h('div.re-side', side)),
   );
 }
 
@@ -630,6 +636,16 @@ function finalScreen(s, isHost, fresh) {
     f.bestTeam || f.bestDuo ? h('div.final-teams',
       f.bestTeam ? h('div.award.award-team', { style: { '--team': f.bestTeam.hex } }, h('div.award-title', `🏅 MEILLEURE ÉQUIPE DE LA SOIRÉE (${f.bestTeam.emoji} ${f.bestTeam.round})`), h('div.award-name', f.bestTeam.name), avatarRow(s, f.bestTeam.members, { names: true }), h('div.award-quip', `${fmt(f.bestTeam.avg)} pts de moyenne sur l’épreuve`)) : null,
       f.bestDuo ? h('div.award.award-gold', h('div.award-title', '🤝 DUO INFERNAL'), avatarRow(s, f.bestDuo.ids, { names: true }), h('div.award-quip', `${f.bestDuo.n} épreuve(s) ensemble, ${fmt(f.bestDuo.avg)} pts de moyenne`)) : null,
+    ) : null,
+    f.grades ? h('div.grades',
+      h('h2.section-title', '🏢 Choc des générations (moyenne par grade)'),
+      h('div.grade-list', f.grades.map((g, i) => h('div.grade-row', { style: { '--i': i } },
+        h('span.grade-rank', i === 0 ? '🏆' : `${i + 1}.`),
+        h('span.grade-label', g.label),
+        h('span.grade-bar', h('span', { style: { width: `${Math.max(4, Math.round((100 * g.avg) / Math.max(1, f.grades[0].avg)))}%` } })),
+        h('strong.grade-avg', `${fmt(g.avg)} pts`),
+        h('small.muted', `${g.n} joueur${g.n > 1 ? 's' : ''}`),
+      ))),
     ) : null,
     h('h2.section-title', '📰 Le résumé de la soirée'),
     h('div.summary', f.summary.map((l, i) => h('p', { style: { '--i': i } }, l))),

@@ -46,4 +46,15 @@ module.exports = [
   { texte: 'J’ai déjà relu un fichier de {joueur} et trouvé une erreur… que je n’ai jamais signalée.' },
   { texte: 'J’ai déjà copié une formule Excel de {joueur} en la faisant passer pour la mienne.' },
   { texte: 'J’ai déjà parié en secret sur l’heure d’arrivée de {joueur} un lundi matin.' },
+  // ───── Spécial hiérarchie du cabinet ─────
+  { texte: 'J’ai déjà relu trois fois un mail avant de l’envoyer à un associé.' },
+  { texte: 'J’ai déjà répondu « je regarde ça » à un manager avant même d’avoir compris la question.' },
+  { texte: 'J’ai déjà ouvert le dossier de travail d’un manager juste pour m’inspirer de sa mise en forme.' },
+  { texte: 'J’ai déjà rempli ma feuille de temps de la semaine le lundi suivant, de mémoire.' },
+  { texte: 'J’ai déjà commencé un mail par « Comme convenu » alors que rien n’avait vraiment été convenu.' },
+  { texte: 'J’ai déjà pris l’ascenseur avec un associé en cherchant désespérément un sujet de conversation.' },
+  { texte: 'J’ai déjà expliqué une formule Excel à quelqu’un d’un grade au-dessus du mien.' },
+  { texte: 'J’ai déjà hésité dix minutes entre « Cordialement » et « Bien à vous » avant d’écrire à un manager.' },
+  { texte: 'J’ai déjà réutilisé le fichier d’un alternant comme modèle pour mes propres dossiers.' },
+  { texte: 'J’ai déjà apporté des croissants à l’équipe pour fêter la fin d’une clôture.' },
 ];

@@ -105,7 +105,9 @@ async function main() {
   await phone.screenshot({ path: path.join(OUT, '01-joueur-rejoindre.png') });
   await phone.fill('input.input', 'Murat');
   await phone.click('button.btn-gold');
-  const bots = ['Thomas', 'Sarah', 'Julien', 'Inès', 'Karim'].map((n) => bot(n, code));
+  const ROSTER = ['Hélène', 'Jean', 'Ranjing', 'Nicolas', 'Daniel', 'Thibault', 'Laura', 'Djega Leila', 'Emma B.', 'Karine', 'Lucy', 'Valentin',
+    'Romane', 'Alphonse', 'Martin', 'Lucas', 'Emma Marchand', 'Lauryn-Carla', 'Anna', 'Titouan', 'Manuel Felipe', 'Rachel', 'Louise'];
+  const bots = ROSTER.slice(0, Number(process.env.BOTS || 5)).map((n) => bot(n, code));
   await sleep(1500);
   await host.screenshot({ path: path.join(OUT, '02-mc-lobby.png') });
   await phone.screenshot({ path: path.join(OUT, '03-joueur-lobby.png') });

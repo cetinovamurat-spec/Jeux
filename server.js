@@ -8,6 +8,7 @@ const express = require('express');
 const { Server } = require('socket.io');
 const Game = require('./server/game');
 const History = require('./server/history');
+const Roster = require('./server/roster');
 
 const PORT = process.env.PORT || 3000;
 const app = express();
@@ -32,7 +33,12 @@ app.get('/api/health', (req, res) => res.json({ ok: true, games: games.size }));
 app.get('/api/halloffame', (req, res) => res.json(History.hallOfFame()));
 app.get('/api/game/:code', (req, res) => {
   const g = games.get(String(req.params.code).toUpperCase());
-  res.json(g ? { exists: true, phase: g.phase, players: g.activePlayers().length } : { exists: false });
+  res.json(g ? {
+    exists: true,
+    phase: g.phase,
+    players: g.activePlayers().length,
+    homonymes: Roster.homonymes((g.content.team && g.content.team.membres) || []),
+  } : { exists: false });
 });
 app.get(['/host', '/tv', '/play'], (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 // Liens courts : /CODE -> écran joueur (ex : monjeu.onrender.com/ABCD)

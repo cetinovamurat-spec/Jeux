@@ -28,7 +28,11 @@ const ROLES = {
 
 class MenteurRound extends BaseRound {
   start() {
-    const players = U.shuffle(this.players);
+    const all = U.shuffle(this.players);
+    // Grand groupe : seuls quelques « accusés » plaident, tout le monde vote (le jury)
+    const cap = this.length < 0.8 ? 8 : this.length > 1.2 ? 14 : 10;
+    const players = all.slice(0, cap);
+    this.withJury = all.length > players.length;
     const n = players.length;
     this.order = players.map((p) => p.id);
     const statements = C.fresh('menteur', this.game.content.menteur, n);
@@ -45,7 +49,7 @@ class MenteurRound extends BaseRound {
     }
     players.forEach((p, i) => {
       const s = statements[i % statements.length];
-      const others = U.shuffle(players.filter((x) => x.id !== p.id).map((x) => x.name));
+      const others = U.shuffle(all.filter((x) => x.id !== p.id).map((x) => x.name));
       this.cards[p.id] = { statement: U.fillTemplate(s.texte, others), role: roles[p.id] };
     });
     for (const p of players) {
@@ -150,6 +154,9 @@ class MenteurRound extends BaseRound {
       if (card.role === 'innocent') pts = believed.length * 15;
       if (card.role === 'menteur' || card.role === 'manipulateur') pts = believed.length * 30;
       if (card.role === 'double') pts = doubted.length * 30;
+      // Grand jury : les gains d'un accusé sont ramenés à l'échelle d'un jury de 7 votants
+      const voters = believed.length + doubted.length;
+      if (voters > 7) pts = Math.round((pts * 7) / voters);
       const fooled = role.lying ? believed.length : card.role === 'double' ? doubted.length : 0;
       tp.stats.fooled = (tp.stats.fooled || 0) + fooled;
       tp.stats.betrayals = (tp.stats.betrayals || 0) + fooled;
@@ -186,6 +193,7 @@ class MenteurRound extends BaseRound {
       pleadIdx: this.pleadIdx,
       voted: Object.fromEntries(Object.entries(this.votes).map(([k, v]) => [k, Object.keys(v).length])),
       roleCounts: this.roleCounts(),
+      withJury: this.withJury,
     };
     if (this.stage === 'reveal') {
       pub.revealIdx = this.revealIdx;

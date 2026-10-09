@@ -10,6 +10,11 @@ function selectPlayers(game, spec = 'hasard') {
   const ranking = game.ranking();
   if (!ranking.length) return [];
   const [kind, nStr] = String(spec).split(':');
+  // Ciblage par grade (trombinoscope) : 'grade:alternants,assistants-juniors'
+  if (kind === 'grade') {
+    const keys = String(nStr || '').split(',').map((k) => k.trim());
+    return ranking.filter((p) => p.profile && keys.includes(p.profile.grade));
+  }
   const n = Number(nStr) || 1;
   switch (kind) {
     case 'tous': return ranking;
@@ -28,9 +33,16 @@ function names(list) {
   return list.map((p) => p.name).join(', ');
 }
 
+// Un événement « par grade » n'a de sens que si des joueurs de ces grades sont présents
+function applicable(game, e) {
+  const f = e.effet || {};
+  const specs = [f.cible, f.de, f.vers].filter((x) => typeof x === 'string' && x.startsWith('grade:'));
+  return specs.every((spec) => selectPlayers(game, spec).length > 0);
+}
+
 function pickEvent(game) {
-  const pool = game.content.evenements.filter((e) => !game.usedEvents.has(e.id) && (e.min || 2) <= game.activePlayers().length);
-  const list = pool.length ? pool : game.content.evenements;
+  const pool = game.content.evenements.filter((e) => !game.usedEvents.has(e.id) && (e.min || 2) <= game.activePlayers().length && applicable(game, e));
+  const list = pool.length ? pool : game.content.evenements.filter((e) => applicable(game, e));
   const e = U.pick(list);
   game.usedEvents.add(e.id);
   return e;

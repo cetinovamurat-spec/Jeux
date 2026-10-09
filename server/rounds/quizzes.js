@@ -4,6 +4,7 @@
 const QuestionRound = require('./questions');
 const C = require('../content');
 const U = require('../util');
+const Roster = require('../roster');
 
 // Insère des éléments à des positions réparties dans la liste
 function spread(main, extras) {
@@ -23,6 +24,8 @@ class QuizRound extends QuestionRound {
     const social = [];
     if (this.players.length >= 3) social.push(...C.fresh('votes', c.votes, 1));
     if (this.players.length >= 2) social.push(...C.fresh('miroirs', c.miroirs, 1));
+    // 👥 Question « Trombinoscope » générée à partir de content/team.js
+    social.push(...Roster.trombiQuestions((c.team && c.team.membres) || [], 1));
     const mcq = C.byDifficulty('quiz', c.quiz, C.difficultyPattern(n - social.length));
     return spread(mcq, social);
   }

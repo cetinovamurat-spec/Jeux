@@ -22,14 +22,26 @@ const MOD_LABEL = {
 
 // ───────────── Rejoindre ─────────────
 export function joinView() {
+  if (app.homonymes === undefined && app.code) {
+    app.homonymes = null;
+    fetch(`/api/game/${app.code}`).then((r) => r.json()).then((d) => {
+      app.homonymes = d.homonymes || [];
+      if (!d.exists) app.joinError = app.joinError || 'Code de partie inconnu. Vérifie auprès du MC !';
+      if (!app.joined && (app.homonymes.length || !d.exists)) app.rerender();
+    }).catch(() => { app.homonymes = []; });
+  }
   if (app.playerToken && !app.joinError) {
     return h('div.loading', h('div.spinner'), h('p', 'Reconnexion à la partie…'));
   }
-  let chosen = app.playerAvatar || pick(AVATARS);
-  const name = h('input.input', { placeholder: 'Ton prénom / pseudo', maxlength: 18, value: app.playerName || '', autocomplete: 'nickname', 'aria-label': 'Pseudo' });
+  // Sans choix explicite, le joueur reconnu dans le trombinoscope reçoit l'emoji de sa fiche
+  let chosen = app.playerAvatar || '';
+  const name = h('input.input', { placeholder: 'Ton prénom (ex. « Hélène »)', maxlength: 24, value: app.playerName || '', autocomplete: 'nickname', 'aria-label': 'Pseudo' });
   const grid = h('div.avatar-picker', AVATARS.map((a) => h(`button.av-pick${a === chosen ? '.on' : ''}`, {
     type: 'button',
-    onclick: (e) => { chosen = a; grid.querySelectorAll('.av-pick').forEach((b) => b.classList.remove('on')); e.currentTarget.classList.add('on'); },
+    onclick: (e) => {
+      if (chosen === a) { chosen = ''; e.currentTarget.classList.remove('on'); return; }
+      chosen = a; grid.querySelectorAll('.av-pick').forEach((b) => b.classList.remove('on')); e.currentTarget.classList.add('on');
+    },
   }, a)));
   const submit = () => {
     const n = name.value.trim();
@@ -45,11 +57,12 @@ export function joinView() {
       h('h1', 'Les Olympiades du Cabinet'),
       h('div.join-code', 'Partie ', h('strong', app.code)),
       name,
-      h('div.join-label', 'Choisis ton avatar'),
+      h('div.join-label', 'Choisis ton avatar (facultatif)'),
       grid,
       app.joinError ? h('div.join-error', `⚠️ ${app.joinError}`) : null,
       h('button.btn.btn-gold.btn-big.btn-block', { onclick: submit }, 'Entrer dans le vestiaire 🏟️'),
-      h('p.muted.small', 'Astuce : utilise le prénom que tes collègues connaissent, le jeu le reconnaîtra peut-être…'),
+      h('p.muted.small', 'Entre ton prénom (ou « Prénom Nom ») : le jeu te reconnaît grâce au trombinoscope.'),
+      app.homonymes && app.homonymes.length ? h('p.muted.small', `Homonymes dans l’équipe (${app.homonymes.join(', ')}) : ajoute l’initiale du nom, ex. « ${app.homonymes[0]} B. ».`) : null,
     ),
   );
 }
@@ -93,7 +106,7 @@ function lobby(s) {
   const me = s.me;
   return h('div.p-lobby',
     h('div.p-ok', '✅ Tu es dans la partie !'),
-    me.profile ? card(h('div.p-profile', h('div.p-profile-title', `🏷️ ${me.profile.titre}`), h('p', me.profile.intro))) : null,
+    me.profile ? card(h('div.p-profile', me.profile.gradeLabel ? h('div.pc-grade', me.profile.gradeLabel) : null, h('div.p-profile-title', `🏷️ ${me.profile.titre}`), h('p', me.profile.intro))) : h('p.p-hint', 'Pas de fiche trombinoscope reconnue pour ce pseudo (pas grave : tu joues normalement).'),
     card(h('div.join-label', 'Change d’avatar si tu veux'),
       h('div.avatar-picker.small', AVATARS.map((a) => h(`button.av-pick${a === me.avatar ? '.on' : ''}`, { onclick: () => { act({ type: 'avatar', avatar: a }); } }, a)))),
     h('p.p-hint', '🎤 Le maître de cérémonie va bientôt lancer les Olympiades. Garde cet écran ouvert : c’est ta manette.'),
@@ -264,6 +277,7 @@ function buildMenteur(s, p, fresh) {
   const me = p.me || {};
   if (p.stage === 'brief') {
     if (fresh) sfx.reveal();
+    if (me.spectator) return h('div.p-menteur', h('div.p-banner', '🧑‍⚖️ Tu fais partie du JURY'), h('p.p-hint', `${p.order.length} collègues vont plaider. Écoute, pose des questions… et démasque les menteurs (+25 pts par bon verdict).`));
     return h('div.p-menteur', h('div.p-banner.gold', '🤫 TOP SECRET — ne montre pas ton écran'), secretCard(s, me), h('p.p-hint', 'Prépare ton histoire : tu vas devoir plaider à l’oral.'));
   }
   if (p.stage === 'plead' || p.stage === 'vote') {
@@ -638,6 +652,12 @@ function finalView(s, fresh) {
     trophies.length ? card(h('div.join-label', '🎖️ Tes trophées'), trophies.map((t) => h('div.p-trophy', h('span', t.emoji), h('div', h('strong', t.title), h('small', t.detail))))) : null,
     mine.titles && mine.titles.length ? card(h('div.join-label', '🏅 Tes titres honorifiques'), h('div.p-titles', mine.titles.map((t) => h('span.badge', t)))) : null,
     card(h('div.join-label', '📊 Tes points par épreuve'), h('div.p-rounds', (f.rounds || []).map((r) => h('div.p-round-row', h('span', `${r.emoji} ${r.name}`), h('strong', signed((mine.pointsByRound || {})[r.roundId] || 0)))))),
+    (() => {
+      const gi = f.grades && s.me.profile ? f.grades.findIndex((g) => g.key === s.me.profile.grade) : -1;
+      if (gi < 0) return null;
+      const g = f.grades[gi];
+      return card(h('div.join-label', '🏢 Choc des générations'), h('p', `${gi === 0 ? '🏆 ' : ''}Les ${g.label.toLowerCase()} terminent ${gi === 0 ? '1ers' : `${gi + 1}es`} sur ${f.grades.length} grades (${fmt(g.avg)} pts de moyenne).`));
+    })(),
     h('div.summary.small', f.summary.map((l) => h('p', l))),
   );
 }

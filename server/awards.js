@@ -2,6 +2,7 @@
 // 🏆 Fin de partie : podium, trophées individuels, statistiques, résumé humoristique.
 
 const U = require('./util');
+const Roster = require('./roster');
 
 function avg(arr) {
   return arr && arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
@@ -142,6 +143,23 @@ function compute(game) {
     const p = U.pick(titled);
     summary.push(`Mention spéciale à ${p.name}, élu(e) par ses pairs : « ${U.pick(p.titles)} ».`);
   }
+  // 🏢 Choc des générations : moyenne par grade (si le trombinoscope est renseigné)
+  const byGrade = {};
+  for (const p of ranking) {
+    const g = p.profile && Roster.grade(p.profile.grade);
+    if (!g) continue;
+    byGrade[g.key] = byGrade[g.key] || { key: g.key, label: g.label, rang: g.rang, total: 0, n: 0, ids: [] };
+    byGrade[g.key].total += p.score;
+    byGrade[g.key].n++;
+    byGrade[g.key].ids.push(p.id);
+  }
+  const grades = Object.values(byGrade).map((x) => ({ ...x, avg: Math.round(x.total / x.n) })).sort((a, b) => b.avg - a.avg);
+  if (grades.length >= 2) {
+    const top = grades[0];
+    const bottom = grades[grades.length - 1];
+    if (top.rang > bottom.rang) summary.push(`Choc des générations : les ${top.label.toLowerCase()} (${U.fmt(top.avg)} pts de moyenne) devancent les ${bottom.label.toLowerCase()} (${U.fmt(bottom.avg)}). La relève est assurée, le planning de staffing est à revoir.`);
+    else summary.push(`Choc des générations : les ${top.label.toLowerCase()} (${U.fmt(top.avg)} pts de moyenne) tiennent leur rang devant les ${bottom.label.toLowerCase()} (${U.fmt(bottom.avg)}). L’expérience paie… pour cette fois.`);
+  }
   summary.push(U.pick(T.resume.conclusion));
 
   return {
@@ -151,6 +169,7 @@ function compute(game) {
     bestDuo,
     summary,
     rounds: game.history.map((h) => ({ roundId: h.roundId, name: h.name, emoji: h.emoji, best: h.best })),
+    grades: grades.length >= 2 ? grades.map(({ key, label, avg, n, ids }) => ({ key, label, avg, n, ids })) : null,
     year: new Date().getFullYear(),
   };
 }

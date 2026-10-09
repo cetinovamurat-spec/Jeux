@@ -12,13 +12,16 @@ function pairKey(a, b) {
   return a < b ? `${a}|${b}` : `${b}|${a}`;
 }
 
+// Au plus 6 équipes (6 couleurs disponibles), de 2 à 6 joueurs chacune
+const MAX_TEAMS = 6;
+
 function possibleTeamCounts(n) {
   const out = [];
-  for (let k = 2; k <= 4; k++) {
+  for (let k = 2; k <= MAX_TEAMS; k++) {
     const size = n / k;
-    if (size >= 2 && size <= 4.5) out.push(k);
+    if (size >= 2 && size <= 6) out.push(k);
   }
-  if (!out.length) out.push(n >= 10 ? 4 : 2);
+  if (!out.length) out.push(Math.min(MAX_TEAMS, Math.max(2, Math.round(n / 4))));
   return out;
 }
 
@@ -28,7 +31,7 @@ function chooseTeamCount(n, previousCount) {
   const weighted = [];
   options.forEach((k) => {
     const size = n / k;
-    let w = 1 + (size >= 2.5 && size <= 3.5 ? 2 : 0);
+    let w = 1 + (size >= 2.5 && size <= 4.5 ? 2 : 0);
     if (k === previousCount && options.length > 1) w *= 0.5;
     for (let i = 0; i < Math.round(w * 2); i++) weighted.push(k);
   });
@@ -41,8 +44,16 @@ function splitInto(players, k) {
   return teams;
 }
 
+// Grades « encadrants » : on évite de les concentrer dans la même équipe
+const LEADS = new Set(['associes', 'managers']);
+
+function gradeOf(p) {
+  return p.profile && p.profile.grade ? p.profile.grade : null;
+}
+
 function cost(teams, pairCounts, lastSignature) {
   let repeat = 0;
+  let sameGrade = 0;
   const means = [];
   for (const t of teams) {
     let sum = 0;
@@ -51,6 +62,9 @@ function cost(teams, pairCounts, lastSignature) {
       for (let j = i + 1; j < t.length; j++) {
         const c = pairCounts[pairKey(t[i].id, t[j].id)] || 0;
         repeat += c * c;
+        // mélange des grades : multiplier les interactions entre niveaux
+        const gi = gradeOf(t[i]);
+        if (gi && gi === gradeOf(t[j])) sameGrade += LEADS.has(gi) ? 3 : 1;
       }
     }
     means.push(sum / t.length);
@@ -60,7 +74,7 @@ function cost(teams, pairCounts, lastSignature) {
   const balance = spread / (Math.abs(avg) + 150);
   const sig = signature(teams);
   const samePenalty = sig === lastSignature ? 50 : 0;
-  return repeat * 4 + balance * 10 + samePenalty;
+  return repeat * 4 + balance * 10 + samePenalty + sameGrade * 1.5;
 }
 
 function signature(teams) {

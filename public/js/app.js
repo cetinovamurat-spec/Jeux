@@ -201,6 +201,8 @@ function muteButton() {
 export function toast(text, kind = '') {
   const t = h(`div.toast${kind ? '.toast-' + kind : ''}`, text);
   toasts.appendChild(t);
+  // jamais plus de 3 post-it à l'écran (ex. 24 collègues qui arrivent en même temps)
+  while (toasts.children.length > 3) toasts.firstChild.remove();
   setTimeout(() => t.classList.add('out'), 4800);
   setTimeout(() => t.remove(), 5400);
 }

@@ -53,7 +53,7 @@ export function leaderboard(state, opts = {}) {
   const rows = state.leaderboard || [];
   const animate = opts.animate !== false;
   const max = opts.max || rows.length;
-  const list = h('div.lb');
+  const list = h(`div.lb${opts.compact ? '.compact' : ''}`);
   const shown = rows.slice(0, max);
   const prevOrder = shown.slice().sort((a, b) => a.prevRank - b.prevRank || b.prevScore - a.prevScore);
   const ROW = opts.compact ? 46 : 58;
@@ -93,6 +93,19 @@ export function leaderboard(state, opts = {}) {
     }, opts.delay ?? 900);
   } else {
     place(shown);
+  }
+  // Grand groupe : le reste du peloton en version compacte
+  if (rows.length > shown.length) {
+    const rest = rows.slice(shown.length);
+    return h('div', list, h('div.lb-rest',
+      h('div.lb-rest-title', `🚴 Le peloton (${rest.length})`),
+      h('div.lb-rest-list', rest.map((r) => {
+        const p = playerById(state, r.id);
+        const delta = r.prevRank - r.rank;
+        return h(`span.lb-rest-item${opts.me === r.id ? '.me' : ''}`, h('b', `${r.rank}.`), ` ${p.avatar} ${p.name} `, h('strong', fmt(r.score)),
+          delta > 0 ? h('em.up', ` ▲${delta}`) : delta < 0 ? h('em.down', ` ▼${-delta}`) : null);
+      })),
+    ));
   }
   return list;
 }
@@ -160,6 +173,9 @@ export function chart(def, opts = {}) {
     el('rect', { x: m.l + band * i + 2, y: m.t - 6, width: band - 4, height: ih + 12, rx: 6, class: 'hl-zone' });
   });
   const unit = def.unite ? ` ${def.unite}` : '';
+  // Étiquettes directes en bout de courbe seulement si elles ne se chevauchent pas (sinon : légende)
+  const ends = isLine ? def.series.map((s) => y(s.valeurs[s.valeurs.length - 1])).sort((a, b) => a - b) : [];
+  const endLabels = isLine && def.series.length > 1 && ends.every((v, i) => i === 0 || v - ends[i - 1] >= 22);
   if (isLine) {
     def.series.forEach((s, si) => {
       const color = SERIES[si % SERIES.length];
@@ -171,7 +187,7 @@ export function chart(def, opts = {}) {
       });
       // étiquette directe en bout de courbe
       const last = s.valeurs.length - 1;
-      if (def.series.length > 1) el('text', { x: xc(last) - 6, y: y(s.valeurs[last]) - 10, class: 'direct-label', 'text-anchor': 'end' }, s.nom);
+      if (endLabels) el('text', { x: xc(last) - 6, y: y(s.valeurs[last]) - 10, class: 'direct-label', 'text-anchor': 'end' }, s.nom);
     });
   } else {
     const k = def.series.length;

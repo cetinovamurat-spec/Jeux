@@ -8,9 +8,10 @@ const { ROUNDS, ORDER, meta } = require('./rounds');
 const Events = require('./events');
 const Awards = require('./awards');
 const History = require('./history');
+const Roster = require('./roster');
 
 const LENGTH = { court: 0.6, normal: 1, long: 1.5 };
-const MAX_PLAYERS = 24;
+const MAX_PLAYERS = 40;
 
 class Game {
   constructor(code) {
@@ -60,9 +61,11 @@ class Game {
   }
 
   findProfile(name) {
-    const n = U.normalize(name);
     const membres = (this.content.team && this.content.team.membres) || [];
-    return membres.find((m) => U.normalize(m.prenom) === n || (m.alias || []).some((a) => U.normalize(a) === n)) || null;
+    const m = Roster.matchProfile(membres, name);
+    // Une fiche ne peut être portée que par un seul joueur à la fois
+    if (m && this.players.some((p) => !p.kicked && p.profile && p.profile.key === Roster.fullName(m))) return null;
+    return m;
   }
 
   join(name, avatar, tokenFromClient) {
@@ -71,7 +74,7 @@ class Game {
       const existing = this.players.find((p) => p.token === tokenFromClient && !p.kicked);
       if (existing) return { player: existing, rejoined: true };
     }
-    const clean = String(name || '').replace(/\s+/g, ' ').trim().slice(0, 18);
+    const clean = String(name || '').replace(/\s+/g, ' ').trim().slice(0, 24);
     if (!clean) return { error: 'Choisis un pseudo !' };
     const same = this.players.find((p) => !p.kicked && U.normalize(p.name) === U.normalize(clean));
     if (same) {
@@ -86,8 +89,16 @@ class Game {
       id: U.id(),
       token: U.token(),
       name: clean,
-      avatar: String(avatar || (profile && profile.emoji) || '🦊').slice(0, 8),
-      profile: profile ? { titre: profile.titre, role: profile.role, intro: profile.intro } : null,
+      avatar: String(avatar || (profile && profile.emoji) || U.pick(['🦊', '🐼', '🦁', '🐸', '🐙', '🦄', '🐯', '🐨', '🐵', '🦉', '🐧', '🐢'])).slice(0, 8),
+      profile: profile ? {
+        key: Roster.fullName(profile),
+        prenom: profile.prenom,
+        nom: profile.nom,
+        titre: profile.titre,
+        intro: profile.intro,
+        grade: profile.grade || null,
+        gradeLabel: Roster.grade(profile.grade) ? Roster.grade(profile.grade).label : profile.role || null,
+      } : null,
       connected: true,
       sockets: new Set(),
       score: Number.isFinite(startScore) ? startScore : 0,
@@ -105,7 +116,7 @@ class Game {
     this.players.push(p);
     if (this.round) this.round.onPlayerJoin(p);
     if (this.phase !== 'lobby') this.notify(`👋 ${p.name} rejoint la partie en cours (score de départ : ${U.fmt(p.score)}).`);
-    else if (profile && profile.intro) this.notify(`🎙️ ${p.name}, ${profile.titre} ! ${profile.intro}`);
+    else if (profile && profile.intro) this.notify(`🎙️ ${profile.intro}`);
     else this.notify(U.fillTemplate(U.pick(this.content.textes.entrees || ['🎙️ {joueur} rejoint la partie !']), [p.name]));
     return { player: p, rejoined: false };
   }

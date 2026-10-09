@@ -64,13 +64,13 @@ module.exports = {
   resume: {
     champion: [
       '{joueur} remporte les Olympiades et repart avec le trophée, la gloire, et probablement plus de missions',
-      'Au terme d’une soirée épique, {joueur} s’impose comme le patron incontesté du cabinet',
+      'Au terme d’une soirée épique, {joueur} s’impose comme la référence incontestée du cabinet',
       '{joueur} décroche le titre suprême. Le dossier est clos, signé, archivé',
       'Personne n’a pu arrêter {joueur}, pas même les pièces manquantes',
     ],
     dernier: [
       '{joueur} ferme la marche avec dignité : quelqu’un devait bien tenir la lanterne rouge (et la machine à café).',
-      '{joueur} termine dernier, mais rappelle à tous que l’audit est un sport d’endurance.',
+      '{joueur} termine à la dernière place, mais rappelle à tous que l’audit est un sport d’endurance.',
       '{joueur} finit en bas du classement. Une stratégie de « sous-évaluation prudente », selon ses avocats.',
     ],
     traitre: [

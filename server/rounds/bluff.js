@@ -182,7 +182,9 @@ class BluffRound extends BaseRound {
       const decoy = this.cards[p.id].decoy;
       const fooled = players.filter((x) => x.id !== p.id && this.answers[x.id] === decoy);
       if (fooled.length) {
-        const pts = g.award(p, fooled.length * 35, { reason: 'Imposteur' });
+        // à grande échelle, on ramène le gain à l'équivalent d'une table de 8 joueurs
+        const scale = Math.min(1, 7 / Math.max(1, players.length - 1));
+        const pts = g.award(p, Math.round(fooled.length * 35 * scale), { reason: 'Imposteur' });
         add(p.id, pts);
         p.stats.bluffPoints = (p.stats.bluffPoints || 0) + pts;
         p.stats.betrayals = (p.stats.betrayals || 0) + fooled.length;

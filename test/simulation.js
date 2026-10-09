@@ -16,7 +16,10 @@ const { io } = require('socket.io-client');
 
 const URL = `http://localhost:${process.env.PORT}`;
 const N = Number(process.argv[2]) || 6;
-const NAMES = ['Murat', 'Thomas', 'Sarah', 'Julien', 'Inès', 'Karim', 'Léa', 'Hugo', 'Chloé', 'Yanis', 'Emma', 'Lucas', 'Nora', 'Adam', 'Jade', 'Rayan'];
+// Pseudos tels que les collègues les taperaient (homonymes « Emma » départagés par l'initiale)
+const NAMES = ['Murat', 'Hélène', 'Jean', 'Ranjing', 'Nicolas', 'Daniel', 'Thibault', 'Laura', 'Djega Leila', 'Emma B.', 'Karine', 'Lucy',
+  'Valentin', 'Romane', 'Alphonse', 'Martin', 'Lucas', 'Emma Marchand', 'Lauryn-Carla', 'Anna', 'Titouan', 'Manuel Felipe', 'Rachel', 'Louise',
+  'Invité 1', 'Invité 2', 'Invité 3', 'Invité 4', 'Invité 5', 'Invité 6'];
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -146,7 +149,7 @@ async function main() {
   tv.emit('screen:join', { code });
 
   for (let i = 0; i < N; i++) {
-    const b = makeBot(NAMES[i]);
+    const b = makeBot(NAMES[i] || `Invité ${i + 1}`);
     bots.push(b);
     b.join(code);
     await sleep(30);
@@ -163,6 +166,14 @@ async function main() {
   if (!hostState || hostState.players.length !== N) errors.push(`Lobby: ${hostState && hostState.players.length} joueurs au lieu de ${N}`);
   const profiled = hostState.players.find((p) => p.name === 'Murat');
   if (!profiled || !profiled.profile) errors.push('Profil team.js non reconnu pour Murat');
+  // Tous les membres du trombinoscope doivent être reconnus, et aucun invité
+  for (const p of hostState.players) {
+    const expected = !p.name.startsWith('Invité');
+    if (expected && !p.profile) errors.push(`Profil non reconnu : ${p.name}`);
+    if (!expected && p.profile) errors.push(`Profil attribué à tort : ${p.name}`);
+  }
+  const keys = hostState.players.filter((p) => p.profile).map((p) => p.profile.key);
+  if (new Set(keys).size !== keys.length) errors.push('Une même fiche attribuée à deux joueurs');
 
   host.emit('host:action', { type: 'start', settings: { length: 'court', events: true, teams: true } });
 

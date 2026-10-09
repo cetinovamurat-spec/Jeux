@@ -99,6 +99,27 @@ L'historique alimente un **Hall of Fame** sur la page d'accueil.
 
 ---
 
+## 👥 L'équipe (trombinoscope intégré)
+
+`content/team.js` contient les 24 membres de l'équipe (associés → alternants), chacun avec un titre et une
+annonce d'entrée façon speaker de stade. Pour être reconnu, chaque collègue rejoint avec :
+- son **prénom** (« Hélène », « Titouan », « Djega », « Lauryn »…) ou son **prénom + nom** ;
+- s'il a un **homonyme** (les deux **Emma**) : prénom + initiale du nom → **« Emma B. »** / **« Emma M. »**.
+
+Ce que ça débloque : grade et titre dans le lobby, questions « Trombinoscope » générées automatiquement,
+cartes « Fais deviner un collègue », équipes qui mélangent les grades (jamais tous les managers ensemble),
+événements par grade (🔺 Pyramide inversée, 🥐 Les managers paient les croissants…) et le classement
+**🏢 Choc des générations** (moyenne par grade) lors de la cérémonie finale.
+
+Un collègue absent du fichier joue normalement (sans titre). Pour ajouter quelqu'un ou compléter un nom
+(deux noms étaient tronqués sur la capture : Alphonse et Manuel Felipe), il suffit d'éditer `content/team.js`.
+
+À 24 joueurs et plus, le jeu s'adapte : jusqu'à 6 équipes, jury tiré au sort pour « Trouver le menteur »
+(10 accusés plaident, tout le monde vote), nombre d'orateurs plafonné pour « Deviner un mot »,
+classement compact avec « peloton ».
+
+---
+
 ## ✏️ Personnaliser (le plus important)
 
 Tout le contenu est dans **`content/`**, en fichiers JS commentés, modifiables sans toucher au code
@@ -175,7 +196,7 @@ test/screens.js           Captures d'écran de chaque phase (Playwright, optionn
 - **Déconnexions** : le jeu n'attend jamais un joueur déconnecté ; un joueur arrivé en cours de route démarre au score du dernier.
 - **Temps de réaction** mesurés côté joueur (indépendants de la latence réseau).
 
-Testé par simulation automatique de 3 à 12 joueurs (limite fixée à 24 ; idéal entre 4 et 12).
+Testé par simulation automatique de 3 à 40 joueurs (limite fixée à 40), dont une partie à 24 avec les vrais pseudos de l'équipe.
 
 ---
 

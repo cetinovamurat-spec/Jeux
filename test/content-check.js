@@ -51,11 +51,30 @@ c.encheres.forEach((l, i) => {
   check(['question', 'multiplicateur', 'indice', 'vol', 'blocage', 'doubler', 'mystere'].includes(l.type), `encheres[${i}] type invalide`);
   if (l.type === 'question') check(l.question && l.question.choix && l.question.choix.length >= 2, `encheres[${i}] question invalide`);
 });
+// Trombinoscope (content/team.js)
+const Roster = require('../server/roster');
+const membres = (c.team && c.team.membres) || [];
+const seenNames = new Set();
+membres.forEach((m, i) => {
+  const where = `team.membres[${i}] ${m.prenom} ${m.nom || ''}`;
+  check(m.prenom && m.titre && m.intro, `${where} : prenom/titre/intro requis`);
+  check(!m.grade || Roster.grade(m.grade), `${where} : grade inconnu « ${m.grade} »`);
+  const key = Roster.fullName(m);
+  check(!seenNames.has(key), `${where} : doublon`);
+  seenNames.add(key);
+  // chaque membre doit être reconnaissable par « Prénom Nom »
+  check(Roster.matchProfile(membres, key) === m, `${where} : non reconnu par son nom complet`);
+});
 const evIds = new Set();
 c.evenements.forEach((e, i) => {
   check(e.id && !evIds.has(e.id), `evenements[${i}] id manquant ou en double`);
   evIds.add(e.id);
   check(e.effet && e.effet.type, `evenements[${i}] effet manquant`);
+  for (const spec of [e.effet && e.effet.cible, e.effet && e.effet.de, e.effet && e.effet.vers]) {
+    if (typeof spec === 'string' && spec.startsWith('grade:')) {
+      spec.slice(6).split(',').forEach((k) => check(Roster.grade(k.trim()), `evenements[${i}] (${e.id}) : grade inconnu « ${k} »`));
+    }
+  }
 });
 
 const minimums = {
@@ -72,6 +91,7 @@ const minimums = {
   'votes équipe': [c.votes.length + c.votesFoot.length, 20],
   'miroirs équipe': [c.miroirs.length + c.miroirsFoot.length, 15],
   'miroirs chiffrés': [c.miroirsChiffres.length, 10],
+  'membres du trombinoscope': [membres.length, 0],
 };
 console.log('📚 Banque de contenu');
 for (const [k, [n, min]] of Object.entries(minimums)) {
