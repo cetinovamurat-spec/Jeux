@@ -12,6 +12,19 @@ des événements surprises… et un seul champion.
 
 ---
 
+## ⚡ Mettre le jeu en ligne en 3 clics (recommandé)
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/cetinovamurat-spec/Jeux)
+
+1. Clique sur le bouton ci-dessus → connecte-toi à Render avec ton compte GitHub (gratuit, pas de carte bancaire pour l'offre Free).
+2. Valide le service proposé (`olympiades-du-cabinet`, plan **Free**) → **Apply / Deploy**.
+3. Après 2–3 minutes, Render te donne une adresse du type `https://olympiades-du-cabinet.onrender.com` : c'est le lien du jeu.
+
+> ℹ️ Netlify ne convient pas pour ce jeu : il héberge des sites statiques, alors que les Olympiades ont besoin
+> d'un serveur temps réel (WebSocket) allumé pendant toute la partie. Render, Railway ou Fly.io le permettent.
+
+---
+
 ## 🚀 Lancer une partie en 2 minutes
 
 ```bash
