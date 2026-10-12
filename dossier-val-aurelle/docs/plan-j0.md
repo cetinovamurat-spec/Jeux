@@ -1,6 +1,6 @@
 # Dossier Val d'Aurelle — Plan J0
 
-> **Statut** : proposition soumise à validation (§0.1 du cahier des charges). Aucun code applicatif n'est écrit avant votre accord. Seuls sont versionnés les **types TypeScript** du modèle de données (projet, compilés en mode strict) et l'annexe de simulation utilisée au §2.2.
+> **Statut** : **validé le 12/10/2026** — option 1 retenue pour D2, décisions D1 et D3 à D7 acceptées. Le plan a d'abord été soumis à validation (§0.1 du cahier des charges) ; à ce stade, seuls les types TypeScript (projet) et l'annexe de simulation du §2.2 étaient versionnés.
 >
 > Documents liés : [`cahier-des-charges.md`](cahier-des-charges.md) · [`points-a-verifier.md`](points-a-verifier.md) · [`../CLAUDE.md`](../CLAUDE.md) · types : [`src/engine/types.ts`](../src/engine/types.ts), [`src/scenario/types.ts`](../src/scenario/types.ts), [`src/game/types.ts`](../src/game/types.ts) · annexe : [`annexes/simulation-frais-financiers.py`](annexes/simulation-frais-financiers.py)
 
@@ -23,7 +23,7 @@
 
 ## 1. Décisions à valider
 
-Seule D2 est une vraie question : le cahier des charges y est contradictoire. Pour les autres décisions, j'ai retenu l'option la plus simple ; il suffit de les confirmer ou de les corriger.
+**Validation du 12/10/2026 : option 1 retenue pour D2 ; D1 et D3 à D7 acceptées.**
 
 | # | Sujet | Proposition retenue | Alternative |
 |---|---|---|---|
