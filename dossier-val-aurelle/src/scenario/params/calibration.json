@@ -16,7 +16,11 @@
       "equity": { "value": 230000000, "tolPct": 5 },
       "investmentSubsidies": { "value": 98000000, "tolPct": 5 },
       "cash": { "value": 28000000, "tolPct": 10 },
-      "receivablesImpairmentCharge": { "value": 1425000, "tol": 999 }
+      "receivablesImpairmentCharge": { "value": 1425000, "tol": 999 },
+      "pgeOpening": { "value": 7400000, "tol": 0 },
+      "pgeDotation": { "value": 1450000, "tol": 0 },
+      "pgeReprise": { "value": 2670000, "tol": 0 },
+      "pgeClosing": { "value": 6180000, "tol": 0 }
     }
   },
   "clean": {

@@ -4,11 +4,13 @@ import { formatAmount, formatPercent } from '../engine/format';
 import type { Cents } from '../engine/money';
 import { buildStatements } from '../engine/statements';
 import type { GenerationResult } from './generator';
+import type { CorrectionKey } from './anomalies/presented';
+import type { ScenarioDatasets } from './datasets';
 import type { Params } from './params';
 import type { Target } from './schema';
 
 export interface CalibrationRow {
-  year: number | 'J2';
+  year: number | 'J2' | 'présenté 2025';
   key: string;
   label: string;
   value: number;
@@ -43,6 +45,7 @@ const LABELS: Record<string, string> = {
   rentBatchSaulesOctoberA19: 'A19 – lot de quittancement d’octobre (Les Saules)',
   closFleuriNbvA03: 'A03 – valeur nette des 7 pavillons du Clos Fleuri',
   presentedImpairmentChargeA21: 'A21 – dotation aux dépréciations présentée',
+  receivablesImpairmentCharge: 'Dotation aux dépréciations des créances',
 };
 
 function check(value: number, t: Target): boolean {
@@ -110,6 +113,48 @@ export function calibrationRows(r: GenerationResult, params: Params): Calibratio
     if (typeof t === 'string') continue;
     const value = (r.state.metrics[key.replace('presentedImpairmentChargeA21', 'presentedImpairmentCharge')] ?? NaN) / 100;
     rows.push({ year: 'J2', key, label: LABELS[key] ?? key, value, target: t, targetText: targetText(t, false), valueText: formatAmount(Math.round(value * 100), 0), ok: check(value, t) });
+  }
+  return rows;
+}
+
+/** Values of the presented 2025 accounts (§4.3 targets). */
+export function presentedValues(key: CorrectionKey): Record<string, number> {
+  const b = key.presentedFigures.balances;
+  const f = key.presentedFigures.figures;
+  const fs = key.presentedFigures.statements;
+  const pge = (key.presented.world.datasets as unknown as ScenarioDatasets).pge.find((p) => p.year === 2025)!;
+  const eur = (c: Cents) => c / 100;
+  return {
+    rentsNet: eur(f.rents),
+    rls: eur(sumPrefixes(b, ['70491'])),
+    chargeRecoveries: eur(f.chargeRecoveries),
+    ebeOnRentsPct: f.ebeOnRents * 100,
+    financialCharges: eur(f.financialCharges),
+    debt: eur(-sumPrefixes(b, ['1631', '1641', '1678'])),
+    loanRepayments: eur(f.loanRepayments),
+    disposalGains: eur(f.disposalGains),
+    netResult: eur(f.netResult),
+    netSelfFinancingRatioPct: f.netSelfFinancingRatio * 100,
+    totalAssets: eur(fs.checks.assetsTotal),
+    equity: eur(fs.lines['P_CP']!.current),
+    investmentSubsidies: eur(fs.lines['P_SUBV']!.current),
+    cash: eur(sumPrefixes(b, ['512'])),
+    receivablesImpairmentCharge: eur(sumPrefixes(b, ['68174'])),
+    pgeOpening: eur(pge.opening),
+    pgeDotation: eur(pge.dotation),
+    pgeReprise: eur(pge.reprise),
+    pgeClosing: eur(pge.closing),
+  };
+}
+
+export function presentedRows(key: CorrectionKey, params: Params): CalibrationRow[] {
+  const values = presentedValues(key);
+  const rows: CalibrationRow[] = [];
+  for (const [k, t] of Object.entries(params.calibration.presented['2025'] ?? {})) {
+    const value = values[k];
+    if (value === undefined) continue;
+    const pct = k.endsWith('Pct');
+    rows.push({ year: 'présenté 2025', key: k, label: LABELS[k] ?? k, value, target: t, targetText: targetText(t, pct), valueText: pct ? formatPercent(value / 100, 2) : formatAmount(Math.round(value * 100), 0), ok: check(value, t) });
   }
   return rows;
 }

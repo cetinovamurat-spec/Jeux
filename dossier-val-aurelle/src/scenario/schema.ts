@@ -325,3 +325,20 @@ export const scenarioSchema = z.object({
   }),
 });
 export type ScenarioParams = z.infer<typeof scenarioSchema>;
+
+export const anomaliesParamsSchema = z.object({
+  A03: z.object({ entryValidDate: isoDate }),
+  A05: z.object({ dafFile: z.string(), officialPlanDate: isoDate, entryValidDate: isoDate }),
+  A06: z.object({ transferDate: isoDate, transferValidDate: isoDate, componentLabel: z.string() }),
+  A08: z.object({ flatRatePct: z.number().positive() }),
+  A10: z.object({ presentedCaretakerShare: z.number().min(0).max(1) }),
+  A11: z.object({ euros, date: isoDate, validDate: isoDate, label: z.string(), debitAccount: z.string(), creditAccount: z.string() }),
+  A18: z.object({ suspenseAccount: z.string(), label: z.string() }),
+  A22: z.object({ presentedRubrique: z.string() }),
+});
+export type AnomaliesParams = z.infer<typeof anomaliesParamsSchema>;
+
+export const referencesSchema = z.object({
+  references: z.array(z.object({ id: z.string(), label: z.string(), status: z.enum(['cdc', 'validated', 'general']), pv: z.string().optional() })),
+});
+export type Reference = z.infer<typeof referencesSchema>['references'][number];

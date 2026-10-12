@@ -12,6 +12,7 @@ import type { AssetComponent, EntryLine, JournalEntry, Ledger } from '../../engi
 import type { Invoice, Lease, TenantAccount } from '../datasets';
 import { Book, eur, grantorAccounts, type GenState } from './core';
 import { CLEAN_METHOD, allowances, impairmentMovements } from '../impairment';
+import { depreciationLines, subsidyReleaseLines } from '../anomalies/closing';
 import type { RentRoll } from './tenancy';
 
 const YEARS = [2024, 2025] as const;
@@ -548,37 +549,18 @@ export function postLedgers(st: GenState, ctx: PostingContext): { prior: Ledger;
 
     // ======================= CLOSING ENTRIES ================================
     const cu = (k: number) => (year === 2024 ? (k % 2 ? users.chiefAccountant : cfoAt(closingValid(year, k))) : k % 2 ? users.chiefAccountant : users.cfo.id);
-    // depreciation, one entry per programme (register of components)
-    const depByProg = new Map<string, Map<string, Cents>>();
-    for (const c of st.components) {
-      if (c.usefulLifeYears <= 0 || c.inServiceDate > yEnd) continue;
-      if (c.disposal && c.disposal.date <= yEnd) continue; // booked at disposal
-      const dot = accumulatedDepreciation(c, yEnd) - accumulatedDepreciation(c, yPrevEnd);
-      if (!dot) continue;
-      const m = depByProg.get(c.programmeId) ?? new Map<string, Cents>();
-      m.set(depreciationAccount(c.account), (m.get(depreciationAccount(c.account)) ?? 0) + dot);
-      depByProg.set(c.programmeId, m);
-    }
-    for (const [pid, byAcc] of [...depByProg.entries()].sort()) {
-      const ref = { refs: [`prog:${pid}`] };
-      const total = [...byAcc.values()].reduce((x, y) => x + y, 0);
+    // depreciation and subsidies released, one entry per programme (register of components)
+    const programmeIds = [...new Set(st.components.map((c) => c.programmeId))].sort();
+    for (const pid of programmeIds) {
+      const lines = depreciationLines(st.components, pid, year);
+      if (!lines.length) continue;
       const name = st.progParams.get(pid)?.name ?? 'Siège et moyens généraux';
-      b.add({ journal: 'OD', date: yEnd, label: `Dotations aux amortissements ${year} – ${name}`, stream: 'CLO', lines: [D('68111', total, ref), ...[...byAcc.entries()].map(([a, x]) => C(a, x, ref))], validDate: closingValid(year, 6), enteredBy: cu(1), pieceRef: `INV${year}-AMORT-${pid}` });
+      b.add({ journal: 'OD', date: yEnd, label: `Dotations aux amortissements ${year} – ${name}`, stream: 'CLO', lines, validDate: closingValid(year, 6), enteredBy: cu(1), pieceRef: `INV${year}-AMORT-${pid}` });
     }
-    // subsidies released, one entry per programme
-    const qpByProg = new Map<string, Map<string, Cents>>();
-    for (const s of st.subsidies) {
-      const x = accumulatedSubsidyRelease(s, st.components, yEnd) - accumulatedSubsidyRelease(s, st.components, yPrevEnd);
-      if (!x || s.decisionDate > yEnd) continue;
-      const ga = grantorAccounts(s.grantorId);
-      const m = qpByProg.get(s.programmeId) ?? new Map<string, Cents>();
-      m.set(ga.released, (m.get(ga.released) ?? 0) + x);
-      qpByProg.set(s.programmeId, m);
-    }
-    for (const [pid, byAcc] of [...qpByProg.entries()].sort()) {
-      const ref = { refs: [`prog:${pid}`] };
-      const total = [...byAcc.values()].reduce((x, y) => x + y, 0);
-      b.add({ journal: 'OD', date: yEnd, label: `Quote-part des subventions virée au résultat ${year} – ${st.progParams.get(pid)?.name ?? pid}`, stream: 'CLO', lines: [...[...byAcc.entries()].map(([a, x]) => D(a, x, ref)), C('777', total, ref)], validDate: closingValid(year, 6), enteredBy: cu(1), pieceRef: `INV${year}-QPS-${pid}` });
+    for (const pid of [...new Set(st.subsidies.map((s) => s.programmeId))].sort()) {
+      const lines = subsidyReleaseLines(st.subsidies, st.components, pid, year);
+      if (!lines.length) continue;
+      b.add({ journal: 'OD', date: yEnd, label: `Quote-part des subventions virée au résultat ${year} – ${st.progParams.get(pid)?.name ?? pid}`, stream: 'CLO', lines, validDate: closingValid(year, 6), enteredBy: cu(1), pieceRef: `INV${year}-QPS-${pid}` });
     }
     // PGE
     const pge = st.pge.find((p) => p.year === year)!;

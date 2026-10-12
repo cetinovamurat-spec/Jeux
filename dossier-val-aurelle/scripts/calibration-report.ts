@@ -10,7 +10,8 @@ import { closingBalances, sumPrefixes } from '../src/engine/balance';
 import { generateWorld, storedLevers } from '../src/scenario/generator';
 import type { Levers } from '../src/scenario/generator/core';
 import { loadParams } from '../src/scenario/params';
-import { calibrationRows, type CalibrationRow } from '../src/scenario/calibration';
+import { calibrationRows, presentedRows, type CalibrationRow } from '../src/scenario/calibration';
+import { buildCorrectionKey } from '../src/scenario/anomalies/presented';
 
 const params = loadParams();
 const solve = process.argv.includes('--solve');
@@ -63,11 +64,11 @@ if (solve) {
 }
 
 const final = measure(levers);
-const rows: CalibrationRow[] = calibrationRows(final.r, params);
+const rows: CalibrationRow[] = [...calibrationRows(final.r, params), ...presentedRows(buildCorrectionKey(final.r.world, params), params)];
 const pad = (s: string, n: number) => s.padEnd(n);
-console.log('\nRapport de calibrage (comptes propres)\n');
-console.log(pad('Exercice', 9) + pad('Agrégat', 44) + pad('Cible', 18) + pad('Obtenu', 18) + 'Statut');
-for (const row of rows) console.log(pad(String(row.year), 9) + pad(row.label, 44) + pad(row.targetText, 18) + pad(row.valueText, 18) + (row.ok ? 'OK' : 'HORS TOLÉRANCE'));
+console.log('\nRapport de calibrage (comptes propres, puis comptes présentés)\n');
+console.log(pad('Exercice', 15) + pad('Agrégat', 52) + pad('Cible', 22) + pad('Obtenu', 18) + 'Statut');
+for (const row of rows) console.log(pad(String(row.year), 15) + pad(row.label, 52) + pad(row.targetText, 22) + pad(row.valueText, 18) + (row.ok ? 'OK' : 'HORS TOLÉRANCE'));
 const failures = rows.filter((r) => !r.ok);
 console.log(`\n${rows.length - failures.length}/${rows.length} cibles atteintes.`);
 if (failures.length && !solve) process.exitCode = 1;

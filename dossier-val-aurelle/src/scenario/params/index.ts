@@ -8,11 +8,15 @@ import regulatoryJson from './regulatory.json';
 import calibrationJson from './calibration.json';
 import statementsJson from './statements.json';
 import analysisJson from './analysis.json';
+import anomaliesJson from './anomalies.json';
+import referencesJson from './references.json';
 import { parseChartCsv } from '../../engine/chart';
 import type { AnalysisDefinitions } from '../../engine/analysis';
 import type { ChartOfAccounts, StatementLineDef } from '../../engine/types';
 import {
   analysisSchema,
+  anomaliesParamsSchema,
+  referencesSchema,
   calibrationSchema,
   componentsSchema,
   loanProductsSchema,
@@ -20,7 +24,9 @@ import {
   regulatorySchema,
   scenarioSchema,
   statementsSchema,
+  type AnomaliesParams,
   type CalibrationParams,
+  type Reference,
   type ComponentsParams,
   type LoanProductsParams,
   type ProgrammeParams,
@@ -41,6 +47,8 @@ export interface Params {
   analysis: AnalysisDefinitions;
   chart: ChartOfAccounts;
   chartCsv: string;
+  anomalies: AnomaliesParams;
+  references: readonly Reference[];
 }
 
 let cached: Params | null = null;
@@ -59,6 +67,8 @@ export function loadParams(): Params {
     analysis: analysisSchema.parse(analysisJson),
     chart: parseChartCsv(chartCsv, CHART_FRAMEWORK),
     chartCsv,
+    anomalies: anomaliesParamsSchema.parse(anomaliesJson),
+    references: referencesSchema.parse(referencesJson).references,
   };
   return cached;
 }

@@ -693,16 +693,27 @@ export function openingSupplierInvoices(st: GenState): void {
   });
 }
 
-/** Marks overdue invoices still unpaid at year end (count and amount of the management data). */
+/** Invoices received, due and still unpaid at the year end (management report, payment terms). */
+export function overdueAtYearEnd(invoices: readonly Invoice[], year: number): Invoice[] {
+  const end = `${year}-12-31`;
+  return invoices.filter((i) => i.receivedDate <= end && i.dueDate < end && (!i.paidDate || i.paidDate > end));
+}
+
+/**
+ * Marks overdue invoices still unpaid at year end so that, with the invoices
+ * naturally paid late, their count and amount match the management data.
+ * Runs after the scaling of the recoverable invoices (amounts are final).
+ */
 export function markOverdueInvoices(st: GenState): void {
   const rng = st.rng.fork('overdue');
   for (const [year, spec] of Object.entries(st.params.scenario.charges.overdueUnpaidAtYearEnd)) {
     const y = Number(year);
     const end = `${y}-12-31`;
-    const candidates = rng.shuffle(st.invoices.filter((i) => i.category === 'entretien' && i.serviceYear === y && i.dueDate < end && i.dueDate >= `${y}-07-01` && i.receivedDate <= end));
-    const chosen = candidates.slice(0, spec.count);
+    const natural = overdueAtYearEnd(st.invoices, y);
+    const candidates = rng.shuffle(st.invoices.filter((i) => i.category === 'entretien' && i.serviceYear === y && i.dueDate < end && i.dueDate >= `${y}-07-01` && i.receivedDate <= end && !natural.includes(i)));
+    const chosen = candidates.slice(0, Math.max(0, spec.count - natural.length));
     const before = chosen.reduce((s, i) => s + i.total, 0);
-    const target = eur(spec.euros);
+    const target = eur(spec.euros) - natural.reduce((s, i) => s + i.total, 0);
     const scaled = allocate(target, chosen.map((i) => i.total));
     const delta = target - before;
     chosen.forEach((inv, k) => {
@@ -712,7 +723,7 @@ export function markOverdueInvoices(st: GenState): void {
       inv.paidDate = nextThursday(isoDate(y + 1, rng.int(1, 3), rng.int(1, 28)));
     });
     // keep the yearly maintenance total unchanged
-    const others = st.invoices.filter((i) => i.category === 'entretien' && i.serviceYear === y && !chosen.includes(i) && i.total > Math.abs(delta) * 2);
+    const others = st.invoices.filter((i) => i.category === 'entretien' && i.serviceYear === y && !chosen.includes(i) && !natural.includes(i) && i.total > Math.abs(delta) * 2);
     const big = others.sort((a, b) => b.total - a.total)[0];
     if (big) {
       const amount = big.total - delta;

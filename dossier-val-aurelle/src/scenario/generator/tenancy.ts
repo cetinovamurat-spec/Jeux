@@ -358,14 +358,14 @@ export function buildTenants(st: GenState): void {
     const pool = new Set(rng.shuffle(present).map((l) => l.id));
     const byId = new Map(present.map((l) => [l.id, l]));
     /** Draws `count` tenants, preferring those who were in `prefer` last year (persistence ≈ 75 %). */
-    const take = (count: number, prefer: TenantCategory | null) => {
+    const take = (count: number, prefer: TenantCategory | null, eligible: (l: Lease) => boolean = () => true) => {
       const out: Lease[] = [];
       if (prefer) {
         const keep = Math.round(count * 0.75);
         for (const id of pool) {
           if (out.length >= keep) break;
           const l = byId.get(id)!;
-          if (previousCategory.get(l.tenantId) === prefer) {
+          if (previousCategory.get(l.tenantId) === prefer && eligible(l)) {
             out.push(l);
             pool.delete(id);
           }
@@ -374,6 +374,7 @@ export function buildTenants(st: GenState): void {
       for (const id of pool) {
         if (out.length >= count) break;
         const l = byId.get(id)!;
+        if (!eligible(l)) continue;
         if (prefer && previousCategory.has(l.tenantId) && previousCategory.get(l.tenantId) !== prefer && previousCategory.get(l.tenantId) !== 'present') continue;
         out.push(l);
         pool.delete(id);
@@ -391,7 +392,8 @@ export function buildTenants(st: GenState): void {
       });
     };
     const n = present.length;
-    const debtDischarge = yk === 'y2024' ? take(Math.round(238000 / 5300), 'presentOver6m') : [];
+    // debt discharge decided in 2025 for tenants who stay in their dwelling (A07-b)
+    const debtDischarge = yk === 'y2024' ? take(Math.round(238000 / 5300), 'presentOver6m', (l) => !l.end || l.end > '2025-12-31') : [];
     if (yk === 'y2024') {
       assign(debtDischarge, eur(tp.y2024.debtDischargeEuros), 'debtDischarge', [7, 14]);
       for (const l of debtDischarge) discharged.add(l.tenantId);
@@ -552,22 +554,34 @@ export function presentedImpairmentCharge(st: GenState): Cents {
 }
 
 /**
- * Moves an amount between a carried-over and a new former-tenant account (same
- * totals) so that the presented 2025 impairment charge equals its target.
+ * Calibrates the presented 2025 impairment charge (A21) without touching the
+ * former tenants (A07-a base, recovery statistics) nor the category totals:
+ * within a category (procedure, then over 6 months) balances are moved from
+ * tenants already in that category in 2024 whose balance decreased (their
+ * allowance is released, not charged) to tenants new in the category (their
+ * allowance is charged in full), or the reverse when the charge is too high.
  */
 export function calibratePresentedImpairment(st: GenState): void {
   const target = eur((st.params.calibration.anomalyMetrics['presentedImpairmentChargeA21'] as { value: number }).value);
-  const rate = st.params.scenario.tenants.presentedMethod.formerRate;
-  const current = presentedImpairmentCharge(st);
-  const x = Math.round((target - current) / rate);
-  if (x === 0) return;
-  const newOnes = st.tenants.filter((t) => t.departure?.date.startsWith('2025-') && t.byYear.y2025?.category === 'former' && !t.writeOff);
-  const carried = st.tenants.filter((t) => t.byYear.y2024?.category === 'former' && t.byYear.y2025?.category === 'former' && !t.writeOff);
-  const n = newOnes.sort((a, b) => b.byYear.y2025!.balance - a.byYear.y2025!.balance)[0]!;
-  const c = carried.sort((a, b) => b.byYear.y2025!.balance - a.byYear.y2025!.balance)[0]!;
-  n.byYear.y2025!.balance += x;
-  n.departure!.balance += x;
-  c.byYear.y2025!.balance -= x;
-  c.recoveries = [...(c.recoveries ?? []).filter((r) => r.year !== 2025), { year: 2025, amount: (c.recoveries?.find((r) => r.year === 2025)?.amount ?? 0) + x }];
+  const m = st.params.scenario.tenants.cleanMethod;
+  const y25 = (t: TenantAccount) => t.byYear.y2025!;
+  for (const [category, rate] of [['procedure', m.procedureRate], ['presentOver6m', m.over6mRate]] as [TenantCategory, number][]) {
+    const need = target - presentedImpairmentCharge(st);
+    if (Math.abs(need) < 100) break;
+    const isNew = (t: TenantAccount) => y25(t).category === category && t.byYear.y2024?.category !== category && t.byYear.y2024?.category !== 'debtDischarge';
+    const receivers = st.tenants.filter((t) => t.byYear.y2025 && isNew(t));
+    const givers = st.tenants.filter((t) => t.byYear.y2025?.category === category && t.byYear.y2024?.category === category && y25(t).balance < t.byYear.y2024!.balance);
+    // capacities: every account keeps at least half of its balance; givers stay below their 2024 balance
+    const half = (t: TenantAccount) => Math.floor(y25(t).balance / 2);
+    const headroom = (t: TenantAccount) => Math.max(0, t.byYear.y2024!.balance - y25(t).balance - 1);
+    const [up, down, capUp] = need > 0 ? [receivers, givers, (t: TenantAccount) => y25(t).balance] : [givers, receivers, headroom];
+    const capacity = Math.min(down.reduce((s, t) => s + half(t), 0), need > 0 ? Infinity : up.reduce((s, t) => s + headroom(t), 0));
+    const amount = Math.min(capacity, Math.round(Math.abs(need) / rate));
+    if (amount <= 0) continue;
+    const takes = allocate(amount, down.map(half));
+    down.forEach((t, i) => (y25(t).balance -= takes[i]!));
+    const gives = allocate(amount, up.map(capUp));
+    up.forEach((t, i) => (y25(t).balance += gives[i]!));
+  }
   st.metrics['presentedImpairmentCharge'] = presentedImpairmentCharge(st);
 }

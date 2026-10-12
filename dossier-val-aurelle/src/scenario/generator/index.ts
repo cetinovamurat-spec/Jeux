@@ -93,7 +93,6 @@ export function generateWorld(params: Params = loadParams(), levers: Levers = st
   buildMaintenancePlan(st);
   openingSupplierInvoices(st);
   const prepaidInsurance = buildOperatingInvoices(st, 1);
-  markOverdueInvoices(st);
   const roll = buildRentRoll(st);
   // recoverable charges: scale the recoverable natures so that 2025 recoveries hit their target
   buildRegularisations(st, roll);
@@ -114,6 +113,7 @@ export function generateWorld(params: Params = loadParams(), levers: Levers = st
     (inv as { lines: typeof inv.lines }).lines = inv.lines.map((l, i) => ({ ...l, amount: parts[i]! }));
     inv.total = newTotal;
   }
+  markOverdueInvoices(st);
   buildRegularisations(st, roll);
   finaliseSubsidies(st);
 

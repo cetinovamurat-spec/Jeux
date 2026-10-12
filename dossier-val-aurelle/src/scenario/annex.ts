@@ -262,9 +262,39 @@ export function buildAnnex(world: World, params: Params, year: 'current' | 'prio
       { id: 'ifc', label: 'Engagements de retraite (indemnités de fin de carrière, non provisionnés)', accounts: [], values: { montant: Math.round((c.retirementEuros[String(fy)] ?? 0) * 100) } },
       { id: 'avance-groupe', label: 'Engagement donné – solde non tiré de l’avance à Coteaux du Serein Habitat', accounts: [], values: { montant: drawn ? Math.round((advance.ceilingEuros - drawn) * 100) : 0 } },
       { id: 'garanties', label: 'Engagements reçus – garanties des collectivités sur les emprunts', accounts: [], values: { montant: Math.round(guaranteed * c.guaranteedLoansShare) } },
+      ...(fy >= 2025
+        ? [{ id: 'passif-eventuel-tilleuls', label: 'Passif éventuel – litige avec l’entreprise générale des Tilleuls (pénalités de retard retenues et contestées)', accounts: [], values: { montant: Math.round(params.scenario.specific.tilleuls.penaltiesEuros * 100) } }]
+        : []),
     ],
   });
   // normalise negative zeros
   for (const t of tables) for (const r of t.rows) for (const k of Object.keys(r.values)) r.values[k] = r.values[k]! + 0;
+  return year === 'current' ? applyAnnexCells(tables, world.presentation.annexCells) : tables;
+}
+
+/** Swaps the 2nd and 3rd significant digits of an amount (reporting error of A21). */
+export function transposeDigits23(value: Cents): Cents {
+  const sign = value < 0 ? -1 : 1;
+  const digits = String(Math.abs(value)).split('');
+  if (digits.length < 3) return value;
+  [digits[1], digits[2]] = [digits[2]!, digits[1]!];
+  return sign * Number(digits.join(''));
+}
+
+/** Presentation alterations of the annex (omitted rows, altered cells). */
+export function applyAnnexCells(tables: AnnexTable[], cells: World['presentation']['annexCells']): AnnexTable[] {
+  for (const cell of cells) {
+    const t = tables.find((x) => x.id === cell.table);
+    if (!t) throw new Error(`tableau d’annexe inconnu : ${cell.table}`);
+    const i = t.rows.findIndex((r) => r.id === cell.rowId);
+    if (i < 0) throw new Error(`ligne d’annexe inconnue : ${cell.table}:${cell.rowId}`);
+    if (cell.transform === 'omit') {
+      if (cell.column === '*') t.rows.splice(i, 1);
+      else delete t.rows[i]!.values[cell.column];
+    } else {
+      const row = t.rows[i]!;
+      row.values[cell.column] = transposeDigits23(row.values[cell.column] ?? 0);
+    }
+  }
   return tables;
 }

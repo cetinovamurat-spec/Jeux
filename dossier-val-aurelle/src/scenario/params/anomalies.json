@@ -1,0 +1,18 @@
+{
+  "_comment": "Paramètres du monde présenté (§5 du cahier des charges). Ils décrivent ce que le client a comptabilisé ; les impacts ne sont jamais saisis, ils sont calculés par le moteur. Montants en euros.",
+  "A03": { "entryValidDate": "2026-01-21" },
+  "A05": { "dafFile": "PPE_v3_DAF.xlsx", "officialPlanDate": "2025-11-15", "entryValidDate": "2026-01-29" },
+  "A06": { "transferDate": "2025-09-30", "transferValidDate": "2025-10-03", "componentLabel": "Travaux d'amélioration (agencements divers)" },
+  "A08": { "flatRatePct": 3.0 },
+  "A10": { "presentedCaretakerShare": 1.0 },
+  "A11": {
+    "euros": 300000,
+    "date": "2025-12-31",
+    "validDate": "2026-02-03",
+    "label": "Régul PAR refacturation frais de gestion foyers 2025",
+    "debitAccount": "4687",
+    "creditAccount": "7088"
+  },
+  "A18": { "suspenseAccount": "471", "label": "Virement reçu de la Banque des Territoires – à affecter" },
+  "A22": { "presentedRubrique": "P_AUTRES_DETTES" }
+}

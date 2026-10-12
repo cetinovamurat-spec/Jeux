@@ -1,0 +1,30 @@
+{
+  "_comment": "Références normatives et légales citées par les contenus. status : 'cdc' (fournie par le cahier des charges, à vérifier), 'validated' (confirmée par l'expert), 'general' (formulation générale sans numéro). Voir docs/points-a-verifier.md.",
+  "references": [
+    { "id": "NEP240", "label": "NEP 240 – prise en considération de la possibilité de fraudes", "status": "cdc", "pv": "PV-01" },
+    { "id": "NEP260", "label": "NEP 260 – communications avec les organes mentionnés à l'article L. 823-16 du Code de commerce", "status": "cdc", "pv": "PV-08" },
+    { "id": "NEP265", "label": "NEP 265 – communication des faiblesses du contrôle interne", "status": "cdc", "pv": "PV-08" },
+    { "id": "NEP450", "label": "NEP 450 – évaluation des anomalies relevées au cours de l'audit", "status": "cdc", "pv": "PV-08" },
+    { "id": "NEP505", "label": "NEP 505 – demandes de confirmation des tiers", "status": "cdc", "pv": "PV-08" },
+    { "id": "NEP540", "label": "NEP 540 – appréciation des estimations comptables", "status": "cdc", "pv": "PV-08" },
+    { "id": "NEP550", "label": "NEP 550 – relations et transactions avec les parties liées", "status": "cdc", "pv": "PV-08" },
+    { "id": "NEP560", "label": "NEP 560 – événements postérieurs à la clôture de l'exercice", "status": "cdc", "pv": "PV-09" },
+    { "id": "NEP580", "label": "NEP 580 – déclarations de la direction", "status": "cdc", "pv": "PV-08" },
+    { "id": "NEP700", "label": "NEP 700 – rapport du commissaire aux comptes sur les comptes annuels", "status": "cdc", "pv": "PV-16" },
+    { "id": "NEP9510", "label": "NEP 9510 – diligences relatives au rapport de gestion et aux autres documents adressés aux membres de l'organe appelé à statuer sur les comptes", "status": "cdc", "pv": "PV-08" },
+    { "id": "CCOM-L823-12", "label": "Code de commerce, art. L. 823-12 – signalement des irrégularités et révélation des faits délictueux", "status": "cdc", "pv": "PV-02" },
+    { "id": "CCOM-L225-38", "label": "Code de commerce, art. L. 225-38 à L. 225-42 – conventions réglementées", "status": "cdc", "pv": "PV-03" },
+    { "id": "CCOM-L441-14", "label": "Code de commerce, art. L. 441-14 et D. 441-6 – délais de paiement dans le rapport de gestion", "status": "cdc", "pv": "PV-05" },
+    { "id": "CCH-L423-15", "label": "Code de la construction et de l'habitation, art. L. 423-15 – avances entre organismes d'un même groupe", "status": "cdc", "pv": "PV-04" },
+    { "id": "DECRET-82-955", "label": "Décret n° 82-955 du 9 novembre 1982 modifié – charges récupérables (logements HLM)", "status": "cdc", "pv": "PV-06" },
+    { "id": "CCIV-1583", "label": "Code civil, art. 1583 – perfection de la vente", "status": "cdc", "pv": "PV-14" },
+    { "id": "ANC-2015-04", "label": "Règlement ANC n° 2015-04 relatif aux comptes annuels des organismes de logement social et instruction comptable applicable en 2025", "status": "cdc", "pv": "PV-21" },
+    { "id": "PCG-COMPOSANTS", "label": "Plan comptable général – approche par composants, plan d'amortissement et sorties d'actif", "status": "general" },
+    { "id": "PCG-PROVISIONS", "label": "Plan comptable général – définition et évaluation des provisions et des dépréciations", "status": "general" },
+    { "id": "PCG-SEPARATION", "label": "Plan comptable général – rattachement des charges et des produits à l'exercice", "status": "general" },
+    { "id": "PCG-SUBVENTIONS", "label": "Plan comptable général – subventions d'investissement et quote-part virée au résultat", "status": "general" },
+    { "id": "PCG-ANNEXE", "label": "Plan comptable général – informations à fournir en annexe (engagements, parties liées, comparabilité)", "status": "general" },
+    { "id": "CCH-LOYERS", "label": "Code de la construction et de l'habitation – révision annuelle des loyers des logements conventionnés", "status": "general", "pv": "PV-11" },
+    { "id": "CCH-AUTOFINANCEMENT", "label": "Code de la construction et de l'habitation – autofinancement net des organismes HLM", "status": "general", "pv": "PV-10" }
+  ]
+}
