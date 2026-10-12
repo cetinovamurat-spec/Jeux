@@ -23,6 +23,13 @@ describe('layering', () => {
   it('the scenario does not import the game or the UI', () => {
     for (const f of files(join(SRC, 'scenario'))) expect(readFileSync(f, 'utf8'), f).not.toMatch(/from '\.\.\/(\.\.\/)?(game|ui)\//);
   });
+  it('the game rules do not import the UI or React', () => {
+    for (const f of files(join(SRC, 'game'))) {
+      const text = readFileSync(f, 'utf8');
+      expect(text, f).not.toMatch(/from '\.\.\/(\.\.\/)?ui\//);
+      expect(text, f).not.toMatch(/from 'react/);
+    }
+  });
 });
 
 describe('no hand-typed amounts', () => {
