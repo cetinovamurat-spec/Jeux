@@ -7,7 +7,7 @@ import { allocate, type Cents } from '../../engine/money';
 import type { Rng } from '../../engine/rng';
 import type { AssetComponent, ComponentFamily } from '../../engine/types';
 import { accumulatedDepreciation } from '../../engine/subledgers/depreciation';
-import type { Caretaker, ChargesRegularisation, Invoice, MaintenancePlanItem, PayrollMonth, TaxNotice } from '../datasets';
+import type { Caretaker, Invoice, MaintenancePlanItem, TaxNotice } from '../datasets';
 import { addComponent, addOperation, retire, spreadOverBuildings, suppliersOf } from './portfolio';
 import { eur, type GenState } from './core';
 import type { RentRoll } from './tenancy';

@@ -1,0 +1,31 @@
+﻿Anomalie;Partie;Libellé;Traitement;Impact résultat;Impact capitaux propres;Impact CAF;Impact autofinancement net;Impact total du bilan;Cible §5 (anomalie);Conforme
+A01;A01;Les Tilleuls : mise en service par composants au 01/07/2025, amortissement et quote-part de subventions du 2e semestre;adjust;100278,90;120124,28;0,00;0,00;120124,28;100 300 ± 3 %;oui
+A02;A02;Les Érables : sortie de la chaufferie collective remplacée par la pompe à chaleur au 30/06/2025;adjust;294000,00;294000,00;0,00;0,00;294000,00;294 000 ± 3 %;oui
+A03;A03;Le Clos Fleuri : annulation en 2025 de la cession des 7 pavillons (actes du 14/01/2026) et information sur l’événement postérieur;adjust;770500,02;770500,02;0,00;0,00;770500,02;770 500 ± 3 %;oui
+A04;A04;Les Glycines, bâtiment B : révision prospective du plan d’amortissement jusqu’au 31/12/2027 et reprise accélérée des subventions;adjust;343409,48;422657,82;0,00;0,00;422657,82;343 000 ± 3 %;oui
+A05;A05;PGE : annulation de la reprise excédentaire (ravalement des Acacias 2026, étanchéité du Belvédère 2027 maintenus au PPE officiel);adjust;780000,00;780000,00;0,00;0,00;0,00;780 000 ± 3 %;oui
+A06;A06;Les Peupliers : reclassement en charges de l’entretien immobilisé (peinture, robinetterie, réparation de toiture) et extourne de l’amortissement;adjust;369576,98;369576,98;378000,00;378000,00;369576,98;370 000 ± 3 %;oui
+A07;A07.a;Ex-locataires : taux de dépréciation ramené à 85 % sans fondement (méthode de l’annexe : 100 % du solde net des dépôts);adjust;467249,68;467249,68;0,00;0,00;467249,68;586 250 ± 3 %;oui
+A07;A07.b;Rétablissement personnel avec effacement : passage en perte des créances effacées et reprise de la dépréciation;adjust;118999,91;118999,91;238000,00;238000,00;118999,91;586 250 ± 3 %;oui
+A07;A07.c;Soldes créditeurs de locataires compensés avec les soldes débiteurs : reclassement au passif;reclassify;0,00;0,00;0,00;0,00;-910000,00;586 250 ± 3 %;oui
+A08;A08;ICNE des prêts indexés sur le Livret A : recalcul prêt par prêt au taux de la dernière révision (le taux unique de 3 % surévalue la charge);adjust;-235999,98;-235999,98;-235999,98;-235999,98;0,00;-236 000 ± 10 %;oui
+A09;A09;Les Charmes : annulation de la créance et de la subvention départementale frappée de caducité;adjust;0,00;420000,00;0,00;0,00;420000,00;0;oui
+A10;A10.a;Honoraires du syndic de la copropriété des Marronniers intégrés aux charges récupérées;adjust;96000,00;96000,00;96000,00;96000,00;96000,00;254 000 ± 3 %;oui
+A10;A10.b;Rémunération des gardiens récupérée à 100 % au lieu de la quote-part réglementaire;adjust;158000,01;158000,01;158000,01;158000,01;12100,16;254 000 ± 3 %;oui
+A11;A11;Extourne du produit à recevoir de 300 000 € sur les gestionnaires de foyers, sans fondement contractuel;adjust;300000,00;300000,00;300000,00;300000,00;300000,00;300 000 ± 3 %;oui
+A12;A12.i;Annexe : engagement donné (solde non tiré de l’avance) et transaction avec une partie liée;disclose;0,00;0,00;0,00;0,00;0,00;0;oui
+A12;A12.ii;Convention non autorisée préalablement et non conclue à des conditions normales : mention au rapport spécial;specialReport;0,00;0,00;0,00;0,00;0,00;0;oui
+A12;A12.iii;Déclaration préalable de l’avance au titre du CCH non justifiée : à demander, irrégularité à signaler;governance;0,00;0,00;0,00;0,00;0,00;0;oui
+A13;A13;Annexe : mention du montant des indemnités de fin de carrière non provisionnées;disclose;0,00;0,00;0,00;0,00;0,00;0;oui
+A14;A14.i;Délais de paiement fournisseurs : factures échues non réglées omises;report;0,00;0,00;0,00;0,00;0,00;0;oui
+A14;A14.ii;Taux de vacance annoncé hors vacance technique, sans définition et différent de N-1;report;0,00;0,00;0,00;0,00;0,00;0;oui
+A14;A14.iii;Ratio d’autofinancement net à mettre à jour après corrections;report;0,00;0,00;0,00;0,00;0,00;0;oui
+A15;A15;Accueil Horizons : dépréciation à 80 % des redevances impayées au vu du courrier du mandataire (événement postérieur);adjust;468000,00;468000,00;0,00;0,00;468000,00;468 000 ± 3 %;oui
+A16;A16.a;Travaux supplémentaires dus (ordre de service n° 7) : dette fournisseur d’immobilisations en contrepartie du coût du programme;adjust;2985,34;2985,34;0,00;0,00;-207014,66;3 000 ± 3 %;oui
+A16;A16.b;Pénalités de retard contestées : information en annexe sur le passif éventuel;disclose;0,00;0,00;0,00;0,00;0,00;3 000 ± 3 %;oui
+A17;A17;Dette de restitution aux locataires du trop-perçu 2025 (hausse de 3,50 % au lieu de la variation de l’IRL);adjust;96593,56;96593,56;96593,56;96593,56;0,00;98 000 ± 3 %;oui
+A18;A18;Prêt de haut de bilan de 2,5 M€ : reclassement du compte d’attente en emprunts et mise à jour de l’état des dettes;reclassify;0,00;0,00;0,00;0,00;0,00;0;oui
+A19;A19;Les Saules : extourne du doublon du lot d’interface de quittancement d’octobre 2025;adjust;52753,25;52753,25;52753,25;52753,25;52753,25;52 300 ± 3 %;oui
+A20;A20;GIE Altaïr Services : charge à payer du complément de frais de structure 2025 (facture du 20/01/2026);adjust;184000,00;184000,00;184000,00;184000,00;0,00;184 000 ± 3 %;oui
+A21;A21;Tableau des provisions : dotation aux dépréciations des créances locatives (inversion de chiffres);disclose;0,00;0,00;0,00;0,00;0,00;0;oui
+A22;A22;Dépôts de garantie des locataires : rétablir le classement en dettes financières en N et en N-1;reclassify;0,00;0,00;0,00;0,00;0,00;0;oui

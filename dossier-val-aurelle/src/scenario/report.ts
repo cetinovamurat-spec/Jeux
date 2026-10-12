@@ -4,15 +4,15 @@
  * some of them by the values the client wrote (presentation facts).
  */
 import type { KeyFigures } from '../engine/analysis';
-import { endOfMonth, isoDate } from '../engine/dates';
 import type { Cents } from '../engine/money';
 import type { World } from '../engine/types';
 import type { PresentationFacts } from './anomalies/draft';
-import type { Invoice, Lease, ScenarioDatasets } from './datasets';
+import type { Invoice, ScenarioDatasets } from './datasets';
 
 export interface VacancyFigures {
-  /** Dwelling-months in the stock, vacant, and technically vacant (demolition, works, heavy repairs). */
-  months: number;
+  date: string;
+  /** Family dwellings in the stock at the date, vacant, and technically vacant (demolition, works, heavy repairs). */
+  stock: number;
   vacant: number;
   technical: number;
   vacantTechnical: number;
@@ -22,42 +22,38 @@ export interface VacancyFigures {
   excludingTechnicalRate: number;
 }
 
+/** Vacancy of the family dwellings at the year end (taux de vacance au 31/12). */
 export function vacancy(ds: ScenarioDatasets, year: number): VacancyFigures {
+  const date = `${year}-12-31`;
   const family = new Set(ds.programmes.filter((p) => p.kind === 'family').map((p) => p.id));
-  const leasesByDwelling = new Map<string, Lease[]>();
-  for (const l of ds.leases) leasesByDwelling.set(l.dwellingId, [...(leasesByDwelling.get(l.dwellingId) ?? []), l]);
+  const inService = new Map(ds.programmes.map((p) => [p.id, p.inServiceDate]));
   const soldOn = new Map<string, string>();
   for (const s of ds.sales) for (const d of s.dwellingIds) soldOn.set(d, s.deedDate);
-  const inService = new Map(ds.programmes.map((p) => [p.id, p.inServiceDate]));
-  let months = 0;
+  const occupied = new Set(ds.leases.filter((l) => l.start <= date && (!l.end || l.end >= date)).map((l) => l.dwellingId));
+  let stock = 0;
   let vacant = 0;
   let technical = 0;
   let vacantTechnical = 0;
   for (const d of ds.dwellings) {
-    if (!family.has(d.programmeId)) continue;
-    for (let m = 1; m <= 12; m++) {
-      const start = isoDate(year, m, 1);
-      const end = endOfMonth(year, m);
-      const sold = soldOn.get(d.id);
-      if (sold && sold <= end) continue;
-      if ((inService.get(d.programmeId) ?? '') > start) continue;
-      months++;
-      const occupied = (leasesByDwelling.get(d.id) ?? []).some((l) => l.start <= start && (!l.end || l.end >= end));
-      const tech = !!d.technicalVacancy && d.technicalVacancy.from <= start;
-      if (tech) technical++;
-      if (!occupied) {
-        vacant++;
-        if (tech) vacantTechnical++;
-      }
+    if (!family.has(d.programmeId) || (inService.get(d.programmeId) ?? '') > date) continue;
+    const sold = soldOn.get(d.id);
+    if (sold && sold <= date) continue;
+    stock++;
+    const tech = !!d.technicalVacancy && d.technicalVacancy.from <= date;
+    if (tech) technical++;
+    if (!occupied.has(d.id)) {
+      vacant++;
+      if (tech) vacantTechnical++;
     }
   }
   return {
-    months,
+    date,
+    stock,
     vacant,
     technical,
     vacantTechnical,
-    totalRate: months === 0 ? 0 : vacant / months,
-    excludingTechnicalRate: months - technical === 0 ? 0 : (vacant - vacantTechnical) / (months - technical),
+    totalRate: stock === 0 ? 0 : vacant / stock,
+    excludingTechnicalRate: stock - technical === 0 ? 0 : (vacant - vacantTechnical) / (stock - technical),
   };
 }
 

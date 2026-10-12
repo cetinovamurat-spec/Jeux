@@ -3,7 +3,7 @@ import { credit as C, debit as D } from '../../../engine/ledger';
 import { accumulatedDepreciation } from '../../../engine/subledgers/depreciation';
 import type { AssetComponent, EntryLine } from '../../../engine/types';
 import { depreciationAccount } from '../closing';
-import { acct, comp, doc, prog, tp } from '../refs';
+import { acct, doc, prog, tp } from '../refs';
 import type { AnomalyModule } from '../types';
 import { programmeName, without } from './util';
 

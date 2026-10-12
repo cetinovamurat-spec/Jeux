@@ -9,6 +9,7 @@ import calibrationJson from './calibration.json';
 import statementsJson from './statements.json';
 import analysisJson from './analysis.json';
 import anomaliesJson from './anomalies.json';
+import documentsJson from './documents.json';
 import referencesJson from './references.json';
 import { parseChartCsv } from '../../engine/chart';
 import type { AnalysisDefinitions } from '../../engine/analysis';
@@ -16,6 +17,7 @@ import type { ChartOfAccounts, StatementLineDef } from '../../engine/types';
 import {
   analysisSchema,
   anomaliesParamsSchema,
+  documentsParamsSchema,
   referencesSchema,
   calibrationSchema,
   componentsSchema,
@@ -25,6 +27,7 @@ import {
   scenarioSchema,
   statementsSchema,
   type AnomaliesParams,
+  type DocumentsParams,
   type CalibrationParams,
   type Reference,
   type ComponentsParams,
@@ -48,6 +51,7 @@ export interface Params {
   chart: ChartOfAccounts;
   chartCsv: string;
   anomalies: AnomaliesParams;
+  documents: DocumentsParams;
   references: readonly Reference[];
 }
 
@@ -68,6 +72,7 @@ export function loadParams(): Params {
     chart: parseChartCsv(chartCsv, CHART_FRAMEWORK),
     chartCsv,
     anomalies: anomaliesParamsSchema.parse(anomaliesJson),
+    documents: documentsParamsSchema.parse(documentsJson),
     references: referencesSchema.parse(referencesJson).references,
   };
   return cached;

@@ -289,7 +289,6 @@ function costPerUnit(st: GenState, year: number, p: { kind: string; pavilions: b
 export function buildAssets(st: GenState): void {
   const rng = st.rng.fork('assets');
   const a = st.params.scenario.assets;
-  const sp = st.params.scenario.specific;
   const cs = st.params.components;
   const levers = st.levers;
 

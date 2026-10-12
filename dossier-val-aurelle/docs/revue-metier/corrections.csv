@@ -1,0 +1,68 @@
+﻿Partie;Écriture;Compte;Libellé du compte;Compte auxiliaire;Débit;Crédit
+A01;2025:COR:A01;13911;Subventions inscrites au compte de résultat – État;;4065,74;0,00
+A01;2025:COR:A01;13912;Subventions inscrites au compte de résultat – Région;;5828,52;0,00
+A01;2025:COR:A01;13914;Subventions inscrites au compte de résultat – Communes et EPCI;;7392,26;0,00
+A01;2025:COR:A01;13917;Subventions inscrites au compte de résultat – Action Logement;;2558,86;0,00
+A01;2025:COR:A01;2111;Terrains des immeubles locatifs;;1100000,00;0,00
+A01;2025:COR:A01;2131;Constructions locatives sur sol propre;;8450000,00;0,00
+A01;2025:COR:A01;2312;Terrains en cours d'aménagement;;0,00;1100000,00
+A01;2025:COR:A01;2313;Constructions en cours;;0,00;8450000,00
+A01;2025:COR:A01;28131;Amortissements des constructions locatives;;0,00;120124,28
+A01;2025:COR:A01;68111;Dotations aux amortissements des immobilisations;;120124,28;0,00
+A01;2025:COR:A01;777;Quote-part des subventions d'investissement virée au résultat;;0,00;19845,38
+A02;2025:COR:A02;2131;Constructions locatives sur sol propre;;0,00;1050000,00
+A02;2025:COR:A02;28131;Amortissements des constructions locatives;;756000,00;0,00
+A02;2025:COR:A02;6758;Valeur comptable des composants sortis (remplacement, démolition);;315172,60;0,00
+A02;2025:COR:A02;68111;Dotations aux amortissements des immobilisations;;0,00;21172,60
+A03;2025:COR:A03;2111;Terrains des immeubles locatifs;;76651,33;0,00
+A03;2025:COR:A03;2131;Constructions locatives sur sol propre;;577427,06;0,00
+A03;2025:COR:A03;28131;Amortissements des constructions locatives;;0,00;364578,41
+A03;2025:COR:A03;462;Créances sur cessions d'immobilisations;N001;0,00;1060000,00
+A03;2025:COR:A03;6752;Valeur comptable des immobilisations corporelles cédées;;0,00;289499,98
+A03;2025:COR:A03;7752;Produits des cessions d'immobilisations corporelles;;1060000,00;0,00
+A04;2025:COR:A04;13918;Subventions inscrites au compte de résultat – Autres;;79248,34;0,00
+A04;2025:COR:A04;28131;Amortissements des constructions locatives;;0,00;422657,82
+A04;2025:COR:A04;68111;Dotations aux amortissements des immobilisations;;422657,82;0,00
+A04;2025:COR:A04;777;Quote-part des subventions d'investissement virée au résultat;;0,00;79248,34
+A05;2025:COR:A05;1572;Provisions pour gros entretien;;0,00;780000,00
+A05;2025:COR:A05;78157;Reprises sur provisions pour gros entretien;;780000,00;0,00
+A06;2025:COR:A06;2135;Installations générales, agencements et aménagements des constructions;;0,00;378000,00
+A06;2025:COR:A06;28135;Amortissements des installations et agencements;;8423,02;0,00
+A06;2025:COR:A06;61521;Entretien courant non récupérable;;378000,00;0,00
+A06;2025:COR:A06;68111;Dotations aux amortissements des immobilisations;;0,00;8423,02
+A07.a;2025:COR:A07.a;4915;Dépréciation des comptes de locataires partis;;0,00;467249,68
+A07.a;2025:COR:A07.a;68174;Dotations aux dépréciations des créances;;138440,66;0,00
+A07.a;2025:COR:A07.a;78174;Reprises sur dépréciations des créances;;328809,02;0,00
+A07.b;2025:COR:A07.b;4111;Locataires présents;;0,00;238000,00
+A07.b;2025:COR:A07.b;4911;Dépréciation des comptes de locataires présents;;119000,09;0,00
+A07.b;2025:COR:A07.b;6541;Pertes sur créances irrécouvrables – locataires;;238000,00;0,00
+A07.b;2025:COR:A07.b;78174;Reprises sur dépréciations des créances;;0,00;119000,09
+A07.c;2025:COR:A07.c;4111;Locataires présents;;910000,00;0,00
+A07.c;2025:COR:A07.c;4191;Locataires – soldes créditeurs;;0,00;910000,00
+A08;2025:COR:A08;1688;Intérêts courus sur emprunts;BDT;235999,98;0,00
+A08;2025:COR:A08;6611;Intérêts des emprunts;;0,00;235999,98
+A09;2025:COR:A09;1313;Subventions d'investissement – Département;;420000,00;0,00
+A09;2025:COR:A09;4413;Département – subventions à recevoir;;0,00;420000,00
+A10.a;2025:COR:A10.a;4181;Locataires – régularisation de charges à facturer;;0,00;96000,00
+A10.a;2025:COR:A10.a;7031;Récupération des charges locatives;;96000,00;0,00
+A10.b;2025:COR:A10.b;4181;Locataires – régularisation de charges à facturer;;0,00;12100,16
+A10.b;2025:COR:A10.b;4196;Locataires – sommes à restituer;;0,00;145899,85
+A10.b;2025:COR:A10.b;7031;Récupération des charges locatives;;158000,01;0,00
+A11;2025:COR:A11;4687;Divers – produits à recevoir;;0,00;300000,00
+A11;2025:COR:A11;7088;Produits des activités annexes;;300000,00;0,00
+A15;2025:COR:A15;4914;Dépréciation des créances sur gestionnaires de foyers;G001;0,00;468000,00
+A15;2025:COR:A15;68174;Dotations aux dépréciations des créances;;468000,00;0,00
+A16.a;2025:COR:A16.a;2131;Constructions locatives sur sol propre;;210000,00;0,00
+A16.a;2025:COR:A16.a;28131;Amortissements des constructions locatives;;0,00;2985,34
+A16.a;2025:COR:A16.a;4084;Fournisseurs d'immobilisations – factures non parvenues;F0022;0,00;210000,00
+A16.a;2025:COR:A16.a;68111;Dotations aux amortissements des immobilisations;;2985,34;0,00
+A17;2025:COR:A17;4196;Locataires – sommes à restituer;;0,00;96593,56
+A17;2025:COR:A17;70411;Loyers des logements conventionnés;;96593,56;0,00
+A18;2025:COR:A18;1631;Emprunts auprès de la Caisse des dépôts (Banque des Territoires);BDT;0,00;2500000,00
+A18;2025:COR:A18;471;Compte d'attente;;2500000,00;0,00
+A19;2025:COR:A19;4111;Locataires présents;;0,00;52753,25
+A19;2025:COR:A19;70411;Loyers des logements conventionnés;;54158,57;0,00
+A19;2025:COR:A19;70415;Loyers des stationnements et annexes;;1420,01;0,00
+A19;2025:COR:A19;70491;Réduction de loyer de solidarité;;0,00;2825,33
+A20;2025:COR:A20;4081;Fournisseurs – factures non parvenues;;0,00;184000,00
+A20;2025:COR:A20;6281;Frais de structure refacturés par le GIE du groupe;;184000,00;0,00

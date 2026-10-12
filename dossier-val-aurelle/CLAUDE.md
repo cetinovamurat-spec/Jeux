@@ -12,7 +12,7 @@ Jeu de rôle d'audit légal (navigateur, 100 % client) : le joueur audite les co
 |---|---|---|
 | J0 — Plan | **Validé le 12/10/2026** | Option 1 retenue pour D2 ; D1, D3 à D7 acceptées |
 | J1 — Moteur comptable | **Livré le 12/10/2026** | Monde propre 2024 + 2025 ; 34/34 cibles de calibrage ; 85 tests verts ; écran de contrôle |
-| J2 — Anomalies et contenus | À faire | **Arrêt obligatoire** en fin de jalon : validation métier (dossier `docs/revue-metier/`) |
+| J2 — Anomalies et contenus | **Livré le 12/10/2026 – en attente de validation métier** | 22 anomalies (30 parties), clé de correction calculée, 125 documents et 127 indices, 7 fausses pistes ; 53/53 cibles ; 131 tests verts ; dossier `docs/revue-metier/`. **Arrêt obligatoire** : ne pas commencer J3 avant la validation |
 | J3 — Consultation | À faire | |
 | J4 — Mécanique d'audit | À faire | |
 | J5 — Personnages | À faire | |
@@ -58,16 +58,26 @@ Jeu de rôle d'audit légal (navigateur, 100 % client) : le joueur audite les co
 - **Structure du patrimoine retenue pour tenir le bilan du §4.3** (total ≈ 620 M€, capitaux propres ≈ 224 M€ avec des dotations ≈ 16,7 M€) : programmes construits après 2000 nombreux, foncier élevé pour les opérations récentes (zone tendue), décomposition rétrospective des programmes antérieurs à 2005 (structure 75 %), sept opérations en cours de construction (≈ 51 M€), subventions concentrées sur les réhabilitations (ANRU/PNRU), allongement de 5 ans des prêts de la Banque des Territoires (2019-2020). Points consignés dans `docs/points-a-verifier.md` (PV-44 à PV-52).
 - **Recalibrer après une modification de paramètres** : `npm run calibrate -- --solve` puis `npm run generate -- --update-lock`, puis `npm test`.
 
+### Choix d'implémentation de J2
+
+- **Monde présenté = propre + patches.** `buildState(propre, params, parties actives)` applique les modules dans l'ordre canonique (A01 → A22, parties `A07.a`…) sur un brouillon copie-sur-écriture (`WorldDraft`). Les anomalies modifient les sous-ledgers (registre des composants, tiers, régularisations…) et marquent les programmes concernés ; les écritures dérivées (amortissements, quote-part des subventions, dépréciation des créances) sont recalculées par le même code que le monde propre (`anomalies/closing.ts`, utilisé aussi par `posting.ts`).
+- **Corrections et impacts.** `buildCorrectionKey` construit les 31 états successifs ; l'écriture de correction d'une partie est la différence, compte par compte et par auxiliaire, entre deux états consécutifs ; les impacts (résultat, capitaux propres, CAF, autofinancement net, bilan) se lisent sur ces différences. `buildSynthesis` produit la synthèse de référence du §5. Cibles des impacts : `calibration.json` → `impacts` (contrôle seulement).
+- **Faits de présentation** sans écriture : lignes d'annexe omises ou altérées (`presentation.annexCells`, appliquées par `buildAnnex`), reclassements des états (`presentation.reclassifications`), rapport de gestion (`facts.report`, lu par `report.ts`), variantes de documents (`facts.documents`).
+- **Documents** : modèles structurés (`documents/model.ts` : blocs, indices rattachés aux blocs, modes d'accès) construits à partir des mondes propre et présenté ; faits narratifs (personnes, dates, montants cités par des tiers) dans `params/documents.json` ; aucun montant littéral dans `src/scenario/documents/` (garde-fou).
+- **Ajustements du générateur** (consignés en PV-57 à PV-61) : effacements de dettes limités aux locataires restés dans les lieux, factures échues intégrant les retards ordinaires, calage de la dotation présentée sans toucher aux ex-locataires, vacance technique paramétrée.
+- **Revue métier** : `npm run review-pack` écrit `docs/revue-metier/` (HTML et CSV, versionnés pour la validation).
+
 ## Commandes
 
 ```bash
 npm install
 npm run dev           # écran de contrôle (Vite)
-npm test              # génère puis lance Vitest (≈ 15 s)
+npm test              # génère puis lance Vitest (≈ 20 s)
 npm run build         # typecheck + site statique (dist/)
 npm run build:single  # fichier HTML unique hors ligne (dist-single/index.html, ≈ 1 Mo)
 npm run generate      # fichiers d'inspection dans generated/ ; « -- --update-lock » met à jour scenario.lock.json
-npm run calibrate     # rapport cibles / obtenu ; « -- --solve » recalcule params/levers.json
+npm run calibrate     # rapport cibles / obtenu (propres et présentés) ; « -- --solve » recalcule params/levers.json
+npm run review-pack   # dossier de revue métier : docs/revue-metier/ (HTML + CSV)
 npm run typecheck
 ```
 
@@ -76,8 +86,11 @@ npm run typecheck
 - `src/engine/` — moteur pur : montants, dates, aléa à graine, plan de comptes (CSV + import), écritures, balance, FEC, états, analyse (EBE, CAF, autofinancement net), sous-ledgers (amortissements par composant, échéanciers et ICNE).
 - `src/scenario/params/` — paramètres éditables (JSON, plan de comptes CSV), validés par Zod (`schema.ts`).
 - `src/scenario/generator/` — générateur du monde propre : `portfolio` (patrimoine, composants, subventions), `loans`, `tenancy` (baux, quittancement, LOGIGES, ventes), `purchases` (factures, investissements, paie, taxes, PGE, régularisation des charges), `sales`, `posting` (écritures 2024-2025), `index` (assemblage).
-- `src/scenario/annex.ts`, `calibration.ts`, `fingerprint.ts` — annexe, rapport de calibrage, empreinte.
+- `src/scenario/annex.ts`, `calibration.ts`, `fingerprint.ts`, `report.ts` — annexe (et altérations de présentation), rapport de calibrage, empreinte, rapport de gestion (délais de paiement, vacance, autofinancement net).
+- `src/scenario/anomalies/` — `types.ts` (module, parties, signature, négociation, débrief), `draft.ts` (brouillon copie-sur-écriture), `closing.ts` (écritures dérivées), `modules/` (A01 à A22 par cycle), `presented.ts` (états, corrections, impacts), `synthesis.ts` (synthèse de référence).
+- `src/scenario/documents/` — `model.ts`, `context.ts` (formats, constructeur, indices), `catalog/` (permanent, gouvernance, comptabilité, contrats, courrier et tiers, bruit), `false-leads.ts` (F1 à F7), `index.ts` (`buildDocuments`).
+- `scripts/review-pack.ts` — dossier de revue métier.
 - `src/ui/` — écran de contrôle (J1) : cibles, balance, états, annexe, CAF, FEC.
-- `tests/` — moteur, intégrité (balance ↔ sous-ledgers ↔ annexe ↔ FEC), calibrage, déterminisme, garde-fous.
+- `tests/` — moteur, intégrité (balance ↔ sous-ledgers ↔ annexe ↔ FEC), calibrage, déterminisme, garde-fous ; J2 : monde présenté et invariant (`anomalies/presented`), impacts du §5 (`anomalies/impacts`), composabilité deux à deux (`anomalies/composability`), documents et indices (`documents/`).
 
 Dépendances de développement : les alertes `npm audit` (vitest, braces) concernent l'outillage de développement, pas le jeu livré.

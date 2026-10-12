@@ -139,6 +139,7 @@ export const calibrationSchema = z.object({
   presented: z.record(z.string(), z.record(z.string(), target)),
   clean: z.record(z.string(), z.record(z.string(), target)),
   anomalyMetrics: z.record(z.string(), z.union([target, z.string()])),
+  impacts: z.record(z.string(), z.union([target, z.string()])),
 });
 export type CalibrationParams = z.infer<typeof calibrationSchema>;
 
@@ -258,6 +259,8 @@ export const scenarioSchema = z.object({
     aplMonthlyMeanEuros: euros,
     turnoverPerYear: z.number(),
     vacancyMonthsMean: z.number(),
+    /** Share of the 2025 departures in old programmes followed by heavy repairs (technical vacancy). */
+    heavyRepairShare: z.number().min(0).max(1),
     departuresWithDebtShare: z.number(),
   }),
   tenants: z.object({
@@ -342,3 +345,28 @@ export const referencesSchema = z.object({
   references: z.array(z.object({ id: z.string(), label: z.string(), status: z.enum(['cdc', 'validated', 'general']), pv: z.string().optional() })),
 });
 export type Reference = z.infer<typeof referencesSchema>['references'][number];
+
+const person = z.object({ name: z.string(), role: z.string() });
+export const documentsParamsSchema = z.object({
+  people: z.record(z.string(), person),
+  grantors: z.record(z.string(), z.string()),
+  calendar: z.record(z.string(), isoDate),
+  boardMeetings: z.record(z.string(), isoDate),
+  ceoBonusResultTargetEuros: euros,
+  A01: z.object({ inaugurationDate: isoDate, operationSheetDate: isoDate }),
+  A03: z.object({ conditionLiftedDate: isoDate }),
+  A05: z.object({ cfoMailDate: isoDate }),
+  A07: z.object({ providerStart: isoDate, providerReportDate: isoDate, providerRecoveredPct: z.number(), commissionDate: isoDate }),
+  A11: z.object({ cfoMailDate: isoDate, calculationNoteDate: isoDate }),
+  A12: z.object({ conventionDate: isoDate }),
+  A15: z.object({ judgmentDate: isoDate, letterDate: isoDate, pressDate: isoDate, declaredLiabilitiesEuros: euros, realisableAssetsEuros: euros, expectedRecoveryPct: z.number() }),
+  A16: z.object({ os7Date: isoDate, summonsDate: isoDate, lawyerReplyDate: isoDate }),
+  A17: z.object({ rentNoteDate: isoDate }),
+  A19: z.object({ replayDate: isoDate }),
+  F1: z.object({ previousYearStudies: z.boolean() }),
+  F3: z.object({ recruitedCaretakers: z.number().int().min(0) }),
+  F4: z.object({ offersFactors: z.array(z.number()).min(2), awardDate: isoDate }),
+  F6: z.object({ outstandingChequesEuros: euros, clearedBy: isoDate, count: z.number().int() }),
+  F7: z.object({ signOffDate: isoDate }),
+});
+export type DocumentsParams = z.infer<typeof documentsParamsSchema>;

@@ -186,7 +186,7 @@ export function buildLeases(st: GenState): void {
           current.endReason = 'departure';
           current = null;
           vacantUntil = i + Math.max(1, Math.round(rng.uniform(0.5, r.vacancyMonthsMean * 1.6)));
-          if (heavyRepairProgrammes.has(d.programmeId) && y === 2025 && m >= 2 && m <= 9 && rng.chance(0.22)) d.technicalVacancy = { from: monthStart(y, m + 1), reason: 'heavyRepairs' };
+          if (heavyRepairProgrammes.has(d.programmeId) && y === 2025 && m >= 2 && m <= 9 && rng.chance(r.heavyRepairShare)) d.technicalVacancy = { from: monthStart(y, m + 1), reason: 'heavyRepairs' };
         }
       } else if (i > vacantUntil) {
         const frozen = (d.programmeId === 'GLB' && (y > 2024 || m >= 7)) || (d.programmeId === 'CHA' && y === 2025 && m >= 6) || (d.technicalVacancy && monthStart(y, m) >= d.technicalVacancy.from);

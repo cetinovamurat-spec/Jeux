@@ -132,7 +132,7 @@ export const A11: AnomalyModule = {
       stance: 'yieldsOnEvidence',
       character: 'cfo',
       argument: 'Il s’agit d’une erreur d’interprétation des conventions : nous pensions pouvoir refacturer nos frais de gestion. Je vous transmets une note de calcul.',
-      requiredEvidence: ['conventions-gestionnaires-foyers', 'confirmations-gestionnaires', 'extraction-fec-a11'],
+      requiredEvidence: ['conventions-gestionnaires-foyers', 'confirmations-gestionnaires', 'journal-ecritures-inventaire'],
       requiresPartner: true,
     },
   ],

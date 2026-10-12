@@ -9,7 +9,7 @@ import { allocate, type Cents } from '../../engine/money';
 import { accumulatedDepreciation, accumulatedSubsidyRelease } from '../../engine/subledgers/depreciation';
 import { accruedInterest, outstandingAt } from '../../engine/subledgers/loans';
 import type { AssetComponent, EntryLine, JournalEntry, Ledger } from '../../engine/types';
-import type { Invoice, Lease, TenantAccount } from '../datasets';
+import type { Invoice, Lease } from '../datasets';
 import { Book, eur, grantorAccounts, type GenState } from './core';
 import { CLEAN_METHOD, allowances, impairmentMovements } from '../impairment';
 import { depreciationLines, subsidyReleaseLines } from '../anomalies/closing';

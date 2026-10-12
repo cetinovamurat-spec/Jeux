@@ -1,0 +1,127 @@
+﻿Compte;Libellé;Solde 2025 présenté;Solde 2025 corrigé;Écart (présenté − corrigé);Solde 2024 certifié
+1013;Capital souscrit – appelé, versé;-6250000,00;-6250000,00;0,00;-6250000,00
+1068;Autres réserves;-112453123,76;-112453123,76;0,00;-107053228,62
+120;Résultat de l'exercice (bénéfice);0,00;0,00;0,00;0,00
+1311;Subventions d'investissement – État;-85112643,52;-85112643,52;0,00;-83894045,19
+1312;Subventions d'investissement – Région;-37668532,57;-37668532,57;0,00;-36693653,91
+1313;Subventions d'investissement – Département;-12482437,71;-12062437,71;-420000,00;-11751278,71
+1314;Subventions d'investissement – Communes et EPCI;-55987016,32;-55987016,32;0,00;-54768417,99
+1317;Subventions d'investissement – Action Logement;-10781451,23;-10781451,23;0,00;-10050292,24
+1318;Subventions d'investissement – Autres (ANRU…);-675000,00;-675000,00;0,00;-675000,00
+13911;Subventions inscrites au compte de résultat – État;48622412,69;48626478,43;-4065,74;46592844,99
+13912;Subventions inscrites au compte de résultat – Région;17989635,04;17995463,56;-5828,52;17022942,76
+13913;Subventions inscrites au compte de résultat – Département;4812278,22;4812278,22;0,00;4549832,69
+13914;Subventions inscrites au compte de résultat – Communes et EPCI;29349515,70;29356907,96;-7392,26;27993131,03
+13917;Subventions inscrites au compte de résultat – Action Logement;3679465,41;3682024,27;-2558,86;3441176,46
+13918;Subventions inscrites au compte de résultat – Autres;236342,47;315590,81;-79248,34;213842,47
+1511;Provisions pour litiges;-180000,00;-180000,00;0,00;-160000,00
+1572;Provisions pour gros entretien;-6180000,00;-6960000,00;780000,00;-7400000,00
+1631;Emprunts auprès de la Caisse des dépôts (Banque des Territoires);-304999999,86;-307499999,86;2500000,00;-310540373,69
+1641;Emprunts auprès des établissements de crédit;-16989721,48;-16989721,48;0,00;-18292313,29
+1651;Dépôts de garantie des locataires;-3720000,07;-3720000,07;0,00;-3609999,78
+1678;Autres emprunts – Action Logement;-40510278,48;-40510278,48;0,00;-41166095,61
+1688;Intérêts courus sur emprunts;-4722149,50;-4486149,52;-235999,98;-5601700,16
+2051;Logiciels;380000,00;380000,00;0,00;310000,00
+2111;Terrains des immeubles locatifs;222516439,19;223693090,52;-1176651,33;223242560,11
+2131;Constructions locatives sur sol propre;643293223,92;651480650,98;-8187427,06;645055968,73
+2135;Installations générales, agencements et aménagements des constructions;460000,00;82000,00;378000,00;0,00
+2138;Constructions administratives (siège);2600000,00;2600000,00;0,00;2600000,00
+2183;Matériel de bureau et informatique;1378218,03;1378218,03;0,00;1237073,52
+2184;Mobilier;540547,94;540547,94;0,00;540547,94
+2312;Terrains en cours d'aménagement;16300000,00;15200000,00;1100000,00;11600000,00
+2313;Constructions en cours;44200000,00;35750000,00;8450000,00;15400000,00
+2748;Avances aux organismes du groupe;1500000,00;1500000,00;0,00;0,00
+28051;Amortissements des logiciels;-19156,16;-19156,16;0,00;-310000,00
+28131;Amortissements des constructions locatives;-355687170,06;-355841515,91;154345,85;-342238204,93
+28135;Amortissements des installations et agencements;-10250,23;-1827,21;-8423,02;0,00
+28138;Amortissements des constructions administratives;-1728109,59;-1728109,59;0,00;-1663109,59
+28183;Amortissements du matériel de bureau et informatique;-1141395,06;-1141395,06;0,00;-1005936,16
+28184;Amortissements du mobilier;-354031,54;-354031,54;0,00;-315082,25
+4011;Fournisseurs;-2537852,05;-2537852,05;0,00;-2245267,79
+4041;Fournisseurs d'immobilisations;-2582943,94;-2582943,94;0,00;-1194418,74
+4081;Fournisseurs – factures non parvenues;-3743245,22;-3927245,22;184000,00;-2777616,62
+4084;Fournisseurs d'immobilisations – factures non parvenues;0,00;-210000,00;210000,00;0,00
+4111;Locataires présents;1922753,25;2542000,00;-619246,75;2630000,00
+4114;Gestionnaires de foyers et résidences – redevances;585000,00;585000,00;0,00;0,00
+4115;Locataires partis;3275000,00;3275000,00;0,00;3010000,00
+4116;Locataires en procédure (contentieux, surendettement);900000,00;900000,00;0,00;820000,00
+4181;Locataires – régularisation de charges à facturer;219438,68;111338,52;108100,16;95350,84
+4191;Locataires – soldes créditeurs;0,00;-910000,00;910000,00;-870000,00
+4196;Locataires – sommes à restituer;-4106100,22;-4348593,63;242493,41;-3699353,25
+421;Personnel – rémunérations dues;0,00;0,00;0,00;0,00
+4282;Dettes provisionnées pour congés à payer;-690000,00;-690000,00;0,00;-640000,00
+431;Sécurité sociale;-374216,30;-374216,30;0,00;-355592,83
+437;Autres organismes sociaux;-203740,96;-203740,96;0,00;-193601,47
+4411;État – subventions à recevoir;2927598,86;2927598,86;0,00;2122813,65
+4412;Région – subventions à recevoir;2424079,07;2424079,07;0,00;1934090,90
+4413;Département – subventions à recevoir;2176559,33;1756559,33;420000,00;1573568,20
+4414;Communes et EPCI – subventions à recevoir;3187598,84;3187598,84;0,00;2182613,63
+4417;Action Logement – subventions à recevoir;1756559,31;1756559,31;0,00;1333568,19
+4431;Caisse d'allocations familiales – APL à recevoir (tiers payant);0,00;0,00;0,00;0,00
+4471;Taxes foncières et taxe d'enlèvement des ordures ménagères à payer;0,00;0,00;0,00;0,00
+4487;État – produits à recevoir (dégrèvements);850000,00;850000,00;0,00;0,00
+462;Créances sur cessions d'immobilisations;1060000,00;0,00;1060000,00;0,00
+4687;Divers – produits à recevoir;300000,00;0,00;300000,00;0,00
+471;Compte d'attente;-2500000,00;0,00;-2500000,00;0,00
+486;Charges constatées d'avance;325000,00;325000,00;0,00;320000,00
+4911;Dépréciation des comptes de locataires présents;-630000,83;-511000,74;-119000,09;-590000,78
+4914;Dépréciation des créances sur gestionnaires de foyers;0,00;-468000,00;468000,00;0,00
+4915;Dépréciation des comptes de locataires partis;-2647750,32;-3115000,00;467249,68;-2860000,00
+4916;Dépréciation des comptes de locataires en procédure;-900000,00;-900000,00;0,00;-820000,00
+5121;Banque – compte courant;5999883,93;5999883,93;0,00;17262552,63
+5124;Banque – comptes à terme;22000000,00;22000000,00;0,00;32000000,00
+6061;Fournitures non stockables (eau, énergie);5866409,71;5866409,71;0,00;6022549,90
+6063;Fournitures d'entretien et de petit équipement;200000,00;200000,00;0,00;190000,00
+6111;Prestations de nettoyage et d'entretien des parties communes;881076,72;881076,72;0,00;869923,88
+6131;Locations mobilières;165000,00;165000,00;0,00;160000,00
+614;Charges de copropriété (dont honoraires de syndic);211000,00;211000,00;0,00;202000,00
+61521;Entretien courant non récupérable;3468496,14;3846496,14;-378000,00;3804640,80
+61522;Gros entretien;2190000,00;2190000,00;0,00;2300000,00
+61523;Entretien récupérable (contrats);1282580,06;1282580,06;0,00;1254697,92
+6156;Maintenance informatique;260000,00;260000,00;0,00;260000,00
+616;Primes d'assurance;645000,00;645000,00;0,00;610000,00
+6226;Honoraires;698000,00;698000,00;0,00;450000,00
+6227;Frais d'actes et de contentieux;126000,00;126000,00;0,00;118000,00
+6231;Annonces et insertions;22000,00;22000,00;0,00;25000,00
+626;Frais postaux et de télécommunications;145000,00;145000,00;0,00;140000,00
+627;Services bancaires;47000,00;47000,00;0,00;45000,00
+6281;Frais de structure refacturés par le GIE du groupe;1290000,00;1474000,00;-184000,00;1250000,00
+6282;Cotisations CGLLS et ANCOLS;700000,00;700000,00;0,00;700000,00
+6288;Autres services extérieurs (dont recouvrement amiable);160000,00;160000,00;0,00;120000,00
+63512;Taxes foncières;5170000,00;5170000,00;0,00;4800000,00
+63513;Taxe d'enlèvement des ordures ménagères;1560000,00;1560000,00;0,00;1500000,00
+6358;Autres droits et taxes;74000,00;74000,00;0,00;70000,00
+6411;Salaires et appointements;6048951,05;6048951,05;0,00;5734265,73
+6412;Congés payés;50000,00;50000,00;0,00;30000,00
+6413;Primes et gratifications;190000,00;190000,00;0,00;0,00
+6451;Cotisations à l'URSSAF;1612650,36;1612650,36;0,00;1528755,25
+6453;Cotisations aux caisses de retraite;728293,71;728293,71;0,00;690405,59
+6458;Cotisations aux autres organismes sociaux;260104,88;260104,88;0,00;246573,43
+6541;Pertes sur créances irrécouvrables – locataires;553538,25;791538,25;-238000,00;452760,65
+658;Charges diverses de gestion courante;48000,00;48000,00;0,00;45000,00
+6611;Intérêts des emprunts;10524222,52;10288222,54;235999,98;11545269,60
+6712;Pénalités et amendes;12000,00;12000,00;0,00;10000,00
+6718;Autres charges exceptionnelles sur opérations de gestion;150000,00;150000,00;0,00;30000,00
+6752;Valeur comptable des immobilisations corporelles cédées;1947760,82;1658260,84;289499,98;1762635,19
+6758;Valeur comptable des composants sortis (remplacement, démolition);533,94;315706,54;-315172,60;0,00
+68111;Dotations aux amortissements des immobilisations;16495680,09;17011851,91;-516171,82;16753615,12
+68152;Dotations aux provisions pour risques;50000,00;50000,00;0,00;40000,00
+68157;Dotations aux provisions pour gros entretien;1450000,00;1450000,00;0,00;1220909,00
+68174;Dotations aux dépréciations des créances;1425000,00;2031440,66;-606440,66;1207452,23
+7031;Récupération des charges locatives;-11199999,94;-10945999,93;-254000,01;-10942320,37
+70411;Loyers des logements conventionnés;-43363571,32;-43212819,19;-150752,13;-41895434,19
+70412;Loyers des logements non conventionnés;-3080133,37;-3080133,37;0,00;-3006231,76
+70413;Redevances des foyers et résidences;-1356000,00;-1356000,00;0,00;-1356000,00
+70414;Loyers des locaux commerciaux;-432944,64;-432944,64;0,00;-419520,00
+70415;Loyers des stationnements et annexes;-644162,09;-642742,08;-1420,01;-622812,00
+70491;Réduction de loyer de solidarité;2470169,81;2467344,48;2825,33;2400005,59
+7088;Produits des activités annexes;-1550000,00;-1250000,00;-300000,00;-920000,00
+741;Subventions d'exploitation;-80000,00;-80000,00;0,00;-80000,00
+758;Produits divers de gestion courante;-30000,00;-30000,00;0,00;-30000,00
+7681;Intérêts des placements;-1000000,00;-1000000,00;0,00;-1480000,00
+7718;Autres produits exceptionnels sur opérations de gestion;-1100000,00;-1100000,00;0,00;-1150000,00
+7752;Produits des cessions d'immobilisations corporelles;-5447760,84;-4387760,84;-1060000,00;-4462635,19
+777;Quote-part des subventions d'investissement virée au résultat;-4875879,13;-4974972,85;99093,72;-5036949,36
+78152;Reprises sur provisions pour risques;-30000,00;-30000,00;0,00;-60000,00
+78157;Reprises sur provisions pour gros entretien;-2670000,00;-1890000,00;-780000,00;-1550000,00
+78174;Reprises sur dépréciations des créances;-1517249,63;-1307440,70;-209808,93;-977452,15
