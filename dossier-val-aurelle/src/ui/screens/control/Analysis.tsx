@@ -1,7 +1,7 @@
-import { formatPercent } from '../../engine/format';
-import { useDossierData } from '../app/context';
-import { Amount } from '../components/Amount';
-import { Panel, td, th } from '../components/Panel';
+import { formatPercent } from '../../../engine/format';
+import { useDossierData } from '../../app/context';
+import { Amount } from '../../components/Amount';
+import { Panel, td, th } from '../../components/Panel';
 
 export function AnalysisScreen() {
   const d = useDossierData();

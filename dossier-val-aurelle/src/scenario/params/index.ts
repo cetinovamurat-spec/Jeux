@@ -10,6 +10,7 @@ import statementsJson from './statements.json';
 import analysisJson from './analysis.json';
 import anomaliesJson from './anomalies.json';
 import documentsJson from './documents.json';
+import gameJson from './game.json';
 import referencesJson from './references.json';
 import { parseChartCsv } from '../../engine/chart';
 import type { AnalysisDefinitions } from '../../engine/analysis';
@@ -18,6 +19,7 @@ import {
   analysisSchema,
   anomaliesParamsSchema,
   documentsParamsSchema,
+  gameParamsSchema,
   referencesSchema,
   calibrationSchema,
   componentsSchema,
@@ -28,6 +30,7 @@ import {
   statementsSchema,
   type AnomaliesParams,
   type DocumentsParams,
+  type GameParams,
   type CalibrationParams,
   type Reference,
   type ComponentsParams,
@@ -52,6 +55,7 @@ export interface Params {
   chartCsv: string;
   anomalies: AnomaliesParams;
   documents: DocumentsParams;
+  game: GameParams;
   references: readonly Reference[];
 }
 
@@ -73,6 +77,7 @@ export function loadParams(): Params {
     chartCsv,
     anomalies: anomaliesParamsSchema.parse(anomaliesJson),
     documents: documentsParamsSchema.parse(documentsJson),
+    game: gameParamsSchema.parse(gameJson),
     references: referencesSchema.parse(referencesJson).references,
   };
   return cached;

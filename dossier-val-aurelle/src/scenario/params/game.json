@@ -1,0 +1,34 @@
+{
+  "_comment": "Paramètres de jeu (§4.5, §4.6, §10.2, §10.9) : équipe, budgets, jauges, calendrier, délais de réponse. Révisables sans toucher au code.",
+  "team": [
+    { "id": "senior", "name": "Vous", "role": "Auditeur senior, en charge du dossier", "hoursByDifficulty": { "assistant": 160, "senior": 140, "manager": 120 }, "speed": 1.25 },
+    { "id": "lea", "name": "Léa Garnier", "role": "Assistante de 1re année", "hoursByDifficulty": { "assistant": 130, "senior": 110, "manager": 95 }, "speed": 1.0 },
+    { "id": "hugo", "name": "Hugo Mercier", "role": "Stagiaire", "hoursByDifficulty": { "assistant": 110, "senior": 90, "manager": 75 }, "speed": 0.85 },
+    { "id": "sofia", "name": "Sofia Benali", "role": "Auditrice des systèmes d’information (mobilisable quelques heures)", "hoursByDifficulty": { "assistant": 12, "senior": 10, "manager": 8 }, "speed": 1.0 }
+  ],
+  "firm": [
+    { "id": "partner", "name": "Claire Delmas", "role": "Associée signataire" },
+    { "id": "manager", "name": "Antoine Roussel", "role": "Manager" }
+  ],
+  "budgetHours": { "assistant": 400, "senior": 340, "manager": 290 },
+  "overrunTolerancePct": 10,
+  "gauges": {
+    "clientRelation": { "label": "Relation client", "initial": 70, "lowThreshold": 30 },
+    "partnerTrust": { "label": "Confiance de l’associée", "initial": 60, "lowThreshold": 30 },
+    "karimTrust": { "label": "Confiance du chef comptable", "initial": 20, "lowThreshold": 0 }
+  },
+  "calendar": [
+    { "id": "planning", "label": "Prise de connaissance et planification", "from": "2025-11-03", "to": "2025-11-14" },
+    { "id": "interim", "label": "Intérim", "from": "2025-11-17", "to": "2025-11-20" },
+    { "id": "confirmations", "label": "Envoi des demandes de confirmation", "from": "2026-01-06", "to": "2026-01-06" },
+    { "id": "final", "label": "Final", "from": "2026-02-23", "to": "2026-03-13" },
+    { "id": "completion", "label": "Synthèse (DAF le 17/03, DG le 19/03)", "from": "2026-03-16", "to": "2026-03-20" },
+    { "id": "board", "label": "Arrêté des comptes par le conseil", "from": "2026-03-26", "to": "2026-03-26" },
+    { "id": "reporting", "label": "Rapport (signature au plus tard)", "from": "2026-03-27", "to": "2026-05-20" },
+    { "id": "generalMeeting", "label": "Assemblée générale", "from": "2026-06-18", "to": "2026-06-18" }
+  ],
+  "startDate": "2026-02-23",
+  "responseDelaysBusinessDays": { "chiefAccountant": 1, "cfo": 2, "assetDirector": 3, "rentManager": 2, "ceo": 3, "thirdPartyMin": 5, "thirdPartyMax": 15 },
+  "roundAmountMultiplesEuros": [1000, 10000, 100000],
+  "rarePairMaxOccurrences": 2
+}

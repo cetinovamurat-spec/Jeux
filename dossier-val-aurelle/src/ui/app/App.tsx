@@ -1,72 +1,87 @@
-import { createHashRouter, NavLink, Outlet, RouterProvider } from 'react-router';
-import { DossierProvider } from './context';
-import { useDossier } from './dossier';
-import { Targets } from '../screens/Targets';
-import { BalanceScreen } from '../screens/Balance';
-import { StatementsScreen } from '../screens/Statements';
-import { AnnexScreen } from '../screens/Annex';
-import { AnalysisScreen } from '../screens/Analysis';
-import { FecScreen } from '../screens/Fec';
-
-const TABS = [
-  { to: '/', label: 'Cibles de calibrage' },
-  { to: '/balance', label: 'Balance N / N-1' },
-  { to: '/etats', label: 'États financiers' },
-  { to: '/annexe', label: 'Annexe' },
-  { to: '/analyse', label: 'CAF et autofinancement' },
-  { to: '/fec', label: 'FEC' },
-];
-
-function Layout() {
-  return (
-    <div className="mx-auto max-w-[1400px] px-4 py-4">
-      <header className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-        <div>
-          <h1 className="text-lg font-semibold">Dossier Val d’Aurelle – écran de contrôle</h1>
-          <p className="text-sm text-muted">Comptes propres 2025 et comptes certifiés 2024 générés par le moteur (jalon J1). Les anomalies seront injectées au jalon J2.</p>
-        </div>
-      </header>
-      <nav aria-label="Sections" className="mb-4 flex flex-wrap gap-1 border-b border-line">
-        {TABS.map((t) => (
-          <NavLink key={t.to} to={t.to} end className={({ isActive }) => `-mb-px rounded-t-md border px-3 py-1.5 text-sm ${isActive ? 'border-line border-b-panel bg-panel font-semibold text-accent' : 'border-transparent text-muted hover:text-ink'}`}>
-            {t.label}
-          </NavLink>
-        ))}
-      </nav>
-      <main className="space-y-4">
-        <Outlet />
-      </main>
-    </div>
-  );
-}
+import { useEffect, useMemo } from 'react';
+import { createHashRouter, RouterProvider } from 'react-router';
+import { setDesigner } from '../../game/state';
+import { loadParams } from '../../scenario/params';
+import { AnalysisScreen } from '../screens/analysis/AnalysisScreen';
+import { BalanceScreen } from '../screens/balance/BalanceScreen';
+import { AnalysisScreen as ControlAnalysis } from '../screens/control/Analysis';
+import { AnnexScreen as ControlAnnex } from '../screens/control/Annex';
+import { BalanceScreen as ControlBalance } from '../screens/control/Balance';
+import { ControlScreen } from '../screens/control/ControlScreen';
+import { FecScreen as ControlFec } from '../screens/control/Fec';
+import { StatementsScreen as ControlStatements } from '../screens/control/Statements';
+import { Targets } from '../screens/control/Targets';
+import { DeskScreen } from '../screens/desk/DeskScreen';
+import { FecScreen } from '../screens/fec/FecScreen';
+import { GedScreen } from '../screens/ged/GedScreen';
+import { LedgerScreen } from '../screens/ledger/LedgerScreen';
+import { StatementsScreen } from '../screens/statements/StatementsScreen';
+import { CaseData } from './case';
+import { CaseProvider } from './context';
+import { useCaseLoader } from './dossier';
+import { Shell } from './Shell';
+import { useGame } from './store';
 
 const router = createHashRouter([
   {
     path: '/',
-    element: <Layout />,
+    element: <Shell />,
     children: [
-      { index: true, element: <Targets /> },
+      { index: true, element: <DeskScreen /> },
+      { path: 'ged', element: <GedScreen /> },
+      { path: 'ged/:docId', element: <GedScreen /> },
       { path: 'balance', element: <BalanceScreen /> },
-      { path: 'etats', element: <StatementsScreen /> },
-      { path: 'annexe', element: <AnnexScreen /> },
-      { path: 'analyse', element: <AnalysisScreen /> },
+      { path: 'grand-livre', element: <LedgerScreen /> },
       { path: 'fec', element: <FecScreen /> },
+      { path: 'etats', element: <StatementsScreen /> },
+      { path: 'analyse', element: <AnalysisScreen /> },
+      {
+        path: 'controle',
+        element: <ControlScreen />,
+        children: [
+          { index: true, element: <Targets /> },
+          { path: 'balance', element: <ControlBalance /> },
+          { path: 'etats', element: <ControlStatements /> },
+          { path: 'annexe', element: <ControlAnnex /> },
+          { path: 'analyse', element: <ControlAnalysis /> },
+          { path: 'fec', element: <ControlFec /> },
+        ],
+      },
     ],
   },
 ]);
 
+/** `?designer=1` (before or after the hash) switches the designer mode on; `?designer=0` switches it off. */
+function designerFlag(): boolean | null {
+  const read = (s: string) => new URLSearchParams(s).get('designer');
+  const v = read(window.location.search) ?? read(window.location.hash.split('?')[1] ?? '');
+  return v === null ? null : v === '1';
+}
+
 export function App() {
-  const state = useDossier();
-  if (state.status === 'loading')
+  const state = useCaseLoader();
+  const act = useGame((s) => s.act);
+  useEffect(() => {
+    const flag = designerFlag();
+    if (flag !== null) act((s) => setDesigner(s, flag));
+  }, [act]);
+  const data = useMemo(() => (state.status === 'ready' ? new CaseData(state.payload, loadParams()) : null), [state]);
+  if (state.status === 'error')
     return (
-      <div role="status" className="flex min-h-screen items-center justify-center text-muted">
-        Génération du dossier en cours (grand livre 2024 et 2025, sous-ledgers, calibrage)…
+      <div role="alert" className="p-8 text-ko">
+        Erreur de génération du dossier : {state.message}
       </div>
     );
-  if (state.status === 'error') return <div role="alert" className="p-8 text-ko">Erreur de génération : {state.message}</div>;
+  if (!data)
+    return (
+      <div role="status" aria-live="polite" className="flex min-h-screen flex-col items-center justify-center gap-2 text-muted">
+        <p className="text-base font-semibold text-ink">Dossier Val d’Aurelle</p>
+        <p>{state.status === 'loading' ? state.step : ''}</p>
+      </div>
+    );
   return (
-    <DossierProvider data={state.data}>
+    <CaseProvider value={data}>
       <RouterProvider router={router} />
-    </DossierProvider>
+    </CaseProvider>
   );
 }

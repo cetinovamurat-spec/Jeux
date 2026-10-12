@@ -12,8 +12,8 @@ Jeu de rôle d'audit légal (navigateur, 100 % client) : le joueur audite les co
 |---|---|---|
 | J0 — Plan | **Validé le 12/10/2026** | Option 1 retenue pour D2 ; D1, D3 à D7 acceptées |
 | J1 — Moteur comptable | **Livré le 12/10/2026** | Monde propre 2024 + 2025 ; 34/34 cibles de calibrage ; 85 tests verts ; écran de contrôle |
-| J2 — Anomalies et contenus | **Livré le 12/10/2026 – en attente de validation métier** | 22 anomalies (30 parties), clé de correction calculée, 125 documents et 127 indices, 7 fausses pistes ; 53/53 cibles ; 131 tests verts ; dossier `docs/revue-metier/`. **Arrêt obligatoire** : ne pas commencer J3 avant la validation |
-| J3 — Consultation | À faire | |
+| J2 — Anomalies et contenus | **Validé le 12/10/2026** | 22 anomalies (30 parties), clé de correction calculée, 125 documents et 127 indices, 7 fausses pistes ; 53/53 cibles ; 131 tests verts ; dossier `docs/revue-metier/`. Choix « à valider » de la section G acceptés par défaut |
+| J3 — Consultation | En cours | |
 | J4 — Mécanique d'audit | À faire | |
 | J5 — Personnages | À faire | |
 | J6 — Synthèse | À faire | |

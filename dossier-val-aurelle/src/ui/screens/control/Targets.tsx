@@ -1,5 +1,5 @@
-import { useDossierData } from '../app/context';
-import { Panel, td, th } from '../components/Panel';
+import { useDossierData } from '../../app/context';
+import { Panel, td, th } from '../../components/Panel';
 
 export function Targets() {
   const d = useDossierData();

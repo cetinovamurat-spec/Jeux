@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
-import { trialBalance } from '../../engine/balance';
-import { toCsv } from '../../engine/csv';
-import { formatFecAmount } from '../../engine/format';
-import { useDossierData } from '../app/context';
-import { Amount } from '../components/Amount';
-import { download } from '../components/download';
-import { Panel, td, th } from '../components/Panel';
+import { trialBalance } from '../../../engine/balance';
+import { toCsv } from '../../../engine/csv';
+import { formatFecAmount } from '../../../engine/format';
+import { useDossierData } from '../../app/context';
+import { Amount } from '../../components/Amount';
+import { download } from '../../components/download';
+import { Panel, td, th } from '../../components/Panel';
 
 export function BalanceScreen() {
   const d = useDossierData();

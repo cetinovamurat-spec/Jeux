@@ -1,7 +1,7 @@
-import type { StatementLineDef } from '../../engine/types';
-import { useDossierData } from '../app/context';
-import { Amount } from '../components/Amount';
-import { Panel, td, th } from '../components/Panel';
+import type { StatementLineDef } from '../../../engine/types';
+import { useDossierData } from '../../app/context';
+import { Amount } from '../../components/Amount';
+import { Panel, td, th } from '../../components/Panel';
 
 function depth(defs: readonly StatementLineDef[], d: StatementLineDef): number {
   let n = 0;

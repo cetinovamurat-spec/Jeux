@@ -1,9 +1,9 @@
 import { useMemo, useRef } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { buildFec, fecToText, FEC_FIELDS } from '../../engine/fec';
-import { useDossierData } from '../app/context';
-import { download } from '../components/download';
-import { Panel } from '../components/Panel';
+import { buildFec, fecToText, FEC_FIELDS } from '../../../engine/fec';
+import { useDossierData } from '../../app/context';
+import { download } from '../../components/download';
+import { Panel } from '../../components/Panel';
 
 export function FecScreen() {
   const d = useDossierData();

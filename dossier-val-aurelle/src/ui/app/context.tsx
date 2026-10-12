@@ -5,6 +5,7 @@ import type { FinancialStatements } from '../../engine/types';
 import { buildAnnex, type AnnexTable } from '../../scenario/annex';
 import { loadParams, type Params } from '../../scenario/params';
 import type { DossierData } from './dossier';
+import type { CaseData } from './case';
 
 export interface Dossier extends DossierData {
   params: Params;
@@ -30,4 +31,17 @@ export function useDossierData(): Dossier {
   const d = useContext(Ctx);
   if (!d) throw new Error('DossierProvider missing');
   return d;
+}
+
+const CaseCtx = createContext<CaseData | null>(null);
+
+export function CaseProvider({ value, children }: { value: CaseData; children: ReactNode }) {
+  return <CaseCtx.Provider value={value}>{children}</CaseCtx.Provider>;
+}
+
+/** The case being audited (presented world, documents, derivations). */
+export function useCase(): CaseData {
+  const c = useContext(CaseCtx);
+  if (!c) throw new Error('CaseProvider missing');
+  return c;
 }

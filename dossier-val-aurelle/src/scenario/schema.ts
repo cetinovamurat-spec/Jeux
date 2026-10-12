@@ -370,3 +370,18 @@ export const documentsParamsSchema = z.object({
   F7: z.object({ signOffDate: isoDate }),
 });
 export type DocumentsParams = z.infer<typeof documentsParamsSchema>;
+
+const byDifficulty = z.object({ assistant: z.number(), senior: z.number(), manager: z.number() });
+export const gameParamsSchema = z.object({
+  team: z.array(z.object({ id: z.enum(['senior', 'lea', 'hugo', 'sofia']), name: z.string(), role: z.string(), hoursByDifficulty: byDifficulty, speed: z.number().positive() })),
+  firm: z.array(z.object({ id: z.string(), name: z.string(), role: z.string() })),
+  budgetHours: byDifficulty,
+  overrunTolerancePct: z.number(),
+  gauges: z.record(z.enum(['clientRelation', 'partnerTrust', 'karimTrust']), z.object({ label: z.string(), initial: z.number().min(0).max(100), lowThreshold: z.number() })),
+  calendar: z.array(z.object({ id: z.string(), label: z.string(), from: isoDate, to: isoDate })),
+  startDate: isoDate,
+  responseDelaysBusinessDays: z.record(z.string(), z.number()),
+  roundAmountMultiplesEuros: z.array(z.number().positive()),
+  rarePairMaxOccurrences: z.number().int().positive(),
+});
+export type GameParams = z.infer<typeof gameParamsSchema>;

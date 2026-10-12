@@ -1,6 +1,6 @@
-import { useDossierData } from '../app/context';
-import { Amount } from '../components/Amount';
-import { Panel, td, th } from '../components/Panel';
+import { useDossierData } from '../../app/context';
+import { Amount } from '../../components/Amount';
+import { Panel, td, th } from '../../components/Panel';
 
 export function AnnexScreen() {
   const d = useDossierData();

@@ -20,10 +20,11 @@ interface YearValues {
   depreciation: Map<string, Cents>;
 }
 
-function lineFor(
+/** Statement line of an account for a balance (reclassifications of presentation applied). */
+export function statementLineFor(
   account: string,
   balance: Cents,
-  chart: Map<string, { rubriqueDebit: string; rubriqueCredit: string }>,
+  chart: ReadonlyMap<string, { rubriqueDebit: string; rubriqueCredit: string }>,
   presentation: PresentationOverrides,
   year: number,
 ): string {
@@ -44,7 +45,7 @@ function computeYear(input: StatementInput, balances: ReadonlyMap<string, Cents>
 
   for (const [account, b] of balances) {
     if (b === 0) continue;
-    const lineId = lineFor(account, b, chart, input.presentation, year);
+    const lineId = statementLineFor(account, b, chart, input.presentation, year);
     const def = defs.get(lineId);
     if (!def) throw new Error(`rubrique « ${lineId} » inconnue (compte ${account})`);
     if (isIncomeStatementAccount(account)) {
