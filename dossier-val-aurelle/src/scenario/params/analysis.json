@@ -1,0 +1,84 @@
+{
+ "_comment": "Conventions d'analyse (préfixes de comptes). À valider : PV-10, PV-24, PV-25.",
+ "toValidate": true,
+ "rents": {
+  "include": [
+   "704"
+  ]
+ },
+ "chargeRecoveries": {
+  "include": [
+   "703"
+  ]
+ },
+ "ebe": {
+  "products": {
+   "include": [
+    "70",
+    "71",
+    "72",
+    "74"
+   ]
+  },
+  "charges": {
+   "include": [
+    "60",
+    "61",
+    "62",
+    "63",
+    "64"
+   ]
+  }
+ },
+ "caf": {
+  "addBack": {
+   "include": [
+    "681",
+    "686",
+    "687",
+    "675"
+   ]
+  },
+  "deduct": {
+   "include": [
+    "781",
+    "786",
+    "787",
+    "775",
+    "777"
+   ]
+  }
+ },
+ "netSelfFinancing": {
+  "activityIncome": {
+   "include": [
+    "70"
+   ],
+   "exclude": [
+    "703"
+   ]
+  },
+  "financialIncome": {
+   "include": [
+    "76"
+   ]
+  }
+ },
+ "financialCharges": {
+  "include": [
+   "66"
+  ]
+ },
+ "disposalGains": {
+  "proceeds": {
+   "include": [
+    "775"
+   ]
+  },
+  "bookValue": {
+   "include": [
+    "6752"
+   ]
+  }
+ }
+}

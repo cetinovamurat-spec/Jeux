@@ -1,33 +1,18 @@
 /**
  * Core accounting types — pure engine layer (no React, no game rules).
- *
- * J0 draft, subject to validation. Business vocabulary (French accounting
- * terms) is given in comments where it helps; identifiers stay in English.
+ * Business vocabulary (French accounting terms) is given in comments;
+ * identifiers stay in English.
  */
+import type { Cents } from './money';
+import type { IsoDate } from './dates';
 
-// ---------------------------------------------------------------------------
-// Primitive value types
-// ---------------------------------------------------------------------------
-
-/**
- * Amount in euro cents (signed integer). All engine arithmetic is done in
- * cents; rounding happens once, when an entry line is built.
- * Only engine helpers may create Cents from a literal (lint rule in ui/ and
- * scenario/documents/: no hand-typed amounts).
- */
-export type Cents = number & { readonly __brand: 'Cents' };
-
-/** Calendar date 'YYYY-MM-DD', time-zone free. */
-export type IsoDate = string & { readonly __brand: 'IsoDate' };
+export type { Cents } from './money';
+export type { IsoDate } from './dates';
 
 export type FiscalYear = number;
-
-/** Account number kept as a string (e.g. '213100', '4111'). */
 export type AccountNumber = string;
-
 export type EntryId = string;
 export type JournalCode = string;
-
 /** Internal entry user (not exported to the FEC), e.g. 'NFERRAND', 'MIGRATION'. */
 export type UserId = string;
 
@@ -36,30 +21,19 @@ export type UserId = string;
 // ---------------------------------------------------------------------------
 
 export type AccountClass = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
-export type NormalSide = 'debit' | 'credit';
-
-export type StatementLineId = string;
-export type AnnexTableId =
-  | 'fixedAssets'
-  | 'depreciation'
-  | 'provisions'
-  | 'subsidies'
-  | 'debts'
-  | 'receivables'
-  | 'commitments'
-  | 'relatedParties';
-export type CafItemId = string;
 
 export interface Account {
   number: AccountNumber;
   label: string;
   accountClass: AccountClass;
-  normalSide: NormalSide;
-  /** Line of the balance sheet / income statement, depending on the sign of the closing balance. */
-  statementMapping: { ifDebit: StatementLineId; ifCredit: StatementLineId };
-  annex?: { table: AnnexTableId; line: string };
-  /** Item of the CAF computation (additive method); absent = not a CAF item. */
-  cafItem?: CafItemId;
+  normalSide: 'debit' | 'credit';
+  /** Statement line used when the closing balance is a debit (resp. credit). */
+  rubriqueDebit: string;
+  rubriqueCredit: string;
+  /** Line of an annex table, e.g. 'provisions:pge'. */
+  annex?: string;
+  /** CAF item (additive method), e.g. 'depreciationCharge'. */
+  cafItem?: string;
   /** true while the number/label is a proposal not validated by an expert. */
   toValidate: boolean;
   source: 'proposal' | 'import';
@@ -67,45 +41,15 @@ export interface Account {
 }
 
 export interface ChartOfAccounts {
-  /** e.g. 'OLS-2025 (ANC 2015-04, instruction pre-2026)' */
   framework: string;
   accounts: readonly Account[];
-}
-
-// ---------------------------------------------------------------------------
-// Business objects referenced by entries (drill-down, findings, clues)
-// ---------------------------------------------------------------------------
-
-export type ObjectKind =
-  | 'programme'
-  | 'component'
-  | 'subsidy'
-  | 'loan'
-  | 'lease'
-  | 'tenant'
-  | 'thirdParty'
-  | 'invoice'
-  | 'provision'
-  | 'account'
-  | 'document';
-
-export interface ObjectRef {
-  kind: ObjectKind;
-  id: string;
 }
 
 // ---------------------------------------------------------------------------
 // Journal entries and ledgers
 // ---------------------------------------------------------------------------
 
-export type JournalKind =
-  | 'opening'
-  | 'rentInterface'
-  | 'purchases'
-  | 'bank'
-  | 'payroll'
-  | 'misc'
-  | 'inventory';
+export type JournalKind = 'opening' | 'rentInterface' | 'purchases' | 'bank' | 'payroll' | 'misc' | 'inventory';
 
 export interface Journal {
   code: JournalCode;
@@ -113,24 +57,30 @@ export interface Journal {
   kind: JournalKind;
 }
 
-export interface EntryLine {
-  account: AccountNumber;
-  /** Auxiliary account (CompAuxNum / CompAuxLib), e.g. supplier or lender. */
-  aux?: { number: string; label: string };
-  debit: Cents;
-  credit: Cents;
-  /** Overrides the entry label for this line. */
-  label?: string;
-  lettering?: { code: string; date: IsoDate };
-  refs?: ObjectRef[];
+/**
+ * Object references carried by entry lines, as compact strings:
+ * 'prog:TIL', 'comp:TIL-B1-STR', 'loan:L042', 'tp:F0012', 'inv:FA-2025-0001', 'sub:S014'.
+ */
+export type ObjectRefString = string;
+
+/** Structured object reference used by findings and clues. */
+export interface ObjectRef {
+  kind: 'programme' | 'component' | 'subsidy' | 'loan' | 'lease' | 'tenant' | 'thirdParty' | 'invoice' | 'provision' | 'account' | 'document';
+  id: string;
 }
 
-/** Who produced the entry: the clean generator, an anomaly patch, a correction or the player. */
-export type EntryOrigin =
-  | { kind: 'generator'; stream: string }
-  | { kind: 'anomaly'; sourceId: string }
-  | { kind: 'correction'; sourceId: string; partId?: string }
-  | { kind: 'player'; findingId: string };
+export interface EntryLine {
+  account: AccountNumber;
+  debit: Cents;
+  credit: Cents;
+  /** Auxiliary account (CompAuxNum); its label comes from World.auxiliaries. */
+  aux?: string;
+  /** Overrides the entry label for this line. */
+  label?: string;
+  lettering?: string;
+  letteringDate?: IsoDate;
+  refs?: readonly ObjectRefString[];
+}
 
 export interface JournalEntry {
   /** Stable id, unique across clean entries, patches and corrections. */
@@ -142,11 +92,12 @@ export interface JournalEntry {
   pieceDate?: IsoDate;
   label: string;
   lines: readonly EntryLine[];
-  /** ValidDate — may be after year end for closing entries (clue for A05, A11). */
+  /** ValidDate — closing entries are validated after year end. */
   validDate: IsoDate;
   /** Internal user, exploited by journal-entry testing tools, never exported. */
   enteredBy: UserId;
-  origin: EntryOrigin;
+  /** 'gen:<stream>' | 'anomaly:<id>' | 'correction:<id>' | 'player:<findingId>' */
+  origin: string;
 }
 
 /** Entry before id/validation metadata are assigned (corrections, player proposals). */
@@ -160,12 +111,13 @@ export interface Ledger {
 }
 
 // ---------------------------------------------------------------------------
-// Derived views: trial balance, general ledger, FEC
+// Derived views
 // ---------------------------------------------------------------------------
 
 /** Signed amounts: debit positive, credit negative. */
 export interface TrialBalanceRow {
   account: AccountNumber;
+  label: string;
   opening: Cents;
   debit: Cents;
   credit: Cents;
@@ -175,16 +127,14 @@ export interface TrialBalanceRow {
 export interface TrialBalance {
   fiscalYear: FiscalYear;
   rows: readonly TrialBalanceRow[];
-  totals: { debit: Cents; credit: Cents };
+  totals: { opening: Cents; debit: Cents; credit: Cents; closing: Cents };
 }
 
-/** One line of the FEC — 18 fields of the LPF format, all serialised as text. */
+/** One FEC line — 18 fields of the LPF format, serialised as text. */
 export interface FecLine {
   JournalCode: string;
   JournalLib: string;
-  /** Continuous sequence assigned in validation order (late entries get late numbers). */
   EcritureNum: string;
-  /** AAAAMMJJ */
   EcritureDate: string;
   CompteNum: string;
   CompteLib: string;
@@ -193,7 +143,6 @@ export interface FecLine {
   PieceRef: string;
   PieceDate: string;
   EcritureLib: string;
-  /** Decimal comma, no thousands separator, e.g. '300000,00'. */
   Debit: string;
   Credit: string;
   EcritureLet: string;
@@ -205,92 +154,82 @@ export interface FecLine {
 
 /** In-app FEC line: exported fields plus internal fields for the analysis tools. */
 export interface FecLineInternal extends FecLine {
-  readonly _entryId: EntryId;
-  readonly _enteredBy: UserId;
+  readonly entryId: EntryId;
+  readonly enteredBy: UserId;
+  readonly debitCents: Cents;
+  readonly creditCents: Cents;
+  readonly date: IsoDate;
+  readonly validDate: IsoDate;
 }
 
 // ---------------------------------------------------------------------------
-// Financial statements and notes (états financiers, annexe)
+// Statements
 // ---------------------------------------------------------------------------
 
-export type StatementId = 'assets' | 'liabilities' | 'incomeStatement' | 'offBalanceSheet';
+export type StatementId = 'assets' | 'liabilities' | 'income';
 
 export interface StatementLineDef {
-  id: StatementLineId;
+  id: string;
   statement: StatementId;
   label: string;
-  parent?: StatementLineId;
-  order: number;
+  /** Parent subtotal line. */
+  parent?: string;
   kind: 'detail' | 'subtotal' | 'total';
-  /** Assets only: show gross / depreciation / net columns. */
-  grossAndDepreciation?: boolean;
+  /** For income-statement detail lines: charges are debit-positive, products credit-positive. */
+  nature?: 'charge' | 'product';
+  /** Liabilities line computed as the result of the income statement. */
+  isResult?: boolean;
+  /** Explicit formula for totals: ['+PRODUITS_EXPL', '-CHARGES_EXPL']. Without formula, a subtotal sums its children. */
+  formula?: readonly string[];
 }
 
 export interface StatementLineValue {
-  lineId: StatementLineId;
+  id: string;
+  /** Net amount for the year (assets: net of depreciation). */
   current: Cents;
   prior: Cents;
-  /** Assets: gross amount and accumulated depreciation of the current year. */
-  gross?: Cents;
-  depreciation?: Cents;
+  /** Assets only. */
+  currentGross?: Cents;
+  currentDepreciation?: Cents;
 }
 
 export interface FinancialStatements {
-  fiscalYear: FiscalYear;
-  lines: readonly StatementLineValue[];
-  /** Integrity facts checked by tests (assets = liabilities, P&L result = balance-sheet result). */
-  checks: { assetsTotal: Cents; liabilitiesTotal: Cents; resultFromIncomeStatement: Cents; resultInLiabilities: Cents };
-}
-
-export interface AnnexTable {
-  id: AnnexTableId;
-  title: string;
-  columns: readonly string[];
-  rows: readonly { id: string; label: string; cells: readonly Cents[] }[];
-}
-
-// ---------------------------------------------------------------------------
-// Financial analysis: CAF, HLM net self-financing, ratios
-// ---------------------------------------------------------------------------
-
-export interface CafComputation {
-  netResult: Cents;
-  /** Additive method: non-cash charges added back, non-cash income and disposal results deducted. */
-  adjustments: readonly { item: CafItemId; label: string; amount: Cents }[];
-  caf: Cents;
-}
-
-/** Autofinancement net HLM — convention parameterised in params/regulatory.json (to be validated). */
-export interface NetSelfFinancing {
-  caf: Cents;
-  /** Principal repayments of rental-activity loans, excluding early repayments. */
-  loanRepayments: Cents;
-  earlyRepaymentsExcluded: Cents;
-  netSelfFinancing: Cents;
-  denominator: { activityIncome: Cents; chargeRecoveriesExcluded: Cents; financialIncome: Cents; total: Cents };
-  /** ratio = netSelfFinancing / denominator.total */
-  ratio: number;
+  lines: Readonly<Record<string, StatementLineValue>>;
+  checks: {
+    assetsTotal: Cents;
+    liabilitiesTotal: Cents;
+    incomeStatementResult: Cents;
+    balanceSheetResult: Cents;
+    priorAssetsTotal: Cents;
+    priorLiabilitiesTotal: Cents;
+  };
 }
 
 // ---------------------------------------------------------------------------
-// Sub-ledger datasets (patrimoine, immobilisations, dette, locataires, achats)
+// Sub-ledger datasets
 // ---------------------------------------------------------------------------
 
-export type FinancingType = 'PLAI' | 'PLUS' | 'PLS' | 'PLA' | 'HLMO' | 'PALULOS' | 'PAM' | 'none';
+export type ProgrammeKind = 'family' | 'collective';
 
 export interface Programme {
   id: string;
   name: string;
   commune: string;
-  kind: 'family' | 'collectiveResidence' | 'commercial' | 'parking' | 'mixed';
-  housingUnits: number;
+  kind: ProgrammeKind;
+  /** Dwellings (family) or places (collective residences) at 01/01/2024. */
+  units: number;
   constructionYear: number;
-  inServiceDate?: IsoDate;
-  financing: readonly FinancingType[];
-  /** Number of dwellings rated G (DPE) — Glycines context. */
+  inServiceDate: IsoDate;
+  financing: string;
+  regulated: boolean;
+  commercialUnits: number;
+  parkingSpaces: number;
   energyClassGUnits: number;
-  status: 'inService' | 'underConstruction' | 'demolitionDecided' | 'partlySold';
-  managerThirdPartyId?: string;
+  buildings: number;
+  /** Collective residences: managing association (third-party id). */
+  managerId?: string;
+  /** Lots held in a co-ownership managed by a syndic. */
+  coOwnership?: boolean;
 }
 
 export type ComponentFamily =
@@ -303,43 +242,51 @@ export type ComponentFamily =
   | 'electricity'
   | 'plumbing'
   | 'lifts'
+  | 'fittings'
   | 'other';
 
 export interface AssetComponent {
   id: string;
   programmeId: string;
+  building: string;
   family: ComponentFamily;
   label: string;
+  /** Operation that financed it (construction, rehabilitation, replacement). */
+  operationId: string;
+  account: AccountNumber;
   cost: Cents;
   inServiceDate: IsoDate;
-  /** 0 for land (not depreciated). */
+  /** 0 = not depreciated (land). */
   usefulLifeYears: number;
-  acquisitionKind: 'initial' | 'replacement' | 'improvement';
   replacesComponentId?: string;
-  disposal?: { date: IsoDate; reason: 'sale' | 'demolition' | 'replacement'; proceeds?: Cents };
-  /** Revised plan (e.g. demolition decided): remaining value depreciated until this date. */
-  revisedEndDate?: IsoDate;
+  /** Last day of depreciation and exit reason. */
+  disposal?: { date: IsoDate; reason: 'sale' | 'demolition' | 'replacement' | 'scrapped'; saleId?: string };
+  /** Revised plan (demolition decided): from `from`, the net book value is depreciated until `until`. */
+  revisedPlan?: { from: IsoDate; until: IsoDate };
 }
 
-/** Work in progress (immobilisations en cours) per programme/operation. */
-export interface ConstructionOperation {
+export interface Operation {
   id: string;
   programmeId: string;
-  budget: Cents;
-  receptionDate?: IsoDate;
-  /** Fiche de situation financière et comptable status. */
-  fsfcStatus: 'inProgress' | 'delivered' | 'closed';
+  kind: 'construction' | 'rehabilitation' | 'replacement' | 'improvement' | 'acquisition';
+  label: string;
+  year: number;
 }
 
 export interface Subsidy {
   id: string;
+  operationId: string;
   programmeId: string;
-  grantorThirdPartyId: string;
+  grantorId: string;
+  account: AccountNumber;
   amount: Cents;
   decisionDate: IsoDate;
-  /** Lapse clause (caducité) — A09. */
-  lapse?: { worksMustStartBefore: IsoDate; lapsedOn?: IsoDate };
-  receivedToDate: Cents;
+  /** Lapse clause (caducité). */
+  lapse?: { worksMustStartBefore: IsoDate; noticeDate?: IsoDate };
+  /** Cash received schedule. */
+  receipts: readonly { date: IsoDate; amount: Cents }[];
+  /** Cancelled (caducité notified) — no longer recognised from this date. */
+  cancelledOn?: IsoDate;
 }
 
 export type LoanRate =
@@ -349,58 +296,38 @@ export type LoanRate =
 
 export interface Loan {
   id: string;
-  lenderThirdPartyId: string;
-  /** Product key in params/loan-products.json (PLUS, PLAI, PAM, PHB…). */
+  lenderId: string;
   product: string;
   programmeId?: string;
-  /** Rental activity loans enter the HLM net self-financing computation. */
   activity: 'rental' | 'other';
+  account: AccountNumber;
+  contractNumber: string;
+  /** Original principal (display) and signature date. */
   principal: Cents;
   startDate: IsoDate;
-  maturityDate: IsoDate;
-  periodicity: 'annual' | 'semiannual' | 'quarterly';
-  firstDueDate: IsoDate;
+  /** Schedule anchor: outstanding capital right after `refDate` (a due date or the drawdown date). */
+  refDate: IsoDate;
+  refOutstanding: Cents;
+  /** Number of remaining periods after refDate. */
+  remainingPeriods: number;
+  periodMonths: 12 | 6 | 3;
+  /** First due date after refDate. */
+  nextDueDate: IsoDate;
   rate: LoanRate;
-  amortisation: 'constant' | 'progressive' | 'inFine';
-  progressivityPct?: number;
+  amortisation: 'annuity' | 'constant' | 'deferred';
+  /** Deferred amortisation: number of interest-only (or zero) periods first. */
+  deferredPeriods?: number;
 }
 
 export interface LoanScheduleLine {
   loanId: string;
   dueDate: IsoDate;
-  /** Rate applied over the period ending at dueDate (revised at the previous due date). */
+  periodStart: IsoDate;
   ratePct: number;
   interest: Cents;
   principal: Cents;
   early: boolean;
   outstandingAfter: Cents;
-}
-
-export interface Lease {
-  id: string;
-  programmeId: string;
-  tenantId: string;
-  startDate: IsoDate;
-  endDate?: IsoDate;
-  regulated: boolean; // logement conventionné
-  /** Monthly amounts (loyer principal, provisions pour charges, RLS, APL). */
-  monthlyRent: { y2024: Cents; y2025: Cents };
-  monthlyChargeProvision: Cents;
-  monthlyRls: Cents;
-  monthlyApl: Cents;
-  deposit: Cents;
-}
-
-export type TenantProcedure = 'none' | 'amicable' | 'litigation' | 'overindebtedness' | 'debtDischarge';
-
-/** Tenant account in the property-management auxiliary (LOGIGES). */
-export interface TenantAccount {
-  tenantId: string;
-  status: 'present' | 'former';
-  balance: Cents; // signed: debit = owed by the tenant
-  ageing: { lt3m: Cents; m3to6: Cents; m6to12: Cents; gt12m: Cents };
-  procedure: TenantProcedure;
-  depositHeld: Cents;
 }
 
 export interface ThirdParty {
@@ -415,65 +342,34 @@ export interface ThirdParty {
     | 'groupEntity'
     | 'residenceManager'
     | 'tenantAssociation'
-    | 'receiver';
+    | 'receiver'
+    | 'socialBody'
+    | 'other';
   relatedParty: boolean;
-}
-
-export interface Invoice {
-  id: string;
-  supplierThirdPartyId: string;
-  number: string;
-  invoiceDate: IsoDate;
-  receivedDate: IsoDate;
-  dueDate: IsoDate;
-  /** Recorded incl. non-recoverable VAT (simplification, see CLAUDE.md). */
-  amount: Cents;
-  account: AccountNumber;
-  programmeId?: string;
-  description: string;
-  purchaseOrderRef?: string;
-  paidDate?: IsoDate;
-}
-
-export interface Datasets {
-  programmes: readonly Programme[];
-  components: readonly AssetComponent[];
-  operations: readonly ConstructionOperation[];
-  subsidies: readonly Subsidy[];
-  loans: readonly Loan[];
-  loanSchedules: readonly LoanScheduleLine[];
-  leases: readonly Lease[];
-  tenants: readonly TenantAccount[];
-  thirdParties: readonly ThirdParty[];
-  invoices: readonly Invoice[];
-}
-
-export type DatasetName = keyof Datasets;
-
-// ---------------------------------------------------------------------------
-// World: everything the engine derives views from
-// ---------------------------------------------------------------------------
-
-/** Presentation-only choices applied when building statements and notes (A21, A22). */
-export interface PresentationOverrides {
-  reclassifications: readonly {
-    account: AccountNumber;
-    to: StatementLineId;
-    years: readonly FiscalYear[];
-  }[];
-  annexCells: readonly {
-    table: AnnexTableId;
-    rowId: string;
-    column: number;
-    transform: { kind: 'transposeDigits'; positions: readonly [number, number] } | { kind: 'omit' };
-  }[];
+  /** Auxiliary account number (CompAuxNum) when it has one. */
+  aux?: string;
 }
 
 export interface World {
+  meta: {
+    scenarioId: string;
+    seed: string;
+    generatorVersion: string;
+    entityName: string;
+    currentYear: FiscalYear;
+    priorYear: FiscalYear;
+  };
   chart: ChartOfAccounts;
   journals: readonly Journal[];
-  /** 2024 is simulated with the same generator (certified accounts); 2025 is the audited year. */
+  auxiliaries: Readonly<Record<string, string>>;
   ledgers: { prior: Ledger; current: Ledger };
-  datasets: Datasets;
+  /** Scenario-specific datasets (sub-ledgers, management data) — see scenario/types. */
+  datasets: Readonly<Record<string, unknown>>;
   presentation: PresentationOverrides;
+}
+
+/** Presentation-only choices applied when building statements and notes (A21, A22). */
+export interface PresentationOverrides {
+  reclassifications: readonly { account: AccountNumber; to: string; years: readonly FiscalYear[] }[];
+  annexCells: readonly { table: string; rowId: string; column: string; transform: 'transposeDigits23' | 'omit' }[];
 }

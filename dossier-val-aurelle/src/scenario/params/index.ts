@@ -1,0 +1,64 @@
+/** Loads and validates the editable scenario parameters. */
+import chartCsv from './plan-comptable-ols-2025.csv?raw';
+import scenarioJson from './scenario.json';
+import programmesJson from './programmes.json';
+import componentsJson from './components.json';
+import loanProductsJson from './loan-products.json';
+import regulatoryJson from './regulatory.json';
+import calibrationJson from './calibration.json';
+import statementsJson from './statements.json';
+import analysisJson from './analysis.json';
+import { parseChartCsv } from '../../engine/chart';
+import type { AnalysisDefinitions } from '../../engine/analysis';
+import type { ChartOfAccounts, StatementLineDef } from '../../engine/types';
+import {
+  analysisSchema,
+  calibrationSchema,
+  componentsSchema,
+  loanProductsSchema,
+  programmesFileSchema,
+  regulatorySchema,
+  scenarioSchema,
+  statementsSchema,
+  type CalibrationParams,
+  type ComponentsParams,
+  type LoanProductsParams,
+  type ProgrammeParams,
+  type RegulatoryParams,
+  type ScenarioParams,
+} from '../schema';
+
+export const CHART_FRAMEWORK = 'Plan de comptes OLS applicable aux exercices 2025 (proposition à valider)';
+
+export interface Params {
+  scenario: ScenarioParams;
+  programmes: readonly ProgrammeParams[];
+  components: ComponentsParams;
+  loanProducts: LoanProductsParams;
+  regulatory: RegulatoryParams;
+  calibration: CalibrationParams;
+  statements: readonly StatementLineDef[];
+  analysis: AnalysisDefinitions;
+  chart: ChartOfAccounts;
+  chartCsv: string;
+}
+
+let cached: Params | null = null;
+
+export function loadParams(): Params {
+  if (cached) return cached;
+  const statements = statementsSchema.parse(statementsJson).lines as StatementLineDef[];
+  cached = {
+    scenario: scenarioSchema.parse(scenarioJson),
+    programmes: programmesFileSchema.parse(programmesJson).programmes,
+    components: componentsSchema.parse(componentsJson),
+    loanProducts: loanProductsSchema.parse(loanProductsJson),
+    regulatory: regulatorySchema.parse(regulatoryJson),
+    calibration: calibrationSchema.parse(calibrationJson),
+    statements,
+    analysis: analysisSchema.parse(analysisJson),
+    chart: parseChartCsv(chartCsv, CHART_FRAMEWORK),
+    chartCsv,
+  };
+  return cached;
+}

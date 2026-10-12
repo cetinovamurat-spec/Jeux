@@ -1,0 +1,49 @@
+{
+  "name": "dossier-val-aurelle",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Dossier Val d'Aurelle — jeu de rôle d'audit légal d'un organisme de logement social",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "generate": "vite-node scripts/generate-scenario.ts",
+    "calibrate": "vite-node scripts/calibration-report.ts",
+    "predev": "npm run generate",
+    "dev": "vite",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "pretest": "npm run generate",
+    "test": "vitest run",
+    "prebuild": "npm run generate",
+    "build": "npm run typecheck && vite build",
+    "build:single": "npm run generate && npm run typecheck && vite build --mode single",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@fontsource/inter": "^5.3.0",
+    "@fontsource/jetbrains-mono": "^5.3.0",
+    "@tanstack/react-table": "^8.21.3",
+    "@tanstack/react-virtual": "^3.14.15",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "react-router": "^7.18.4",
+    "recharts": "^3.10.1",
+    "zod": "^4.6.6",
+    "zustand": "^5.0.15"
+  },
+  "devDependencies": {
+    "@playwright/test": "~1.55.0",
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/node": "^22.20.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^5.2.0",
+    "tailwindcss": "^4.3.3",
+    "typescript": "~5.9.3",
+    "vite": "^7.3.7",
+    "vite-node": "^3.2.4",
+    "vite-plugin-singlefile": "^2.3.3",
+    "vitest": "^3.2.7"
+  }
+}

@@ -1,0 +1,901 @@
+{
+  "_comment": "Paramètres structurels du cas Val d'Aurelle 2025 (montants en euros). Les montants marqués « levier » sont ajustés par le calibrage.",
+  "seed": "val-aurelle-2025/v1",
+  "entity": {
+    "name": "Val d'Aurelle Habitat",
+    "legalForm": "Société anonyme d'habitations à loyer modéré (entreprise sociale pour l'habitat)",
+    "registeredOffice": "4, place de la Halle — Aurelle-sur-Marne",
+    "capitalEuros": 6250000,
+    "referenceShareholder": "Altaïr Habitat SA (71 %)",
+    "group": "Groupe Altaïr"
+  },
+  "years": {
+    "prior": 2024,
+    "current": 2025
+  },
+  "users": {
+    "cfoBefore": {
+      "id": "JMARCHAND",
+      "until": "2025-03-31"
+    },
+    "cfo": {
+      "id": "NFERRAND",
+      "from": "2025-04-01"
+    },
+    "chiefAccountant": "KHADDAD",
+    "payablesAccountant": "SLEFEBVRE",
+    "treasuryAccountant": "MDUBOIS",
+    "rentInterfaceBefore": "ITF_LOGIGES",
+    "rentInterfaceAfter": "ITF_LG2",
+    "payrollInterface": "ITF_PAIE",
+    "migration": "MIGRATION",
+    "migrationDate": "2025-10-01",
+    "migrationWeekend": [
+      "2025-09-27",
+      "2025-09-28"
+    ]
+  },
+  "assets": {
+    "costPerUnitByYear": [
+      [
+        1955,
+        14500
+      ],
+      [
+        1965,
+        19500
+      ],
+      [
+        1975,
+        30000
+      ],
+      [
+        1985,
+        50000
+      ],
+      [
+        1995,
+        72000
+      ],
+      [
+        2005,
+        118000
+      ],
+      [
+        2010,
+        138000
+      ],
+      [
+        2015,
+        152000
+      ],
+      [
+        2021,
+        168000
+      ]
+    ],
+    "collectivePlaceFactor": 0.55,
+    "landShareByYear": [
+      [
+        1955,
+        0.14
+      ],
+      [
+        1980,
+        0.19
+      ],
+      [
+        1995,
+        0.32
+      ],
+      [
+        2005,
+        0.4
+      ],
+      [
+        2021,
+        0.41
+      ]
+    ],
+    "pavilionFactor": 1.25,
+    "rehab": {
+      "builtBefore": 1993,
+      "minAge": 24,
+      "maxAge": 30,
+      "costPerUnitByYear": [
+        [
+          1985,
+          9000
+        ],
+        [
+          1995,
+          14000
+        ],
+        [
+          2005,
+          24000
+        ],
+        [
+          2015,
+          42000
+        ],
+        [
+          2023,
+          50000
+        ]
+      ],
+      "secondWaveAfterYears": 22
+    },
+    "subsidyRateByYear": [
+      [
+        1955,
+        0.08
+      ],
+      [
+        1980,
+        0.1
+      ],
+      [
+        2000,
+        0.12
+      ],
+      [
+        2010,
+        0.14
+      ],
+      [
+        2021,
+        0.15
+      ]
+    ],
+    "rehabSubsidyRate": 0.42,
+    "headOffice": {
+      "costEuros": 2600000,
+      "landEuros": 400000,
+      "inService": "1999-06-01",
+      "lifeYears": 40
+    },
+    "itEquipmentPerYearEuros": 140000,
+    "furniturePerYearEuros": 45000,
+    "newSoftware": {
+      "costEuros": 380000,
+      "inService": "2025-10-01",
+      "lifeYears": 5
+    }
+  },
+  "specific": {
+    "tilleuls": {
+      "costEuros": 9550000,
+      "landEuros": 1100000,
+      "os7Euros": 210000,
+      "penaltiesEuros": 340000,
+      "workStart": "2023-03-15",
+      "receptionDate": "2025-06-30",
+      "inServiceDate": "2025-07-01",
+      "spentBefore2024Euros": 3900000,
+      "spent2024Euros": 3950000,
+      "subsidies": [
+        {
+          "grantor": "ETAT",
+          "amountEuros": 286000
+        },
+        {
+          "grantor": "CA_VAL_AURELLE",
+          "amountEuros": 520000
+        },
+        {
+          "grantor": "REGION",
+          "amountEuros": 410000
+        },
+        {
+          "grantor": "ACTION_LOGEMENT",
+          "amountEuros": 180000
+        }
+      ]
+    },
+    "erables": {
+      "boilerCostEuros": 1050000,
+      "boilerInService": "2008-01-01",
+      "heatPumpCostEuros": 1380000,
+      "heatPumpInService": "2025-06-30",
+      "disposalDate": "2025-06-30"
+    },
+    "glycinesB": {
+      "rehabInService": "2015-07-01",
+      "rehabCostEuros": 3600000,
+      "rehabStructureShare": 0.333333333333,
+      "rehabSubsidyEuros": 675000,
+      "boardDecision": "2025-06-18",
+      "anruAmendment": "2025-10-09",
+      "relocationStart": "2025-09-01",
+      "revisedFrom": "2025-07-01",
+      "demolitionPlannedEnd": "2027-12-31",
+      "relocatedBy2025End": 44
+    },
+    "peupliers": {
+      "inService": "2025-09-01",
+      "doorsEuros": 82000,
+      "maintenanceItems": [
+        {
+          "label": "Peinture des cages d'escalier",
+          "euros": 196000
+        },
+        {
+          "label": "Remplacement ponctuel de robinetterie",
+          "euros": 58000
+        },
+        {
+          "label": "Réparation de toiture après infiltrations",
+          "euros": 124000
+        }
+      ]
+    },
+    "charmes": {
+      "subsidyEuros": 420000,
+      "decisionDate": "2021-03-12",
+      "lapseYears": 3,
+      "prorogationRequest": "2024-02-08",
+      "worksOrderDate": "2025-06-02",
+      "lapseNoticeDate": "2025-10-10",
+      "works2025Euros": 1250000
+    },
+    "closFleuri2026": {
+      "units": 7,
+      "promiseDate": "2025-12-12",
+      "deedDate": "2026-01-14",
+      "notaryPaymentDate": "2026-01-20",
+      "priceEuros": 1060000,
+      "nbvTargetEuros": 289500
+    },
+    "sisterAdvance": {
+      "conventionDate": "2025-09-01",
+      "date": "2025-09-15",
+      "euros": 1500000,
+      "ceilingEuros": 3500000
+    },
+    "phb": {
+      "date": "2025-12-15",
+      "euros": 2500000
+    }
+  },
+  "sales": {
+    "2024": [
+      {
+        "programme": "CLF",
+        "units": 4
+      },
+      {
+        "programme": "COQ",
+        "units": 8
+      },
+      {
+        "programme": "PAR",
+        "units": 6
+      },
+      {
+        "programme": "MAG",
+        "units": 6
+      }
+    ],
+    "2025": [
+      {
+        "programme": "CLF",
+        "units": 6
+      },
+      {
+        "programme": "COQ",
+        "units": 9
+      },
+      {
+        "programme": "PAR",
+        "units": 5
+      },
+      {
+        "programme": "MAG",
+        "units": 5
+      }
+    ]
+  },
+  "rents": {
+    "perM2ByYear": [
+      [
+        1955,
+        5.4
+      ],
+      [
+        1970,
+        5.6
+      ],
+      [
+        1985,
+        6.3
+      ],
+      [
+        1995,
+        6.7
+      ],
+      [
+        2005,
+        7.0
+      ],
+      [
+        2015,
+        7.4
+      ],
+      [
+        2025,
+        7.9
+      ]
+    ],
+    "commercialMonthlyEuros": 760,
+    "parkingMonthlyEuros": 34,
+    "parkingOccupancy": 0.71,
+    "chargeProvisionPerM2": 2.05,
+    "rlsShare": 0.5,
+    "rlsMonthlyEuros": [
+      32,
+      42,
+      52,
+      62,
+      72
+    ],
+    "aplShare": 0.47,
+    "aplMonthlyMeanEuros": 235,
+    "turnoverPerYear": 0.085,
+    "vacancyMonthsMean": 2,
+    "departuresWithDebtShare": 0.33
+  },
+  "tenants": {
+    "y2023": {
+      "presentEuros": 1400000,
+      "over6mEuros": 1120000,
+      "procedureEuros": 780000,
+      "creditEuros": 850000,
+      "formerNetEuros": 2700000,
+      "formerDepositsEuros": 145000
+    },
+    "y2024": {
+      "presentEuros": 1450000,
+      "over6mEuros": 942000,
+      "debtDischargeEuros": 238000,
+      "procedureEuros": 820000,
+      "creditEuros": 870000,
+      "formerNetEuros": 2860000,
+      "formerDepositsEuros": 150000
+    },
+    "y2025": {
+      "presentEuros": 1520000,
+      "over6mEuros": 1022000,
+      "procedureEuros": 900000,
+      "creditEuros": 910000,
+      "formerNetEuros": 3115000,
+      "formerDepositsEuros": 160000
+    },
+    "writeOffsEuros": {
+      "2024": 450000,
+      "2025": 550000
+    },
+    "recoveryRate": 0.04,
+    "debtDischargeWriteOffDate": "2025-10-31",
+    "presentedMethod": {
+      "formerRate": 0.85,
+      "debtDischargeAsOver6m": true,
+      "residenceManagerRate": 0
+    },
+    "cleanMethod": {
+      "formerRate": 1.0,
+      "over6mRate": 0.5,
+      "procedureRate": 1.0,
+      "residenceManagerRate": 0.8
+    }
+  },
+  "residenceManagers": {
+    "ACCUEIL_HORIZONS": {
+      "stopsPayingFrom": "2025-04-01"
+    }
+  },
+  "charges": {
+    "recoverable": {
+      "eau": {
+        "account": "6061",
+        "2024": 2400000,
+        "2025": 2450000
+      },
+      "chauffage": {
+        "account": "6061",
+        "2024": 2460000,
+        "2025": 2250000,
+        "collectiveOnly": true
+      },
+      "electricite_pc": {
+        "account": "6061",
+        "2024": 540000,
+        "2025": 560000
+      },
+      "ascenseurs": {
+        "account": "61523",
+        "2024": 390000,
+        "2025": 395000,
+        "collectiveOnly": true
+      },
+      "espaces_verts": {
+        "account": "61523",
+        "2024": 430000,
+        "2025": 440000
+      },
+      "nettoyage": {
+        "account": "6111",
+        "2024": 780000,
+        "2025": 790000
+      },
+      "contrats_entretien": {
+        "account": "61523",
+        "2024": 305000,
+        "2025": 315000
+      }
+    },
+    "coOwnership": {
+      "currentChargesEuros": {
+        "2024": 110000,
+        "2025": 115000
+      },
+      "recoverableShare": 0.85,
+      "syndicFeesEuros": {
+        "2024": 92000,
+        "2025": 96000
+      }
+    },
+    "nonRecoverable": {
+      "entretien_courant": {
+        "account": "61521",
+        "2024": 3600000,
+        "2025": 3400000,
+        "lever": true
+      },
+      "gros_entretien_hors_pge": {
+        "account": "61522",
+        "2024": 750000,
+        "2025": 300000
+      },
+      "assurances": {
+        "account": "616",
+        "2024": 610000,
+        "2025": 645000
+      },
+      "honoraires": {
+        "account": "6226",
+        "2024": 450000,
+        "2025": 698000
+      },
+      "actes_contentieux": {
+        "account": "6227",
+        "2024": 118000,
+        "2025": 126000
+      },
+      "gie": {
+        "account": "6281",
+        "2024": 1250000,
+        "2025": 1290000
+      },
+      "cglls": {
+        "account": "6282",
+        "2024": 700000,
+        "2025": 700000
+      },
+      "informatique": {
+        "account": "6156",
+        "2024": 260000,
+        "2025": 260000
+      },
+      "telecom": {
+        "account": "626",
+        "2024": 140000,
+        "2025": 145000
+      },
+      "banque": {
+        "account": "627",
+        "2024": 45000,
+        "2025": 47000
+      },
+      "annonces": {
+        "account": "6231",
+        "2024": 25000,
+        "2025": 22000
+      },
+      "locations": {
+        "account": "6131",
+        "2024": 160000,
+        "2025": 165000
+      },
+      "fournitures": {
+        "account": "6063",
+        "2024": 190000,
+        "2025": 200000
+      },
+      "autres_services": {
+        "account": "6288",
+        "2024": 120000,
+        "2025": 100000
+      },
+      "recouvrement_amiable": {
+        "account": "6288",
+        "2024": 0,
+        "2025": 60000
+      }
+    },
+    "gieYearEndComplementEuros": {
+      "2024": 0,
+      "2025": 184000
+    },
+    "overdueUnpaidAtYearEnd": {
+      "2025": {
+        "count": 312,
+        "euros": 1420000
+      },
+      "2024": {
+        "count": 205,
+        "euros": 880000
+      }
+    }
+  },
+  "taxes": {
+    "tfpbEuros": {
+      "2024": 4800000,
+      "2025": 5170000
+    },
+    "teomEuros": {
+      "2024": 1500000,
+      "2025": 1560000
+    },
+    "otherEuros": {
+      "2024": 70000,
+      "2025": 74000
+    },
+    "reliefEuros": {
+      "2024": 1050000,
+      "2025": 850000
+    },
+    "reliefClaim2025": {
+      "claimDate": "2025-12-15",
+      "notifiedDate": "2026-03-10",
+      "acceptedShare": 0.98
+    }
+  },
+  "payroll": {
+    "totalEuros": {
+      "2024": 8200000,
+      "2025": 8840000
+    },
+    "headcount": {
+      "2024": 185,
+      "2025": 190
+    },
+    "valueSharingBonusEuros": {
+      "2024": 0,
+      "2025": 190000
+    },
+    "caretakers": {
+      "count": 14,
+      "costEuros": {
+        "2024": 600000,
+        "2025": 632000
+      }
+    },
+    "buildingEmployees": {
+      "count": 30,
+      "costEuros": {
+        "2024": 1080000,
+        "2025": 1140000
+      }
+    },
+    "paidLeaveProvisionEuros": {
+      "2023": 610000,
+      "2024": 640000,
+      "2025": 690000
+    }
+  },
+  "otherIncome": {
+    "ancillaryEuros": {
+      "2024": 920000,
+      "2025": 1250000
+    },
+    "operatingSubsidiesEuros": {
+      "2024": 80000,
+      "2025": 80000
+    },
+    "miscEuros": {
+      "2024": 30000,
+      "2025": 30000
+    },
+    "insuranceIndemnitiesEuros": {
+      "2024": 100000,
+      "2025": 250000
+    }
+  },
+  "otherCharges": {
+    "penaltiesEuros": {
+      "2024": 10000,
+      "2025": 12000
+    },
+    "relocationEuros": {
+      "2024": 30000,
+      "2025": 150000
+    },
+    "miscManagementEuros": {
+      "2024": 45000,
+      "2025": 48000
+    }
+  },
+  "treasury": {
+    "termDepositsEuros": {
+      "2023": 30000000,
+      "2024": 32000000,
+      "2025": 22000000
+    },
+    "financialIncomeEuros": {
+      "2024": 1480000,
+      "2025": 1000000
+    }
+  },
+  "provisions": {
+    "pge": {
+      "reprise2024Euros": 1550000,
+      "y2025": {
+        "opening": 7400000,
+        "dotation": 1450000,
+        "reprise": 1890000,
+        "closing": 6960000
+      },
+      "acaciasRavalement2026Euros": 470000,
+      "belvedereEtancheite2027Euros": 310000
+    },
+    "risks": {
+      "2023": 180000,
+      "dotation": {
+        "2024": 40000,
+        "2025": 50000
+      },
+      "reprise": {
+        "2024": 60000,
+        "2025": 30000
+      }
+    }
+  },
+  "openingBalances2023": {
+    "prepaidInsuranceEuros": 290000,
+    "invoicesNotReceivedEuros": 420000,
+    "accruedChargesEuros": 120000,
+    "payrollPayablesEuros": 520000,
+    "chargesRegularisationReceivableEuros": 410000,
+    "suppliersEuros": 2600000,
+    "fixedAssetSuppliersEuros": 900000,
+    "riskProvisionEuros": 180000,
+    "creditBalancesEuros": 850000
+  },
+  "history": [
+    {
+      "year": 2021,
+      "netResultEuros": 6850000,
+      "rentsEuros": 41600000,
+      "netSelfFinancingRatioPct": 3.6
+    },
+    {
+      "year": 2022,
+      "netResultEuros": 6300000,
+      "rentsEuros": 42500000,
+      "netSelfFinancingRatioPct": 3.3
+    },
+    {
+      "year": 2023,
+      "netResultEuros": 6100000,
+      "rentsEuros": 43400000,
+      "netSelfFinancingRatioPct": 3.1
+    }
+  ],
+  "loans": {
+    "count": 120,
+    "refDate": "2023-01-01",
+    "bankRatePctRange": [
+      1.0,
+      3.2
+    ],
+    "actionLogementRatePctRange": [
+      0.25,
+      1.0
+    ],
+    "new": [
+      {
+        "id": "N24-1",
+        "product": "PAM",
+        "programme": "LIL",
+        "date": "2024-06-01",
+        "euros": 2000000
+      },
+      {
+        "id": "N24-2",
+        "product": "ECO",
+        "programme": "LIL",
+        "date": "2024-06-01",
+        "euros": 1500000
+      },
+      {
+        "id": "N24-3",
+        "product": "PLUS",
+        "programme": "TIL",
+        "date": "2024-09-01",
+        "euros": 2000000
+      },
+      {
+        "id": "N24-4",
+        "product": "PLUS_FONCIER",
+        "programme": "TIL",
+        "date": "2024-03-01",
+        "euros": 900000
+      },
+      {
+        "id": "N25-1",
+        "product": "PLUS",
+        "programme": "TIL",
+        "date": "2025-04-01",
+        "euros": 1200000
+      },
+      {
+        "id": "N25-2",
+        "product": "PLAI",
+        "programme": "TIL",
+        "date": "2025-04-01",
+        "euros": 1600000
+      },
+      {
+        "id": "N25-3",
+        "product": "PLAI_FONCIER",
+        "programme": "TIL",
+        "date": "2025-04-01",
+        "euros": 500000
+      },
+      {
+        "id": "N25-4",
+        "product": "AL",
+        "programme": "TIL",
+        "date": "2025-06-01",
+        "euros": 600000,
+        "ratePct": 0.25
+      },
+      {
+        "id": "N25-5",
+        "product": "ECO",
+        "programme": "ERA",
+        "date": "2025-07-01",
+        "euros": 900000
+      },
+      {
+        "id": "N25-6",
+        "product": "PAM",
+        "programme": "CHA",
+        "date": "2025-09-01",
+        "euros": 1200000
+      },
+      {
+        "id": "N25-7",
+        "product": "PHB",
+        "date": "2025-12-15",
+        "euros": 2500000
+      }
+    ]
+  },
+  "operationsInProgress": [
+    {
+      "id": "CMO",
+      "name": "Les Coteaux du Moulin",
+      "commune": "Brienne-le-Val",
+      "units": 64,
+      "landEuros": 2600000,
+      "costEuros": 11500000,
+      "landDate": "2023-06-15",
+      "worksStart": "2024-03-01",
+      "spent2024Euros": 3300000,
+      "spent2025Euros": 5200000,
+      "delivery": "2026-09-30",
+      "subsidyRate": 0.2,
+      "subsidyDecision": "2023-11-20"
+    },
+    {
+      "id": "BAI",
+      "name": "Résidence Bel-Air",
+      "commune": "Aurelle-sur-Marne",
+      "units": 48,
+      "landEuros": 2000000,
+      "costEuros": 8900000,
+      "landDate": "2024-11-14",
+      "worksStart": "2025-02-01",
+      "spent2024Euros": 0,
+      "spent2025Euros": 3900000,
+      "delivery": "2027-03-31",
+      "subsidyRate": 0.2,
+      "subsidyDecision": "2024-10-08"
+    },
+    {
+      "id": "CSR",
+      "name": "Le Clos Saint-Rémy (VEFA)",
+      "commune": "Saint-Rémy-d'Aurelle",
+      "units": 36,
+      "landEuros": 0,
+      "costEuros": 6500000,
+      "landDate": "2024-04-10",
+      "worksStart": "2024-04-10",
+      "spent2024Euros": 1950000,
+      "spent2025Euros": 2250000,
+      "delivery": "2026-06-30",
+      "subsidyRate": 0.18,
+      "subsidyDecision": "2024-02-22"
+    },
+    {
+      "id": "JGA",
+      "name": "Les Jardins de la Gare",
+      "commune": "Neuvic-sur-Marne",
+      "units": 80,
+      "landEuros": 3500000,
+      "costEuros": 14800000,
+      "landDate": "2023-09-28",
+      "worksStart": "2025-01-15",
+      "spent2024Euros": 600000,
+      "spent2025Euros": 5600000,
+      "delivery": "2027-06-30",
+      "subsidyRate": 0.22,
+      "subsidyDecision": "2024-06-12"
+    },
+    {
+      "id": "RCO",
+      "name": "Reconstitution de l'offre NPNRU – Les Glycines",
+      "commune": "Valmont-la-Rivière",
+      "units": 70,
+      "landEuros": 2800000,
+      "costEuros": 13000000,
+      "landDate": "2025-05-20",
+      "worksStart": "2026-01-15",
+      "spent2024Euros": 0,
+      "spent2025Euros": 2400000,
+      "delivery": "2027-12-31",
+      "subsidyRate": 0.3,
+      "subsidyDecision": "2025-10-09"
+    },
+    {
+      "id": "PRE",
+      "name": "Résidence des Prés",
+      "commune": "Les Essarts-d'Aurelle",
+      "units": 58,
+      "landEuros": 2400000,
+      "costEuros": 10600000,
+      "landDate": "2023-03-30",
+      "worksStart": "2024-06-01",
+      "spent2024Euros": 2800000,
+      "spent2025Euros": 4900000,
+      "delivery": "2026-04-30",
+      "subsidyRate": 0.21,
+      "subsidyDecision": "2023-09-14"
+    },
+    {
+      "id": "HAL",
+      "name": "Les Halles – acquisition-amélioration",
+      "commune": "Aurelle-sur-Marne",
+      "units": 24,
+      "landEuros": 1900000,
+      "costEuros": 4800000,
+      "landDate": "2025-03-18",
+      "worksStart": "2025-09-01",
+      "spent2024Euros": 0,
+      "spent2025Euros": 1600000,
+      "delivery": "2026-10-31",
+      "subsidyRate": 0.25,
+      "subsidyDecision": "2025-01-28"
+    }
+  ],
+  "commitments": {
+    "retirementEuros": {
+      "2024": 1550000,
+      "2025": 1620000
+    },
+    "actuarialReportDate": "2026-01-22",
+    "guaranteedLoansShare": 1.0
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "_comment": "Paramètres réglementaires et de marché. Chaque valeur incertaine porte toVerify = true et renvoie à docs/points-a-verifier.md.",
+  "livretA": {
+    "toVerify": true,
+    "ref": "PV-17",
+    "history": [
+      { "from": "2015-08-01", "ratePct": 0.75 },
+      { "from": "2020-02-01", "ratePct": 0.5 },
+      { "from": "2022-02-01", "ratePct": 1.0 },
+      { "from": "2022-08-01", "ratePct": 2.0 },
+      { "from": "2023-02-01", "ratePct": 3.0 },
+      { "from": "2025-02-01", "ratePct": 2.4 },
+      { "from": "2025-08-01", "ratePct": 1.7 }
+    ]
+  },
+  "irl": {
+    "toVerify": true,
+    "ref": "PV-18",
+    "values": [
+      { "quarter": "2024-T2", "index": 145.17, "annualChangePct": 3.26 },
+      { "quarter": "2025-T2", "index": 146.68, "annualChangePct": 1.04 }
+    ],
+    "capPct": 3.5,
+    "capPeriod": "du 3e trimestre 2022 au 1er trimestre 2024"
+  },
+  "rentRevision": {
+    "toVerify": true,
+    "ref": "PV-11",
+    "byYear": {
+      "2024": { "legalCapPct": 3.5, "appliedPct": 3.5 },
+      "2025": { "legalCapPct": 3.26, "appliedPct": 3.26, "votedByBoardPct": 3.5 }
+    }
+  },
+  "netSelfFinancing": {
+    "toVerify": true,
+    "ref": "PV-10",
+    "referenceRateYearPct": 0,
+    "referenceRate3YearsPct": 3,
+    "threeYearMethod": "meanOfRatios"
+  },
+  "recoverableShares": {
+    "toVerify": true,
+    "ref": "PV-06",
+    "caretakerBothTasks": 0.75,
+    "caretakerOneTask": 0.4,
+    "buildingEmployee": 1.0
+  },
+  "corporateIncomeTax": { "rate": 0, "comment": "Exonération des activités de service d'intérêt économique général (hypothèse du cas)." },
+  "materiality": {
+    "reference": { "overallEuros": 580000, "performanceEuros": 375000, "trivialEuros": 29000 },
+    "acceptableOverallRangeEuros": [470000, 700000],
+    "benchmark": "rents",
+    "benchmarkRangePct": [1.0, 1.5]
+  }
+}

@@ -5,20 +5,13 @@
  * J0 draft, subject to validation. Runtime JSON content is validated with Zod
  * schemas mirroring these types (src/scenario/schema/).
  */
-import type {
-  AnnexTableId,
-  Cents,
-  DatasetName,
-  Datasets,
-  EntryId,
-  FiscalYear,
-  IsoDate,
-  JournalEntry,
-  JournalEntryDraft,
-  ObjectRef,
-  StatementLineId,
-  World,
-} from '../engine/types';
+import type { Cents, EntryId, FiscalYear, IsoDate, JournalEntry, JournalEntryDraft, ObjectRef, World } from '../engine/types';
+import type { ScenarioDatasets } from './datasets';
+
+type AnnexTableId = string;
+type StatementLineId = string;
+type Datasets = ScenarioDatasets;
+type DatasetName = keyof ScenarioDatasets;
 
 // ---------------------------------------------------------------------------
 // Identifiers

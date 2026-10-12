@@ -1,0 +1,531 @@
+{
+ "_comment": "Modèle d'états (bilan, compte de résultat) inspiré des modèles OLS 2025 — rubriques à valider (PV-23).",
+ "toValidate": true,
+ "lines": [
+  {
+   "id": "ACTIF_TOTAL",
+   "statement": "assets",
+   "label": "TOTAL DE L'ACTIF",
+   "kind": "total"
+  },
+  {
+   "id": "A_IMMO",
+   "statement": "assets",
+   "label": "Actif immobilisé",
+   "kind": "subtotal",
+   "parent": "ACTIF_TOTAL"
+  },
+  {
+   "id": "A_IMMO_INC",
+   "statement": "assets",
+   "label": "Immobilisations incorporelles",
+   "kind": "detail",
+   "parent": "A_IMMO"
+  },
+  {
+   "id": "A_TERRAINS",
+   "statement": "assets",
+   "label": "Terrains",
+   "kind": "detail",
+   "parent": "A_IMMO"
+  },
+  {
+   "id": "A_CONSTRUCTIONS",
+   "statement": "assets",
+   "label": "Constructions locatives",
+   "kind": "detail",
+   "parent": "A_IMMO"
+  },
+  {
+   "id": "A_AUTRES_CORP",
+   "statement": "assets",
+   "label": "Autres immobilisations corporelles",
+   "kind": "detail",
+   "parent": "A_IMMO"
+  },
+  {
+   "id": "A_IMMO_COURS",
+   "statement": "assets",
+   "label": "Immobilisations corporelles en cours",
+   "kind": "detail",
+   "parent": "A_IMMO"
+  },
+  {
+   "id": "A_IMMO_FIN",
+   "statement": "assets",
+   "label": "Immobilisations financières",
+   "kind": "detail",
+   "parent": "A_IMMO"
+  },
+  {
+   "id": "A_CIRC",
+   "statement": "assets",
+   "label": "Actif circulant",
+   "kind": "subtotal",
+   "parent": "ACTIF_TOTAL"
+  },
+  {
+   "id": "A_LOCATAIRES",
+   "statement": "assets",
+   "label": "Locataires et organismes payeurs",
+   "kind": "detail",
+   "parent": "A_CIRC"
+  },
+  {
+   "id": "A_SUBV_RECEVOIR",
+   "statement": "assets",
+   "label": "Subventions à recevoir",
+   "kind": "detail",
+   "parent": "A_CIRC"
+  },
+  {
+   "id": "A_AUTRES_CREANCES",
+   "statement": "assets",
+   "label": "Autres créances",
+   "kind": "detail",
+   "parent": "A_CIRC"
+  },
+  {
+   "id": "A_DISPO",
+   "statement": "assets",
+   "label": "Disponibilités et placements",
+   "kind": "detail",
+   "parent": "A_CIRC"
+  },
+  {
+   "id": "A_CCA",
+   "statement": "assets",
+   "label": "Charges constatées d'avance",
+   "kind": "detail",
+   "parent": "A_CIRC"
+  },
+  {
+   "id": "PASSIF_TOTAL",
+   "statement": "liabilities",
+   "label": "TOTAL DU PASSIF",
+   "kind": "total"
+  },
+  {
+   "id": "P_CP",
+   "statement": "liabilities",
+   "label": "Capitaux propres",
+   "kind": "subtotal",
+   "parent": "PASSIF_TOTAL"
+  },
+  {
+   "id": "P_CAPITAL",
+   "statement": "liabilities",
+   "label": "Capital social",
+   "kind": "detail",
+   "parent": "P_CP"
+  },
+  {
+   "id": "P_RESERVES",
+   "statement": "liabilities",
+   "label": "Réserves",
+   "kind": "detail",
+   "parent": "P_CP"
+  },
+  {
+   "id": "P_RAN",
+   "statement": "liabilities",
+   "label": "Report à nouveau",
+   "kind": "detail",
+   "parent": "P_CP"
+  },
+  {
+   "id": "P_RESULTAT",
+   "statement": "liabilities",
+   "label": "Résultat de l'exercice",
+   "kind": "detail",
+   "parent": "P_CP",
+   "isResult": true
+  },
+  {
+   "id": "P_SUBV",
+   "statement": "liabilities",
+   "label": "Subventions d'investissement",
+   "kind": "detail",
+   "parent": "P_CP"
+  },
+  {
+   "id": "P_PROV",
+   "statement": "liabilities",
+   "label": "Provisions",
+   "kind": "subtotal",
+   "parent": "PASSIF_TOTAL"
+  },
+  {
+   "id": "P_PROV_RISQUES",
+   "statement": "liabilities",
+   "label": "Provisions pour risques",
+   "kind": "detail",
+   "parent": "P_PROV"
+  },
+  {
+   "id": "P_PGE",
+   "statement": "liabilities",
+   "label": "Provisions pour gros entretien",
+   "kind": "detail",
+   "parent": "P_PROV"
+  },
+  {
+   "id": "P_DETTES",
+   "statement": "liabilities",
+   "label": "Dettes",
+   "kind": "subtotal",
+   "parent": "PASSIF_TOTAL"
+  },
+  {
+   "id": "P_DETTES_FIN",
+   "statement": "liabilities",
+   "label": "Dettes financières",
+   "kind": "subtotal",
+   "parent": "P_DETTES"
+  },
+  {
+   "id": "P_EMPRUNTS_CDC",
+   "statement": "liabilities",
+   "label": "Emprunts auprès de la Caisse des dépôts",
+   "kind": "detail",
+   "parent": "P_DETTES_FIN"
+  },
+  {
+   "id": "P_EMPRUNTS_EC",
+   "statement": "liabilities",
+   "label": "Emprunts auprès des établissements de crédit",
+   "kind": "detail",
+   "parent": "P_DETTES_FIN"
+  },
+  {
+   "id": "P_EMPRUNTS_AUTRES",
+   "statement": "liabilities",
+   "label": "Autres emprunts",
+   "kind": "detail",
+   "parent": "P_DETTES_FIN"
+  },
+  {
+   "id": "P_DEPOTS",
+   "statement": "liabilities",
+   "label": "Dépôts et cautionnements reçus",
+   "kind": "detail",
+   "parent": "P_DETTES_FIN"
+  },
+  {
+   "id": "P_ICNE",
+   "statement": "liabilities",
+   "label": "Intérêts courus sur emprunts",
+   "kind": "detail",
+   "parent": "P_DETTES_FIN"
+  },
+  {
+   "id": "P_CONCOURS",
+   "statement": "liabilities",
+   "label": "Concours bancaires courants",
+   "kind": "detail",
+   "parent": "P_DETTES_FIN"
+  },
+  {
+   "id": "P_FOURNISSEURS",
+   "statement": "liabilities",
+   "label": "Dettes fournisseurs et comptes rattachés",
+   "kind": "detail",
+   "parent": "P_DETTES"
+  },
+  {
+   "id": "P_DETTES_IMMO",
+   "statement": "liabilities",
+   "label": "Dettes sur immobilisations",
+   "kind": "detail",
+   "parent": "P_DETTES"
+  },
+  {
+   "id": "P_FISC_SOC",
+   "statement": "liabilities",
+   "label": "Dettes fiscales et sociales",
+   "kind": "detail",
+   "parent": "P_DETTES"
+  },
+  {
+   "id": "P_AUTRES_DETTES",
+   "statement": "liabilities",
+   "label": "Autres dettes",
+   "kind": "detail",
+   "parent": "P_DETTES"
+  },
+  {
+   "id": "P_PCA",
+   "statement": "liabilities",
+   "label": "Produits constatés d'avance",
+   "kind": "detail",
+   "parent": "P_DETTES"
+  },
+  {
+   "id": "CR_PRODUITS_EXPL",
+   "statement": "income",
+   "label": "Produits d'exploitation",
+   "kind": "subtotal",
+   "nature": "product"
+  },
+  {
+   "id": "CR_LOYERS",
+   "statement": "income",
+   "label": "Loyers",
+   "kind": "subtotal",
+   "parent": "CR_PRODUITS_EXPL",
+   "nature": "product"
+  },
+  {
+   "id": "CR_LOYERS_BRUTS",
+   "statement": "income",
+   "label": "Loyers quittancés",
+   "kind": "detail",
+   "parent": "CR_LOYERS",
+   "nature": "product"
+  },
+  {
+   "id": "CR_RLS",
+   "statement": "income",
+   "label": "Réduction de loyer de solidarité",
+   "kind": "detail",
+   "parent": "CR_LOYERS",
+   "nature": "product"
+  },
+  {
+   "id": "CR_RECUP",
+   "statement": "income",
+   "label": "Récupération des charges locatives",
+   "kind": "detail",
+   "parent": "CR_PRODUITS_EXPL",
+   "nature": "product"
+  },
+  {
+   "id": "CR_ANNEXES",
+   "statement": "income",
+   "label": "Produits des activités annexes",
+   "kind": "detail",
+   "parent": "CR_PRODUITS_EXPL",
+   "nature": "product"
+  },
+  {
+   "id": "CR_SUBV_EXPL",
+   "statement": "income",
+   "label": "Subventions d'exploitation",
+   "kind": "detail",
+   "parent": "CR_PRODUITS_EXPL",
+   "nature": "product"
+  },
+  {
+   "id": "CR_REPRISES_EXPL",
+   "statement": "income",
+   "label": "Reprises sur dépréciations et provisions",
+   "kind": "detail",
+   "parent": "CR_PRODUITS_EXPL",
+   "nature": "product"
+  },
+  {
+   "id": "CR_AUTRES_PROD",
+   "statement": "income",
+   "label": "Autres produits de gestion courante",
+   "kind": "detail",
+   "parent": "CR_PRODUITS_EXPL",
+   "nature": "product"
+  },
+  {
+   "id": "CR_CHARGES_EXPL",
+   "statement": "income",
+   "label": "Charges d'exploitation",
+   "kind": "subtotal",
+   "nature": "charge"
+  },
+  {
+   "id": "CR_ACHATS",
+   "statement": "income",
+   "label": "Achats non stockés (eau, énergie, fournitures)",
+   "kind": "detail",
+   "parent": "CR_CHARGES_EXPL",
+   "nature": "charge"
+  },
+  {
+   "id": "CR_ENTRETIEN",
+   "statement": "income",
+   "label": "Entretien et réparations",
+   "kind": "detail",
+   "parent": "CR_CHARGES_EXPL",
+   "nature": "charge"
+  },
+  {
+   "id": "CR_SERV_EXT",
+   "statement": "income",
+   "label": "Autres services extérieurs",
+   "kind": "detail",
+   "parent": "CR_CHARGES_EXPL",
+   "nature": "charge"
+  },
+  {
+   "id": "CR_IMPOTS",
+   "statement": "income",
+   "label": "Impôts, taxes et versements assimilés",
+   "kind": "detail",
+   "parent": "CR_CHARGES_EXPL",
+   "nature": "charge"
+  },
+  {
+   "id": "CR_PERSONNEL_SAL",
+   "statement": "income",
+   "label": "Salaires et traitements",
+   "kind": "detail",
+   "parent": "CR_CHARGES_EXPL",
+   "nature": "charge"
+  },
+  {
+   "id": "CR_PERSONNEL_CHG",
+   "statement": "income",
+   "label": "Charges sociales",
+   "kind": "detail",
+   "parent": "CR_CHARGES_EXPL",
+   "nature": "charge"
+  },
+  {
+   "id": "CR_DOT_AMORT",
+   "statement": "income",
+   "label": "Dotations aux amortissements",
+   "kind": "detail",
+   "parent": "CR_CHARGES_EXPL",
+   "nature": "charge"
+  },
+  {
+   "id": "CR_DOT_PROV",
+   "statement": "income",
+   "label": "Dotations aux provisions",
+   "kind": "detail",
+   "parent": "CR_CHARGES_EXPL",
+   "nature": "charge"
+  },
+  {
+   "id": "CR_DOT_DEPR",
+   "statement": "income",
+   "label": "Dotations aux dépréciations",
+   "kind": "detail",
+   "parent": "CR_CHARGES_EXPL",
+   "nature": "charge"
+  },
+  {
+   "id": "CR_AUTRES_CHG",
+   "statement": "income",
+   "label": "Autres charges de gestion courante",
+   "kind": "detail",
+   "parent": "CR_CHARGES_EXPL",
+   "nature": "charge"
+  },
+  {
+   "id": "CR_RESULTAT_EXPL",
+   "statement": "income",
+   "label": "RÉSULTAT D'EXPLOITATION",
+   "kind": "total",
+   "formula": [
+    "+CR_PRODUITS_EXPL",
+    "-CR_CHARGES_EXPL"
+   ]
+  },
+  {
+   "id": "CR_PRODUITS_FIN",
+   "statement": "income",
+   "label": "Produits financiers",
+   "kind": "detail",
+   "nature": "product"
+  },
+  {
+   "id": "CR_CHARGES_FIN",
+   "statement": "income",
+   "label": "Charges financières",
+   "kind": "detail",
+   "nature": "charge"
+  },
+  {
+   "id": "CR_RESULTAT_FIN",
+   "statement": "income",
+   "label": "RÉSULTAT FINANCIER",
+   "kind": "total",
+   "formula": [
+    "+CR_PRODUITS_FIN",
+    "-CR_CHARGES_FIN"
+   ]
+  },
+  {
+   "id": "CR_PRODUITS_EXC",
+   "statement": "income",
+   "label": "Produits exceptionnels",
+   "kind": "subtotal",
+   "nature": "product"
+  },
+  {
+   "id": "CR_PROD_CESSIONS",
+   "statement": "income",
+   "label": "Produits des cessions d'éléments d'actif",
+   "kind": "detail",
+   "parent": "CR_PRODUITS_EXC",
+   "nature": "product"
+  },
+  {
+   "id": "CR_QP_SUBV",
+   "statement": "income",
+   "label": "Quote-part des subventions d'investissement virée au résultat",
+   "kind": "detail",
+   "parent": "CR_PRODUITS_EXC",
+   "nature": "product"
+  },
+  {
+   "id": "CR_AUTRES_PROD_EXC",
+   "statement": "income",
+   "label": "Autres produits exceptionnels",
+   "kind": "detail",
+   "parent": "CR_PRODUITS_EXC",
+   "nature": "product"
+  },
+  {
+   "id": "CR_CHARGES_EXC",
+   "statement": "income",
+   "label": "Charges exceptionnelles",
+   "kind": "subtotal",
+   "nature": "charge"
+  },
+  {
+   "id": "CR_VNC_CEDES",
+   "statement": "income",
+   "label": "Valeur comptable des éléments d'actif cédés ou sortis",
+   "kind": "detail",
+   "parent": "CR_CHARGES_EXC",
+   "nature": "charge"
+  },
+  {
+   "id": "CR_AUTRES_CHG_EXC",
+   "statement": "income",
+   "label": "Autres charges exceptionnelles",
+   "kind": "detail",
+   "parent": "CR_CHARGES_EXC",
+   "nature": "charge"
+  },
+  {
+   "id": "CR_RESULTAT_EXC",
+   "statement": "income",
+   "label": "RÉSULTAT EXCEPTIONNEL",
+   "kind": "total",
+   "formula": [
+    "+CR_PRODUITS_EXC",
+    "-CR_CHARGES_EXC"
+   ]
+  },
+  {
+   "id": "CR_RESULTAT",
+   "statement": "income",
+   "label": "RÉSULTAT NET DE L'EXERCICE",
+   "kind": "total",
+   "formula": [
+    "+CR_RESULTAT_EXPL",
+    "+CR_RESULTAT_FIN",
+    "+CR_RESULTAT_EXC"
+   ]
+  }
+ ]
+}

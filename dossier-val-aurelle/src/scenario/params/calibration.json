@@ -1,0 +1,65 @@
+{
+  "_comment": "Cibles de calibrage. presented = §4.3 du cahier des charges (option 1 pour les frais financiers, validée le 12/10/2026). clean = cibles des comptes propres (présenté − effets attendus des anomalies, §5). Montants en euros.",
+  "presented": {
+    "2025": {
+      "rentsNet": { "value": 46800000, "tolPct": 2 },
+      "rls": { "value": 2500000, "tolPct": 5 },
+      "chargeRecoveries": { "value": 11200000, "tolPct": 2 },
+      "ebeOnRentsPct": { "min": 52, "max": 55 },
+      "financialCharges": { "value": 10440000, "tolPct": 3 },
+      "debt": { "value": 365000000, "tolPct": 3 },
+      "loanRepayments": { "value": 13400000, "tolPct": 3 },
+      "disposalGains": { "value": 3500000, "tolPct": 5 },
+      "netResult": { "value": 9200000, "tol": 100000 },
+      "netSelfFinancingRatioPct": { "value": 5.2, "tol": 0.2 },
+      "totalAssets": { "value": 640000000, "tolPct": 5 },
+      "equity": { "value": 230000000, "tolPct": 5 },
+      "investmentSubsidies": { "value": 98000000, "tolPct": 5 },
+      "cash": { "value": 28000000, "tolPct": 10 },
+      "receivablesImpairmentCharge": { "value": 1425000, "tol": 999 }
+    }
+  },
+  "clean": {
+    "2025": {
+      "rentsNet": { "value": 46650000, "tolPct": 2 },
+      "rls": { "value": 2500000, "tolPct": 5 },
+      "chargeRecoveries": { "value": 10946000, "tolPct": 2 },
+      "ebeOnRentsPct": { "min": 49.5, "max": 52.5 },
+      "financialCharges": { "value": 10210000, "tolPct": 3 },
+      "debt": { "value": 365000000, "tolPct": 3 },
+      "loanRepayments": { "value": 13400000, "tolPct": 3 },
+      "disposalGains": { "value": 2729500, "tolPct": 5 },
+      "netResult": { "value": 4833000, "tol": 150000 },
+      "netSelfFinancingRatioPct": { "value": 2.6, "tol": 0.3 },
+      "totalAssets": { "value": 640000000, "tolPct": 5 },
+      "equity": { "value": 225200000, "tolPct": 5 },
+      "investmentSubsidies": { "value": 97500000, "tolPct": 5 },
+      "cash": { "value": 28000000, "tolPct": 10 },
+      "deposits": { "value": 3720000, "tolPct": 1 },
+      "pgeOpening": { "value": 7400000, "tol": 0 },
+      "pgeDotation": { "value": 1450000, "tol": 0 },
+      "pgeReprise": { "value": 1890000, "tol": 0 },
+      "pgeClosing": { "value": 6960000, "tol": 0 }
+    },
+    "2024": {
+      "rentsNet": { "value": 44900000, "tolPct": 2 },
+      "rls": { "value": 2400000, "tolPct": 5 },
+      "chargeRecoveries": { "value": 10900000, "tolPct": 2 },
+      "ebeOnRentsPct": { "min": 50, "max": 53 },
+      "financialCharges": { "value": 11320000, "tolPct": 3 },
+      "loanRepayments": { "value": 13000000, "tolPct": 3 },
+      "disposalGains": { "value": 2700000, "tolPct": 5 },
+      "netResult": { "value": 5400000, "tol": 100000 },
+      "netSelfFinancingRatioPct": { "value": 2.6, "tol": 0.2 },
+      "deposits": { "value": 3610000, "tolPct": 1 }
+    }
+  },
+  "anomalyMetrics": {
+    "_comment": "Grandeurs calculées dès J1 sur le monde propre pour que les anomalies de J2 tombent juste (§5).",
+    "icneFlatRateErrorA08": { "value": 236000, "tolPct": 10 },
+    "rentExcessA17": { "value": 98000, "tolPct": 3 },
+    "rentBatchSaulesOctoberA19": { "value": 52300, "tolPct": 3 },
+    "closFleuriNbvA03": { "value": 289500, "tolPct": 3 },
+    "presentedImpairmentChargeA21": { "value": 1425000, "tol": 999 }
+  }
+}

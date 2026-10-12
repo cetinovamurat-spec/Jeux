@@ -5,9 +5,9 @@ Ce fichier recense toute référence, valeur ou convention dont l'exactitude n'e
 Légende :
 
 - **Origine** — CDC : fourni par le cahier des charges ; Prop. : proposition de ma part.
-- **Statut** — *À vérifier* (référence ou valeur à confirmer) ; *Défaut proposé* (choix de contenu à confirmer ou corriger) ; **Validé** (confirmé par vous, avec la date).
+- **Statut** — *À vérifier* (référence ou valeur à confirmer) ; *Défaut proposé* / *Défaut accepté (plan J0)* (choix de contenu proposé, accepté avec le plan J0, révisable à la revue métier de J2) ; **Validé** (confirmé par vous, avec la date).
 
-Dernière mise à jour : J0 (12/10/2026).
+Dernière mise à jour : J1 (12/10/2026).
 
 ---
 
@@ -58,23 +58,37 @@ Dernière mise à jour : J0 (12/10/2026).
 
 | ID | Sujet | Proposition | Où | Origine | Statut |
 |---|---|---|---|---|---|
-| PV-29 | A10 — courrier de l'association contestant la régularisation 2024 | Le **projet** de régularisation 2024, présenté en réunion de concertation en juin 2025, incluait les honoraires du syndic et 100 % des gardiens. Après la contestation, la régularisation envoyée a été rectifiée : les comptes 2024 sont justes. La régularisation 2025 reprend les mêmes erreurs. Le courrier devient un indice fort, sans erreur sur 2024. | A10 | Prop. | Défaut proposé |
-| PV-30 | A06 — 82 k€ de portes palières | Correction limitée aux 378 k€. La durée de 15 ans appliquée aux 82 k€ (composant absent de la nomenclature) est commentée au débrief : écart ≈ 0,7 k€, insignifiant. Les anciennes portes, totalement amorties, ne donnent lieu à aucune sortie. | A06 | Prop. | Défaut proposé |
-| PV-31 | A19 — contenu du lot doublé | Lignes de loyer (loyer principal et RLS) du lot de quittancement d'octobre 2025 des Saules, 52,3 k€ nets. APL et provisions pour charges passent par des lots séparés, non doublés. | A19 | Prop. | Défaut proposé |
-| PV-32 | A02 — subventions de l'ancienne chaufferie | Chaufferie de 2008 financée sans subvention : aucune reprise de subvention résiduelle à la sortie | A02 | Prop. | Défaut proposé |
-| PV-33 | A03 — subventions et séquestre | Subventions du Clos Fleuri entièrement reprises (programme ancien) ; aucune somme versée au vendeur à la promesse | A03 | Prop. | Défaut proposé |
-| PV-34 | A01 et A16 — coût des Tilleuls | 9,55 M€ hors ordre de service n° 7 (210 k€) et nets des 340 k€ de pénalités retenues (déduites du coût, pas comptées en produit). Coût propre : 9,76 M€. | A01, A16 | Prop. | Défaut proposé |
-| PV-35 | Ventes et patrimoine | Les « 25 ventes effectives » s'entendent hors les 7 pavillons du Clos Fleuri. Le patrimoine de 8 600 logements au 31/12/2025 inclut ces 7 pavillons (vendus en 2026). L'état des ventes présenté compte 32 sorties. | A03, rapport de gestion | Prop. | Défaut proposé |
-| PV-36 | A11 — compte de la PAR | Compte générique de produits à recevoir, en contrepartie des produits des activités annexes. La PAR ne vise pas nommément Accueil Horizons, pour éviter tout recoupement mécanique avec A15. | A11 | Prop. | Défaut proposé |
-| PV-37 | Chronologie des validations (FEC) | Reprise excédentaire de PGE (A05) validée entre le 28 et le 30/01/2026 ; PAR d'A11 validée le 03/02/2026. Résultat ≈ 8,12 M€ avant A05 et A11, 8,9 M€ avant A11, 9,2 M€ au final. | A05, A11, FEC | Prop. | Défaut proposé |
-| PV-38 | A17 — assiette de la restitution | Loyers des logements conventionnés révisés au 01/01/2025, hors premières mises en location de 2025 (Les Tilleuls), commerces, stationnements et redevances de foyers ; aucun loyer plafond de convention atteint. Assiette implicite ≈ 42,3 M€. | A17 | Prop. | Défaut proposé |
-| PV-39 | A07 — périmètre | Base des ex-locataires nette des dépôts de garantie conservés : 3 115 k€. Effacements de dettes (rétablissement personnel) décidés en 2025, donc pertes de 2025. | A07 | CDC + Prop. | Défaut proposé |
-| PV-40 | Comptes 2024 « certifiés » | Identiques au monde propre 2024 : aucune anomalie en 2024. Seule la présentation de la colonne N-1 est altérée en 2025 (A22). | Comparatif, tests | Prop. | Défaut proposé |
+| PV-29 | A10 — courrier de l'association contestant la régularisation 2024 | Le **projet** de régularisation 2024, présenté en réunion de concertation en juin 2025, incluait les honoraires du syndic et 100 % des gardiens. Après la contestation, la régularisation envoyée a été rectifiée : les comptes 2024 sont justes. La régularisation 2025 reprend les mêmes erreurs. Le courrier devient un indice fort, sans erreur sur 2024. | A10 | Prop. | Défaut accepté (plan J0) |
+| PV-30 | A06 — 82 k€ de portes palières | Correction limitée aux 378 k€. La durée de 15 ans appliquée aux 82 k€ (composant absent de la nomenclature) est commentée au débrief : écart ≈ 0,7 k€, insignifiant. Les anciennes portes, totalement amorties, ne donnent lieu à aucune sortie. | A06 | Prop. | Défaut accepté (plan J0) |
+| PV-31 | A19 — contenu du lot doublé | Lignes de loyer (loyer principal et RLS) du lot de quittancement d'octobre 2025 des Saules, 52,3 k€ nets. APL et provisions pour charges passent par des lots séparés, non doublés. | A19 | Prop. | Défaut accepté (plan J0) |
+| PV-32 | A02 — subventions de l'ancienne chaufferie | Chaufferie de 2008 financée sans subvention : aucune reprise de subvention résiduelle à la sortie | A02 | Prop. | Défaut accepté (plan J0) |
+| PV-33 | A03 — subventions et séquestre | Subventions du Clos Fleuri entièrement reprises (programme ancien) ; aucune somme versée au vendeur à la promesse | A03 | Prop. | Défaut accepté (plan J0) |
+| PV-34 | A01 et A16 — coût des Tilleuls | 9,55 M€ hors ordre de service n° 7 (210 k€) et nets des 340 k€ de pénalités retenues (déduites du coût, pas comptées en produit). Coût propre : 9,76 M€. | A01, A16 | Prop. | Défaut accepté (plan J0) |
+| PV-35 | Ventes et patrimoine | Les « 25 ventes effectives » s'entendent hors les 7 pavillons du Clos Fleuri. Le patrimoine de 8 600 logements au 31/12/2025 inclut ces 7 pavillons (vendus en 2026). L'état des ventes présenté compte 32 sorties. | A03, rapport de gestion | Prop. | Défaut accepté (plan J0) |
+| PV-36 | A11 — compte de la PAR | Compte générique de produits à recevoir, en contrepartie des produits des activités annexes. La PAR ne vise pas nommément Accueil Horizons, pour éviter tout recoupement mécanique avec A15. | A11 | Prop. | Défaut accepté (plan J0) |
+| PV-37 | Chronologie des validations (FEC) | Reprise excédentaire de PGE (A05) validée entre le 28 et le 30/01/2026 ; PAR d'A11 validée le 03/02/2026. Résultat ≈ 8,12 M€ avant A05 et A11, 8,9 M€ avant A11, 9,2 M€ au final. | A05, A11, FEC | Prop. | Défaut accepté (plan J0) |
+| PV-38 | A17 — assiette de la restitution | Loyers des logements conventionnés révisés au 01/01/2025, hors premières mises en location de 2025 (Les Tilleuls), commerces, stationnements et redevances de foyers ; aucun loyer plafond de convention atteint. Assiette implicite ≈ 42,3 M€. | A17 | Prop. | Défaut accepté (plan J0) |
+| PV-39 | A07 — périmètre | Base des ex-locataires nette des dépôts de garantie conservés : 3 115 k€. Effacements de dettes (rétablissement personnel) décidés en 2025, donc pertes de 2025. | A07 | CDC + Prop. | Défaut accepté (plan J0) |
+| PV-40 | Comptes 2024 « certifiés » | Identiques au monde propre 2024 : aucune anomalie en 2024. Seule la présentation de la colonne N-1 est altérée en 2025 (A22). | Comparatif, tests | Prop. | Défaut accepté (plan J0) |
 
 ## E. Calibrage
 
 | ID | Sujet | Proposition | Où | Origine | Statut |
 |---|---|---|---|---|---|
-| PV-41 | Frais financiers, ICNE (A08) et structure de la dette : cibles incompatibles | Voir `plan-j0.md` §2.2 et `annexes/simulation-frais-financiers.py`. Option 1 recommandée : FF ≈ 11,3 / 10,4 M€, A08 ≈ −235 k€. | `calibration.json` | Prop. | **Décision D2 attendue** |
-| PV-42 | Dotation aux dépréciations des créances présentée | 1 425 k€ exactement (cible implicite d'A21) | Calibrage | Prop. | Défaut proposé |
-| PV-43 | Dénominateur du ratio d'autofinancement net | ≈ 48,8 M€, déduit de l'écart de 2,6 pts pour 1 268 k€ | Calibrage | Prop. | Défaut proposé |
+| PV-41 | Frais financiers, ICNE (A08) et structure de la dette : cibles incompatibles | Voir `plan-j0.md` §2.2 et `annexes/simulation-frais-financiers.py`. **Option 1 retenue** : FF ≈ 11,3 M€ (2024) et ≈ 10,4 M€ (2025 présentés), marge moyenne ≈ LA + 0,50, A08 ≈ −236 k€. Obtenu en J1 : FF 2024 11,55 M€, FF 2025 propres 10,29 M€ (présentés ≈ 10,52 M€), A08 −236,0 k€, marge moyenne pondérée LA + 0,55. | `calibration.json` | Prop. | **Validé (12/10/2026)** |
+| PV-42 | Dotation aux dépréciations des créances présentée | 1 425 k€ exactement (cible implicite d'A21) | Calibrage | Prop. | Défaut accepté (plan J0) |
+| PV-43 | Dénominateur du ratio d'autofinancement net | ≈ 48,8 M€, déduit de l'écart de 2,6 pts pour 1 268 k€ | Calibrage | Prop. | Défaut accepté (plan J0) |
+
+## F. Modélisation retenue en J1 pour tenir les cibles
+
+| ID | Sujet | Choix retenu | Où | Origine | Statut |
+|---|---|---|---|---|---|
+| PV-44 | Taille du bilan (§4.3) | Total ≈ 620 M€ et capitaux propres ≈ 224 M€ (comptes propres) avec des dotations ≈ 16,7 M€ imposées par le résultat et la CAF cibles. Obtenu par : foncier ≈ 225 M€ (24 % des immobilisations brutes : 14 % pour les programmes anciens, jusqu'à 41 % pour les opérations récentes en zone tendue), sept opérations en cours (≈ 51 M€), subventions concentrées sur les réhabilitations (taux ≈ 40 %, ANRU/PNRU) plutôt que sur les constructions neuves (8 à 15 %). | `scenario.json`, générateur | Prop. | À vérifier (réalisme) |
+| PV-45 | Décomposition rétrospective | Programmes antérieurs à 2005 décomposés lors du passage aux composants avec une structure de 75 % (menuiseries 5 %, chauffage 6 %, étanchéité 3 %, ravalement 4 %, électricité 4 %, plomberie 3 %) ; programmes postérieurs : répartition du §5-A01. Réhabilitations : composant « restructuration » (structure, 50 ans) de 25 %. | `components.json` | Prop. | À vérifier |
+| PV-46 | Dette | 126 prêts. Banque des Territoires 307,5 M€ (dont PHB 2,5 M€) ; allongement de 5 ans des durées résiduelles en 2019-2020 ; prêts bancaires à taux fixe 0,7 % à 2,2 % (amortissement constant, échéances trimestrielles) ; prêts Action Logement à taux fixe bas. Échéances annuelles pour la Banque des Territoires ; annuité recalculée à chaque révision. | `loans.ts` | Prop. | À vérifier |
+| PV-47 | Loyers et occupation | Loyer moyen 2025 ≈ 458 €/mois ; rotation 8,5 % par an ; vacance de 1 à 3 mois ; seul La Roseraie (1959) est non conventionné, d'où une assiette d'A17 ≈ 42 M€ ; RLS pour la moitié des ménages ; APL en tiers payant (≈ 47 %). | `scenario.json`, `tenancy.ts` | Prop. | À vérifier |
+| PV-48 | Récupération des charges | Charges récupérables imputées par programme ; part récupérée = charges × taux d'occupation (la quote-part des logements vacants reste à la charge du bailleur) ; gardiens 75 %, employés d'immeuble 100 % (PV-06) ; régularisation N facturée en juin N+1. | `purchases.ts` | Prop. | À vérifier |
+| PV-49 | Créances locatives | Méthode de l'annexe (§5-A07) appliquée locataire par locataire ; dotations et reprises calculées en variations individuelles ; soldes créditeurs reclassés au passif à la clôture (extourne au 1er janvier) ; dépôts de garantie imputés à la sortie, sauf « conservés » pour une partie des ex-locataires. | `posting.ts`, `tenancy.ts` | Prop. | À vérifier |
+| PV-50 | Dégrèvements de TFPB et indemnités | En produits exceptionnels (7718) : ≈ 1,05 M€ en 2024 (encaissés), 0,85 M€ de produit à recevoir en 2025 (F2). | `scenario.json` | Prop. | À vérifier (classement, PV-22) |
+| PV-51 | Charges d'exploitation | Entretien courant non récupérable ≈ 3,2 M€ en 2024 et en 2025 (levier de calibrage) ; personnel 8,2 → 8,84 M€ (+7,8 %, F3) ; TFPB 4,8 → 5,17 M€ (+7,7 %, F5) ; honoraires 0,45 → 0,70 M€ (+55 %, F1). | `scenario.json`, `levers.json` | Prop. | À vérifier |
+| PV-52 | Dates et utilisateurs de saisie | Interface de quittancement validée en fin de mois avant la migration du 01/10/2025, puis au fil de l'eau ; écritures d'inventaire 2025 validées du 12/01 au 06/02/2026 ; écritures de reprise des soldes du week-end des 27-28/09/2025 (utilisateur MIGRATION, F7). | `posting.ts` | Prop. | Défaut proposé |

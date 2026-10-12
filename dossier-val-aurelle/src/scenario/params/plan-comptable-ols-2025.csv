@@ -1,0 +1,140 @@
+numero;libelle;classe;sens;rubrique_debit;rubrique_credit;rubrique_annexe;poste_caf;a_valider;commentaire
+1013;Capital souscrit – appelé, versé;1;C;P_CAPITAL;P_CAPITAL;;;non;
+1068;Autres réserves;1;C;P_RESERVES;P_RESERVES;;;oui;Ventilation des réserves propre aux ESH (dont réserves sur cessions) à préciser
+110;Report à nouveau (solde créditeur);1;C;P_RAN;P_RAN;;;non;
+119;Report à nouveau (solde débiteur);1;D;P_RAN;P_RAN;;;non;
+120;Résultat de l'exercice (bénéfice);1;C;P_RAN;P_RAN;;;non;Soldé lors de l'affectation du résultat par l'assemblée générale
+129;Résultat de l'exercice (perte);1;D;P_RAN;P_RAN;;;non;
+1311;Subventions d'investissement – État;1;C;P_SUBV;P_SUBV;subventions:etat;;oui;Subdivision par financeur à valider
+1312;Subventions d'investissement – Région;1;C;P_SUBV;P_SUBV;subventions:region;;oui;
+1313;Subventions d'investissement – Département;1;C;P_SUBV;P_SUBV;subventions:departement;;oui;
+1314;Subventions d'investissement – Communes et EPCI;1;C;P_SUBV;P_SUBV;subventions:communes;;oui;
+1317;Subventions d'investissement – Action Logement;1;C;P_SUBV;P_SUBV;subventions:action-logement;;oui;
+1318;Subventions d'investissement – Autres (ANRU…);1;C;P_SUBV;P_SUBV;subventions:autres;;oui;
+13911;Subventions inscrites au compte de résultat – État;1;D;P_SUBV;P_SUBV;subventions:etat;;oui;
+13912;Subventions inscrites au compte de résultat – Région;1;D;P_SUBV;P_SUBV;subventions:region;;oui;
+13913;Subventions inscrites au compte de résultat – Département;1;D;P_SUBV;P_SUBV;subventions:departement;;oui;
+13914;Subventions inscrites au compte de résultat – Communes et EPCI;1;D;P_SUBV;P_SUBV;subventions:communes;;oui;
+13917;Subventions inscrites au compte de résultat – Action Logement;1;D;P_SUBV;P_SUBV;subventions:action-logement;;oui;
+13918;Subventions inscrites au compte de résultat – Autres;1;D;P_SUBV;P_SUBV;subventions:autres;;oui;
+1511;Provisions pour litiges;1;C;P_PROV_RISQUES;P_PROV_RISQUES;provisions:litiges;;non;
+1572;Provisions pour gros entretien;1;C;P_PGE;P_PGE;provisions:pge;;oui;Compte de la PGE dans l'instruction OLS 2025 à confirmer
+1631;Emprunts auprès de la Caisse des dépôts (Banque des Territoires);1;C;P_EMPRUNTS_CDC;P_EMPRUNTS_CDC;dettes:cdc;;oui;Numérotation des emprunts par prêteur à valider
+1641;Emprunts auprès des établissements de crédit;1;C;P_EMPRUNTS_EC;P_EMPRUNTS_EC;dettes:etablissements-credit;;non;
+1678;Autres emprunts – Action Logement;1;C;P_EMPRUNTS_AUTRES;P_EMPRUNTS_AUTRES;dettes:autres;;oui;
+1651;Dépôts de garantie des locataires;1;C;P_DEPOTS;P_DEPOTS;dettes:depots;;oui;Rubrique « dettes financières » du modèle (cf. A22)
+1688;Intérêts courus sur emprunts;1;C;P_ICNE;P_ICNE;dettes:icne;;non;
+2051;Logiciels;2;D;A_IMMO_INC;A_IMMO_INC;immobilisations:incorporelles;;non;
+28051;Amortissements des logiciels;2;C;A_IMMO_INC;A_IMMO_INC;amortissements:incorporelles;;non;
+2111;Terrains des immeubles locatifs;2;D;A_TERRAINS;A_TERRAINS;immobilisations:terrains;;oui;
+2131;Constructions locatives sur sol propre;2;D;A_CONSTRUCTIONS;A_CONSTRUCTIONS;immobilisations:constructions;;oui;Suivi par composant dans le registre des immobilisations
+2135;Installations générales, agencements et aménagements des constructions;2;D;A_CONSTRUCTIONS;A_CONSTRUCTIONS;immobilisations:constructions;;oui;
+2138;Constructions administratives (siège);2;D;A_AUTRES_CORP;A_AUTRES_CORP;immobilisations:autres;;oui;
+2183;Matériel de bureau et informatique;2;D;A_AUTRES_CORP;A_AUTRES_CORP;immobilisations:autres;;non;
+2184;Mobilier;2;D;A_AUTRES_CORP;A_AUTRES_CORP;immobilisations:autres;;non;
+28131;Amortissements des constructions locatives;2;C;A_CONSTRUCTIONS;A_CONSTRUCTIONS;amortissements:constructions;;oui;
+28135;Amortissements des installations et agencements;2;C;A_CONSTRUCTIONS;A_CONSTRUCTIONS;amortissements:constructions;;oui;
+28138;Amortissements des constructions administratives;2;C;A_AUTRES_CORP;A_AUTRES_CORP;amortissements:autres;;oui;
+28183;Amortissements du matériel de bureau et informatique;2;C;A_AUTRES_CORP;A_AUTRES_CORP;amortissements:autres;;non;
+28184;Amortissements du mobilier;2;C;A_AUTRES_CORP;A_AUTRES_CORP;amortissements:autres;;non;
+2312;Terrains en cours d'aménagement;2;D;A_IMMO_COURS;A_IMMO_COURS;immobilisations:en-cours;;oui;
+2313;Constructions en cours;2;D;A_IMMO_COURS;A_IMMO_COURS;immobilisations:en-cours;;oui;
+2748;Avances aux organismes du groupe;2;D;A_IMMO_FIN;A_IMMO_FIN;immobilisations:financieres;;oui;Avance en compte courant à une société sœur
+275;Dépôts et cautionnements versés;2;D;A_IMMO_FIN;A_IMMO_FIN;immobilisations:financieres;;non;
+4011;Fournisseurs;4;C;A_AUTRES_CREANCES;P_FOURNISSEURS;;;non;
+4041;Fournisseurs d'immobilisations;4;C;A_AUTRES_CREANCES;P_DETTES_IMMO;;;non;
+4081;Fournisseurs – factures non parvenues;4;C;A_AUTRES_CREANCES;P_FOURNISSEURS;;;non;
+4084;Fournisseurs d'immobilisations – factures non parvenues;4;C;A_AUTRES_CREANCES;P_DETTES_IMMO;;;non;
+4111;Locataires présents;4;D;A_LOCATAIRES;A_LOCATAIRES;creances:locataires;;oui;Comptes de locataires : subdivision OLS à valider
+4114;Gestionnaires de foyers et résidences – redevances;4;D;A_LOCATAIRES;A_LOCATAIRES;creances:gestionnaires;;oui;
+4115;Locataires partis;4;D;A_LOCATAIRES;A_LOCATAIRES;creances:locataires-partis;;oui;
+4116;Locataires en procédure (contentieux, surendettement);4;D;A_LOCATAIRES;A_LOCATAIRES;creances:locataires-douteux;;oui;
+4181;Locataires – régularisation de charges à facturer;4;D;A_LOCATAIRES;A_LOCATAIRES;creances:regularisation;;oui;
+4191;Locataires – soldes créditeurs;4;C;A_LOCATAIRES;P_AUTRES_DETTES;;;oui;Reclassement des soldes créditeurs à la clôture
+4196;Locataires – sommes à restituer;4;C;A_LOCATAIRES;P_AUTRES_DETTES;;;oui;Régularisations de charges et trop-perçus à rembourser
+421;Personnel – rémunérations dues;4;C;A_AUTRES_CREANCES;P_FISC_SOC;;;non;
+4282;Dettes provisionnées pour congés à payer;4;C;A_AUTRES_CREANCES;P_FISC_SOC;;;non;
+431;Sécurité sociale;4;C;A_AUTRES_CREANCES;P_FISC_SOC;;;non;
+437;Autres organismes sociaux;4;C;A_AUTRES_CREANCES;P_FISC_SOC;;;non;
+4386;Organismes sociaux – charges à payer;4;C;A_AUTRES_CREANCES;P_FISC_SOC;;;non;
+4411;État – subventions à recevoir;4;D;A_SUBV_RECEVOIR;A_SUBV_RECEVOIR;;;oui;
+4412;Région – subventions à recevoir;4;D;A_SUBV_RECEVOIR;A_SUBV_RECEVOIR;;;oui;
+4413;Département – subventions à recevoir;4;D;A_SUBV_RECEVOIR;A_SUBV_RECEVOIR;;;oui;
+4414;Communes et EPCI – subventions à recevoir;4;D;A_SUBV_RECEVOIR;A_SUBV_RECEVOIR;;;oui;
+4417;Action Logement – subventions à recevoir;4;D;A_SUBV_RECEVOIR;A_SUBV_RECEVOIR;;;oui;
+4418;Autres financeurs – subventions à recevoir;4;D;A_SUBV_RECEVOIR;A_SUBV_RECEVOIR;;;oui;
+4431;Caisse d'allocations familiales – APL à recevoir (tiers payant);4;D;A_AUTRES_CREANCES;P_AUTRES_DETTES;;;oui;
+4471;Taxes foncières et taxe d'enlèvement des ordures ménagères à payer;4;C;A_AUTRES_CREANCES;P_FISC_SOC;;;non;
+4487;État – produits à recevoir (dégrèvements);4;D;A_AUTRES_CREANCES;P_FISC_SOC;;;oui;
+462;Créances sur cessions d'immobilisations;4;D;A_AUTRES_CREANCES;A_AUTRES_CREANCES;;;non;
+4671;Débiteurs divers;4;D;A_AUTRES_CREANCES;P_AUTRES_DETTES;;;non;
+4678;Créditeurs divers;4;C;A_AUTRES_CREANCES;P_AUTRES_DETTES;;;non;
+4686;Divers – charges à payer;4;C;A_AUTRES_CREANCES;P_AUTRES_DETTES;;;non;
+4687;Divers – produits à recevoir;4;D;A_AUTRES_CREANCES;P_AUTRES_DETTES;;;non;
+471;Compte d'attente;4;D;A_AUTRES_CREANCES;P_AUTRES_DETTES;;;non;
+486;Charges constatées d'avance;4;D;A_CCA;A_CCA;;;non;
+487;Produits constatés d'avance;4;C;A_CCA;P_PCA;;;non;
+4911;Dépréciation des comptes de locataires présents;4;C;A_LOCATAIRES;A_LOCATAIRES;provisions:depreciation-creances;;oui;
+4914;Dépréciation des créances sur gestionnaires de foyers;4;C;A_LOCATAIRES;A_LOCATAIRES;provisions:depreciation-creances;;oui;
+4915;Dépréciation des comptes de locataires partis;4;C;A_LOCATAIRES;A_LOCATAIRES;provisions:depreciation-creances;;oui;
+4916;Dépréciation des comptes de locataires en procédure;4;C;A_LOCATAIRES;A_LOCATAIRES;provisions:depreciation-creances;;oui;
+5121;Banque – compte courant;5;D;A_DISPO;P_CONCOURS;;;non;
+5124;Banque – comptes à terme;5;D;A_DISPO;A_DISPO;;;non;
+580;Virements internes;5;D;A_DISPO;A_DISPO;;;non;
+6061;Fournitures non stockables (eau, énergie);6;D;CR_ACHATS;CR_ACHATS;;;non;
+6063;Fournitures d'entretien et de petit équipement;6;D;CR_ACHATS;CR_ACHATS;;;non;
+6111;Prestations de nettoyage et d'entretien des parties communes;6;D;CR_SERV_EXT;CR_SERV_EXT;;;oui;
+6131;Locations mobilières;6;D;CR_SERV_EXT;CR_SERV_EXT;;;non;
+614;Charges de copropriété (dont honoraires de syndic);6;D;CR_SERV_EXT;CR_SERV_EXT;;;oui;
+61521;Entretien courant non récupérable;6;D;CR_ENTRETIEN;CR_ENTRETIEN;;;oui;Subdivision des comptes d'entretien à valider
+61522;Gros entretien;6;D;CR_ENTRETIEN;CR_ENTRETIEN;;;oui;
+61523;Entretien récupérable (contrats);6;D;CR_ENTRETIEN;CR_ENTRETIEN;;;oui;
+6156;Maintenance informatique;6;D;CR_SERV_EXT;CR_SERV_EXT;;;non;
+616;Primes d'assurance;6;D;CR_SERV_EXT;CR_SERV_EXT;;;non;
+6226;Honoraires;6;D;CR_SERV_EXT;CR_SERV_EXT;;;non;
+6227;Frais d'actes et de contentieux;6;D;CR_SERV_EXT;CR_SERV_EXT;;;non;
+6231;Annonces et insertions;6;D;CR_SERV_EXT;CR_SERV_EXT;;;non;
+626;Frais postaux et de télécommunications;6;D;CR_SERV_EXT;CR_SERV_EXT;;;non;
+627;Services bancaires;6;D;CR_SERV_EXT;CR_SERV_EXT;;;non;
+6281;Frais de structure refacturés par le GIE du groupe;6;D;CR_SERV_EXT;CR_SERV_EXT;;;oui;
+6282;Cotisations CGLLS et ANCOLS;6;D;CR_SERV_EXT;CR_SERV_EXT;;;oui;Classement des cotisations (services extérieurs ou impôts et taxes) à valider
+6288;Autres services extérieurs (dont recouvrement amiable);6;D;CR_SERV_EXT;CR_SERV_EXT;;;non;
+63512;Taxes foncières;6;D;CR_IMPOTS;CR_IMPOTS;;;non;
+63513;Taxe d'enlèvement des ordures ménagères;6;D;CR_IMPOTS;CR_IMPOTS;;;non;
+6358;Autres droits et taxes;6;D;CR_IMPOTS;CR_IMPOTS;;;non;
+6411;Salaires et appointements;6;D;CR_PERSONNEL_SAL;CR_PERSONNEL_SAL;;;non;
+6412;Congés payés;6;D;CR_PERSONNEL_SAL;CR_PERSONNEL_SAL;;;non;
+6413;Primes et gratifications;6;D;CR_PERSONNEL_SAL;CR_PERSONNEL_SAL;;;non;
+6451;Cotisations à l'URSSAF;6;D;CR_PERSONNEL_CHG;CR_PERSONNEL_CHG;;;non;
+6453;Cotisations aux caisses de retraite;6;D;CR_PERSONNEL_CHG;CR_PERSONNEL_CHG;;;non;
+6458;Cotisations aux autres organismes sociaux;6;D;CR_PERSONNEL_CHG;CR_PERSONNEL_CHG;;;non;
+6475;Médecine du travail;6;D;CR_PERSONNEL_CHG;CR_PERSONNEL_CHG;;;non;
+6541;Pertes sur créances irrécouvrables – locataires;6;D;CR_AUTRES_CHG;CR_AUTRES_CHG;;;non;
+658;Charges diverses de gestion courante;6;D;CR_AUTRES_CHG;CR_AUTRES_CHG;;;non;
+6611;Intérêts des emprunts;6;D;CR_CHARGES_FIN;CR_CHARGES_FIN;;;non;
+6616;Intérêts bancaires;6;D;CR_CHARGES_FIN;CR_CHARGES_FIN;;;non;
+6712;Pénalités et amendes;6;D;CR_AUTRES_CHG_EXC;CR_AUTRES_CHG_EXC;;;non;
+6718;Autres charges exceptionnelles sur opérations de gestion;6;D;CR_AUTRES_CHG_EXC;CR_AUTRES_CHG_EXC;;;non;
+6752;Valeur comptable des immobilisations corporelles cédées;6;D;CR_VNC_CEDES;CR_VNC_CEDES;;ajout;non;
+6758;Valeur comptable des composants sortis (remplacement, démolition);6;D;CR_VNC_CEDES;CR_VNC_CEDES;;ajout;oui;
+68111;Dotations aux amortissements des immobilisations;6;D;CR_DOT_AMORT;CR_DOT_AMORT;;ajout;non;
+68152;Dotations aux provisions pour risques;6;D;CR_DOT_PROV;CR_DOT_PROV;;ajout;non;
+68157;Dotations aux provisions pour gros entretien;6;D;CR_DOT_PROV;CR_DOT_PROV;;ajout;oui;
+68174;Dotations aux dépréciations des créances;6;D;CR_DOT_DEPR;CR_DOT_DEPR;;ajout;non;
+7031;Récupération des charges locatives;7;C;CR_RECUP;CR_RECUP;;;oui;
+70411;Loyers des logements conventionnés;7;C;CR_LOYERS_BRUTS;CR_LOYERS_BRUTS;;;oui;Subdivision des loyers OLS à valider
+70412;Loyers des logements non conventionnés;7;C;CR_LOYERS_BRUTS;CR_LOYERS_BRUTS;;;oui;
+70413;Redevances des foyers et résidences;7;C;CR_LOYERS_BRUTS;CR_LOYERS_BRUTS;;;oui;
+70414;Loyers des locaux commerciaux;7;C;CR_LOYERS_BRUTS;CR_LOYERS_BRUTS;;;oui;
+70415;Loyers des stationnements et annexes;7;C;CR_LOYERS_BRUTS;CR_LOYERS_BRUTS;;;oui;
+70491;Réduction de loyer de solidarité;7;D;CR_RLS;CR_RLS;;;oui;Présentée en déduction des loyers
+7088;Produits des activités annexes;7;C;CR_ANNEXES;CR_ANNEXES;;;non;
+741;Subventions d'exploitation;7;C;CR_SUBV_EXPL;CR_SUBV_EXPL;;;non;
+758;Produits divers de gestion courante;7;C;CR_AUTRES_PROD;CR_AUTRES_PROD;;;non;
+7681;Intérêts des placements;7;C;CR_PRODUITS_FIN;CR_PRODUITS_FIN;;;non;
+7718;Autres produits exceptionnels sur opérations de gestion;7;C;CR_AUTRES_PROD_EXC;CR_AUTRES_PROD_EXC;;;oui;Dégrèvements de TFPB et indemnités d'assurance : classement à valider
+7752;Produits des cessions d'immobilisations corporelles;7;C;CR_PROD_CESSIONS;CR_PROD_CESSIONS;;deduction;non;
+777;Quote-part des subventions d'investissement virée au résultat;7;C;CR_QP_SUBV;CR_QP_SUBV;;deduction;non;
+78152;Reprises sur provisions pour risques;7;C;CR_REPRISES_EXPL;CR_REPRISES_EXPL;;deduction;non;
+78157;Reprises sur provisions pour gros entretien;7;C;CR_REPRISES_EXPL;CR_REPRISES_EXPL;;deduction;oui;
+78174;Reprises sur dépréciations des créances;7;C;CR_REPRISES_EXPL;CR_REPRISES_EXPL;;deduction;non;

@@ -1,0 +1,17 @@
+{
+  "_comment": "Catalogue indicatif des produits de prêt (marges sur Livret A, durées). Valeurs à valider (PV-19).",
+  "toVerify": true,
+  "products": {
+    "PLUS": { "label": "Prêt locatif à usage social", "lender": "BDT", "account": "1631", "marginPct": 0.6, "years": 40 },
+    "PLUS_FONCIER": { "label": "PLUS foncier", "lender": "BDT", "account": "1631", "marginPct": 0.6, "years": 50 },
+    "PLAI": { "label": "Prêt locatif aidé d'intégration", "lender": "BDT", "account": "1631", "marginPct": -0.2, "years": 40 },
+    "PLAI_FONCIER": { "label": "PLAI foncier", "lender": "BDT", "account": "1631", "marginPct": -0.2, "years": 50 },
+    "PLA": { "label": "Prêt locatif aidé (ancien régime)", "lender": "BDT", "account": "1631", "marginPct": 0.8, "years": 35 },
+    "PAM": { "label": "Prêt à l'amélioration", "lender": "BDT", "account": "1631", "marginPct": 0.6, "years": 25 },
+    "ECO": { "label": "Éco-prêt", "lender": "BDT", "account": "1631", "marginPct": -0.45, "years": 25 },
+    "PLS": { "label": "Prêt locatif social", "lender": "BDT", "account": "1631", "marginPct": 1.11, "years": 40 },
+    "PHB": { "label": "Prêt de haut de bilan", "lender": "BDT", "account": "1631", "zeroYears": 20, "marginPct": 0.6, "years": 40 },
+    "BANQUE": { "label": "Prêt bancaire à taux fixe", "lender": "BANK", "account": "1641", "years": 25 },
+    "AL": { "label": "Prêt Action Logement", "lender": "AL", "account": "1678", "years": 40 }
+  }
+}

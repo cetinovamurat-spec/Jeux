@@ -10,8 +10,8 @@ Jeu de rôle d'audit légal (navigateur, 100 % client) : le joueur audite les co
 
 | Jalon | Statut | Notes |
 |---|---|---|
-| J0 — Plan | Livré le 12/10/2026, **en attente de validation** | Décisions D1 à D7 du plan ; D2 (calibrage frais financiers / A08) à arbitrer |
-| J1 — Moteur comptable | À faire | Ne pas commencer avant la validation de J0 |
+| J0 — Plan | **Validé le 12/10/2026** | Option 1 retenue pour D2 ; D1, D3 à D7 acceptées |
+| J1 — Moteur comptable | **Livré le 12/10/2026** | Monde propre 2024 + 2025 ; 34/34 cibles de calibrage ; 85 tests verts ; écran de contrôle |
 | J2 — Anomalies et contenus | À faire | **Arrêt obligatoire** en fin de jalon : validation métier (dossier `docs/revue-metier/`) |
 | J3 — Consultation | À faire | |
 | J4 — Mécanique d'audit | À faire | |
@@ -40,27 +40,44 @@ Jeu de rôle d'audit légal (navigateur, 100 % client) : le joueur audite les co
 - **Plan de comptes** : référentiel OLS applicable à 2025 (antérieur à la réforme 2026). Ne jamais mélanger avec le règlement ANC n° 2025-05.
 - **Commits** : messages en français, explicites ; au moins un commit par jalon.
 
-## Décisions prises (en attente de confirmation à J0)
+## Décisions prises
 
 - D1 : projet autonome dans `dossier-val-aurelle/`. Les Olympiades restent à la racine du dépôt ; leur déploiement Render n'utilise que le `package.json` racine.
-- D2 : calibrage frais financiers / ICNE. Option 1 proposée (FF ≈ 11,3 / 10,4 M€, marge moyenne LA + 0,50, A08 ≈ −235 k€). **Non tranché.**
+- D2 (validée) : option 1 — frais financiers ≈ 11,3 M€ (2024) et ≈ 10,4 M€ (2025 présentés), marge moyenne des prêts indexés ≈ LA + 0,55, A08 ≈ −236 k€.
 - D3 : impacts par écritures de correction en ordre canonique ; recalcul exact des mondes partiels.
 - D4 : exercice 2024 simulé par le même générateur ; 2021-2023 en agrégats.
-- D5 : écritures récapitulatives (quittancement programme × mois, encaissements jour × mode, amortissements programme × famille) ; FEC ≈ 32 000 lignes.
+- D5 : écritures récapitulatives (quittancement programme × mois, encaissements par remise, amortissements programme × compte) ; FEC 2025 ≈ 26 900 lignes.
 - D6 : données générées non versionnées ; empreinte `scenario.lock.json` versionnée.
-- Simplifications de la V1 : voir `docs/plan-j0.md` §12 (TVA, prêts, historique, IS, anomalies toutes actives).
 
-## Commandes (à partir de J1)
+### Choix d'implémentation de J1 (écarts au plan J0)
+
+- **Génération dans le navigateur.** Le monde généré pèse ≈ 20 Mo en JSON : il n'est pas embarqué. L'application régénère le dossier dans un Web Worker (≈ 3 s) à partir des paramètres et des leviers calibrés (`src/scenario/params/levers.json`, versionné). `npm run generate` écrit des fichiers d'inspection dans `generated/val-aurelle-2025/` (non versionné : `world.json`, FEC 2024/2025, balances CSV) et compare l'empreinte au verrou.
+- **Montants** : `Cents` est un alias de `number` (entiers, contrôlés par les tests) plutôt qu'un type marqué, pour la lisibilité du moteur ; l'interdiction des montants en dur dans `src/ui/` et `src/scenario/documents/` est vérifiée par `tests/guards.test.ts`.
+- **Scripts** : `vite-node` (et non `tsx`) pour lire le plan de comptes CSV (`?raw`).
+- **Calibrage** : leviers globaux résolus par `npm run calibrate -- --solve` (coût de construction, taux de subvention, entretien courant 2024/2025, dotation PGE 2024, trésorerie d'ouverture, allongement des prêts) ; calibrages locaux en clôture de chaque étape (loyers, RLS, dépôts, récupérations, prêts, plus-values, dotation présentée d'A21).
+- **Structure du patrimoine retenue pour tenir le bilan du §4.3** (total ≈ 620 M€, capitaux propres ≈ 224 M€ avec des dotations ≈ 16,7 M€) : programmes construits après 2000 nombreux, foncier élevé pour les opérations récentes (zone tendue), décomposition rétrospective des programmes antérieurs à 2005 (structure 75 %), sept opérations en cours de construction (≈ 51 M€), subventions concentrées sur les réhabilitations (ANRU/PNRU), allongement de 5 ans des prêts de la Banque des Territoires (2019-2020). Points consignés dans `docs/points-a-verifier.md` (PV-44 à PV-52).
+- **Recalibrer après une modification de paramètres** : `npm run calibrate -- --solve` puis `npm run generate -- --update-lock`, puis `npm test`.
+
+## Commandes
 
 ```bash
-npm run generate      # génère public/scenarios/val-aurelle-2025/*.json
-npm run dev
-npm run test
-npm run build         # site statique
-npm run build:single  # fichier HTML unique
-npm run calibrate     # rapport cibles / obtenu
-npm run review-pack   # (J2) dossier de revue métier dans docs/revue-metier/
+npm install
+npm run dev           # écran de contrôle (Vite)
+npm test              # génère puis lance Vitest (≈ 15 s)
+npm run build         # typecheck + site statique (dist/)
+npm run build:single  # fichier HTML unique hors ligne (dist-single/index.html, ≈ 1 Mo)
+npm run generate      # fichiers d'inspection dans generated/ ; « -- --update-lock » met à jour scenario.lock.json
+npm run calibrate     # rapport cibles / obtenu ; « -- --solve » recalcule params/levers.json
+npm run typecheck
 ```
 
-Les types du J0 compilent déjà :
-`tsc --noEmit --strict --noUncheckedIndexedAccess --target ES2022 --module ESNext --moduleResolution bundler src/engine/types.ts src/scenario/types.ts src/game/types.ts`
+## Carte du code
+
+- `src/engine/` — moteur pur : montants, dates, aléa à graine, plan de comptes (CSV + import), écritures, balance, FEC, états, analyse (EBE, CAF, autofinancement net), sous-ledgers (amortissements par composant, échéanciers et ICNE).
+- `src/scenario/params/` — paramètres éditables (JSON, plan de comptes CSV), validés par Zod (`schema.ts`).
+- `src/scenario/generator/` — générateur du monde propre : `portfolio` (patrimoine, composants, subventions), `loans`, `tenancy` (baux, quittancement, LOGIGES, ventes), `purchases` (factures, investissements, paie, taxes, PGE, régularisation des charges), `sales`, `posting` (écritures 2024-2025), `index` (assemblage).
+- `src/scenario/annex.ts`, `calibration.ts`, `fingerprint.ts` — annexe, rapport de calibrage, empreinte.
+- `src/ui/` — écran de contrôle (J1) : cibles, balance, états, annexe, CAF, FEC.
+- `tests/` — moteur, intégrité (balance ↔ sous-ledgers ↔ annexe ↔ FEC), calibrage, déterminisme, garde-fous.
+
+Dépendances de développement : les alertes `npm audit` (vitest, braces) concernent l'outillage de développement, pas le jeu livré.

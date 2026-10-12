@@ -1,0 +1,92 @@
+{
+  "_comment": "Nomenclature des composants et durées d'amortissement (politique de l'organisme). Durées du §5-A01 ; les autres sont des propositions (PV-20).",
+  "toVerify": true,
+  "families": {
+    "land": {
+      "label": "Terrain",
+      "account": "2111",
+      "lifeYears": 0
+    },
+    "structure": {
+      "label": "Structure et gros œuvre",
+      "account": "2131",
+      "lifeYears": 50
+    },
+    "windows": {
+      "label": "Menuiseries extérieures",
+      "account": "2131",
+      "lifeYears": 25
+    },
+    "heating": {
+      "label": "Chauffage",
+      "account": "2131",
+      "lifeYears": 25
+    },
+    "roofing": {
+      "label": "Étanchéité et couverture",
+      "account": "2131",
+      "lifeYears": 25
+    },
+    "facade": {
+      "label": "Ravalement avec amélioration (ITE)",
+      "account": "2131",
+      "lifeYears": 20
+    },
+    "electricity": {
+      "label": "Électricité",
+      "account": "2131",
+      "lifeYears": 25
+    },
+    "plumbing": {
+      "label": "Plomberie et sanitaires",
+      "account": "2131",
+      "lifeYears": 25
+    },
+    "lifts": {
+      "label": "Ascenseurs",
+      "account": "2131",
+      "lifeYears": 20
+    },
+    "fittings": {
+      "label": "Agencements divers",
+      "account": "2135",
+      "lifeYears": 15,
+      "inNomenclature": false
+    },
+    "other": {
+      "label": "Autres immobilisations (siège, informatique, mobilier, logiciels)",
+      "account": "2183",
+      "lifeYears": 5,
+      "inNomenclature": false
+    }
+  },
+  "newConstructionShares": {
+    "structure": 0.62,
+    "windows": 0.07,
+    "heating": 0.09,
+    "roofing": 0.04,
+    "facade": 0.06,
+    "electricity": 0.06,
+    "plumbing": 0.06
+  },
+  "rehabilitationShares": {
+    "structure": 0.25,
+    "windows": 0.18,
+    "heating": 0.17,
+    "facade": 0.17,
+    "roofing": 0.08,
+    "electricity": 0.08,
+    "plumbing": 0.07
+  },
+  "retrospectiveShares": {
+    "_comment": "Programmes antérieurs à 2005, décomposés rétrospectivement lors du passage à l'approche par composants (proposition, PV-20).",
+    "structure": 0.75,
+    "windows": 0.05,
+    "heating": 0.06,
+    "roofing": 0.03,
+    "facade": 0.04,
+    "electricity": 0.04,
+    "plumbing": 0.03
+  },
+  "retrospectiveBefore": 2005
+}
