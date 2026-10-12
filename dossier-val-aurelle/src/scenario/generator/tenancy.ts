@@ -147,6 +147,11 @@ export function buildLeases(st: GenState): void {
   const MONTHS: [number, number][] = [];
   for (const y of [2024, 2025]) for (let m = 1; m <= 12; m++) MONTHS.push([y, m]);
 
+  // heavy repairs: a few dwellings of old programmes are withdrawn from letting after the departure of their tenant
+  const heavyRepairProgrammes = new Set(['ORM', 'ROS', 'PLT', 'CED', 'SOR', 'LIL']);
+  for (const d of st.dwellings) {
+    if (d.programmeId === 'GLB') d.technicalVacancy = { from: '2024-07-01', reason: 'demolition' };
+  }
   for (const d of st.dwellings) {
     const sale = saleOf.get(d.id);
     if (d.programmeId === 'TIL') {
@@ -181,9 +186,10 @@ export function buildLeases(st: GenState): void {
           current.endReason = 'departure';
           current = null;
           vacantUntil = i + Math.max(1, Math.round(rng.uniform(0.5, r.vacancyMonthsMean * 1.6)));
+          if (heavyRepairProgrammes.has(d.programmeId) && y === 2025 && m >= 2 && m <= 9 && rng.chance(0.22)) d.technicalVacancy = { from: monthStart(y, m + 1), reason: 'heavyRepairs' };
         }
       } else if (i > vacantUntil) {
-        const frozen = d.programmeId === 'GLB' && (y > 2024 || m >= 7);
+        const frozen = (d.programmeId === 'GLB' && (y > 2024 || m >= 7)) || (d.programmeId === 'CHA' && y === 2025 && m >= 6) || (d.technicalVacancy && monthStart(y, m) >= d.technicalVacancy.from);
         if (!frozen) current = newLease(d, monthStart(y, m), false);
       }
     }
@@ -286,6 +292,14 @@ export function calibrateRents(st: GenState, residenceFees2024: Cents): void {
     l.apl.y2025 = Math.min(l.apl.y2025, l.rent.y2025);
   }
   st.metrics['rentScale'] = rentScale;
+  // 2025 revision actually applied: +3,50 % voted by the board on regulated leases running on 1 January (A17)
+  const rev = st.params.regulatory.rentRevision.byYear['2025']!;
+  const applied = (rev.votedByBoardPct ?? rev.appliedPct) / 100;
+  for (const l of st.leases) {
+    if (l.regulated && l.start <= '2025-01-01' && (!l.end || l.end >= '2025-01-31')) l.rent.y2025 = Math.round(l.rent.y2024 * (1 + applied));
+    else l.rent.y2025 = Math.round(l.rent.y2024 * (1 + rev.legalCapPct / 100));
+    l.apl.y2025 = Math.min(l.apl.y2025, l.rent.y2025);
+  }
   st.metrics['rlsScale'] = rlsScale;
   // deposits: leases running at 31/12/2024 are scaled on the 2024 target, leases starting in 2025 on the 2025 one
   const tt = st.params.scenario.tenants;

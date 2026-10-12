@@ -11,6 +11,7 @@ import { accruedInterest, outstandingAt } from '../../engine/subledgers/loans';
 import type { AssetComponent, EntryLine, JournalEntry, Ledger } from '../../engine/types';
 import type { Invoice, Lease, TenantAccount } from '../datasets';
 import { Book, eur, grantorAccounts, type GenState } from './core';
+import { CLEAN_METHOD, allowances, impairmentMovements } from '../impairment';
 import type { RentRoll } from './tenancy';
 
 const YEARS = [2024, 2025] as const;
@@ -57,38 +58,7 @@ function activeAt(c: AssetComponent, date: string): boolean {
   return c.inServiceDate <= date && !(c.disposal && c.disposal.date <= date);
 }
 
-/** Allowance on receivables of a tenant account at a year end (clean method). */
-export function tenantAllowance(st: GenState, t: TenantAccount, key: YK, method: { formerRate: number; over6mRate: number; procedureRate: number; debtDischargeRate: number }): { account: string; amount: Cents } | null {
-  const y = t.byYear[key];
-  if (!y || y.balance <= 0) return null;
-  switch (y.category) {
-    case 'presentOver6m':
-      return { account: '4911', amount: Math.round(y.balance * method.over6mRate) };
-    case 'debtDischarge':
-      return { account: '4911', amount: Math.round(y.balance * method.debtDischargeRate) };
-    case 'procedure':
-      return { account: '4916', amount: Math.round(y.balance * method.procedureRate) };
-    case 'former':
-      return { account: '4915', amount: Math.round(Math.max(0, y.balance - y.depositHeld) * method.formerRate) };
-    default:
-      return null;
-  }
-}
-
-export const CLEAN_METHOD = { formerRate: 1, over6mRate: 0.5, procedureRate: 1, debtDischargeRate: 0.5 };
-
-function managerBalance(st: GenState, managerId: string, date: string): Cents {
-  const stop = st.params.scenario.residenceManagers[managerId]?.stopsPayingFrom;
-  if (!stop || date < stop) return 0;
-  const p = st.params.programmes.find((x) => x.managerId === managerId)!;
-  const fee = eur(p.monthlyFeeEuros ?? 0);
-  let months = 0;
-  for (let m = 1; m <= 12; m++) {
-    const d = isoDate(Number(date.slice(0, 4)), m, 1);
-    if (d >= stop && d <= date) months++;
-  }
-  return months * fee;
-}
+export { CLEAN_METHOD, tenantAllowance } from '../impairment';
 
 // ---------------------------------------------------------------------------
 // main
@@ -175,17 +145,7 @@ export function postLedgers(st: GenState, ctx: PostingContext): { prior: Ledger;
     }
   }
   open.push(D('4115', former23));
-  const allowance = (key: YK, method = CLEAN_METHOD) => {
-    const m = new Map<string, Map<string, Cents>>();
-    for (const t of st.tenants) {
-      const a = tenantAllowance(st, t, key, method);
-      if (!a || a.amount === 0) continue;
-      if (!m.has(a.account)) m.set(a.account, new Map());
-      m.get(a.account)!.set(t.id, a.amount);
-    }
-    return m;
-  };
-  const allow23 = allowance('y2023');
+  const allow23 = allowances(st.tenants, 'y2023', CLEAN_METHOD);
   for (const [a, perTenant] of allow23) open.push(C(a, [...perTenant.values()].reduce((x, y) => x + y, 0)));
   const deposits23 = present(d23).reduce((s, l) => s + l.deposit, 0) + held23;
   open.push(C('1651', deposits23));
@@ -588,39 +548,38 @@ export function postLedgers(st: GenState, ctx: PostingContext): { prior: Ledger;
 
     // ======================= CLOSING ENTRIES ================================
     const cu = (k: number) => (year === 2024 ? (k % 2 ? users.chiefAccountant : cfoAt(closingValid(year, k))) : k % 2 ? users.chiefAccountant : users.cfo.id);
-    // depreciation
-    const depLines: EntryLine[] = [];
-    let depTotal = 0;
+    // depreciation, one entry per programme (register of components)
+    const depByProg = new Map<string, Map<string, Cents>>();
     for (const c of st.components) {
       if (c.usefulLifeYears <= 0 || c.inServiceDate > yEnd) continue;
       if (c.disposal && c.disposal.date <= yEnd) continue; // booked at disposal
       const dot = accumulatedDepreciation(c, yEnd) - accumulatedDepreciation(c, yPrevEnd);
       if (!dot) continue;
-      depLines.push(C(depreciationAccount(c.account), dot, { refs: [`comp:${c.id}`, `prog:${c.programmeId}`] }));
-      depTotal += dot;
+      const m = depByProg.get(c.programmeId) ?? new Map<string, Cents>();
+      m.set(depreciationAccount(c.account), (m.get(depreciationAccount(c.account)) ?? 0) + dot);
+      depByProg.set(c.programmeId, m);
     }
-    // aggregate by programme and account
-    const depAgg = new Map<string, Cents>();
-    for (const l of depLines) {
-      const k = `${l.account}|${l.refs![1]}`;
-      depAgg.set(k, (depAgg.get(k) ?? 0) + l.credit);
+    for (const [pid, byAcc] of [...depByProg.entries()].sort()) {
+      const ref = { refs: [`prog:${pid}`] };
+      const total = [...byAcc.values()].reduce((x, y) => x + y, 0);
+      const name = st.progParams.get(pid)?.name ?? 'Siège et moyens généraux';
+      b.add({ journal: 'OD', date: yEnd, label: `Dotations aux amortissements ${year} – ${name}`, stream: 'CLO', lines: [D('68111', total, ref), ...[...byAcc.entries()].map(([a, x]) => C(a, x, ref))], validDate: closingValid(year, 6), enteredBy: cu(1), pieceRef: `INV${year}-AMORT-${pid}` });
     }
-    const depEntry: EntryLine[] = [...depAgg.entries()].map(([k, x]) => {
-      const [a, ref] = k.split('|') as [string, string];
-      return C(a, x, { refs: [ref] });
-    });
-    depEntry.push(D('68111', depTotal));
-    b.add({ journal: 'OD', date: yEnd, label: `Dotations aux amortissements ${year} (registre des immobilisations par composant)`, stream: 'CLO', lines: depEntry, validDate: closingValid(year, 6), enteredBy: cu(1), pieceRef: `INV${year}-AMORT` });
-    // subsidies released
-    const qp = new Map<string, Cents>();
+    // subsidies released, one entry per programme
+    const qpByProg = new Map<string, Map<string, Cents>>();
     for (const s of st.subsidies) {
       const x = accumulatedSubsidyRelease(s, st.components, yEnd) - accumulatedSubsidyRelease(s, st.components, yPrevEnd);
       if (!x || s.decisionDate > yEnd) continue;
       const ga = grantorAccounts(s.grantorId);
-      qp.set(ga.released, (qp.get(ga.released) ?? 0) + x);
+      const m = qpByProg.get(s.programmeId) ?? new Map<string, Cents>();
+      m.set(ga.released, (m.get(ga.released) ?? 0) + x);
+      qpByProg.set(s.programmeId, m);
     }
-    const qpTotal = [...qp.values()].reduce((a, x) => a + x, 0);
-    b.add({ journal: 'OD', date: yEnd, label: `Quote-part des subventions d’investissement virée au résultat ${year}`, stream: 'CLO', lines: [...[...qp.entries()].map(([a, x]) => D(a, x)), C('777', qpTotal)], validDate: closingValid(year, 6), enteredBy: cu(1), pieceRef: `INV${year}-QPS` });
+    for (const [pid, byAcc] of [...qpByProg.entries()].sort()) {
+      const ref = { refs: [`prog:${pid}`] };
+      const total = [...byAcc.values()].reduce((x, y) => x + y, 0);
+      b.add({ journal: 'OD', date: yEnd, label: `Quote-part des subventions virée au résultat ${year} – ${st.progParams.get(pid)?.name ?? pid}`, stream: 'CLO', lines: [...[...byAcc.entries()].map(([a, x]) => D(a, x, ref)), C('777', total, ref)], validDate: closingValid(year, 6), enteredBy: cu(1), pieceRef: `INV${year}-QPS-${pid}` });
+    }
     // PGE
     const pge = st.pge.find((p) => p.year === year)!;
     b.add({ journal: 'OD', date: yEnd, label: `Provision pour gros entretien ${year} – dotation (plan pluriannuel d’entretien)`, stream: 'CLO', lines: [D('68157', pge.dotation), C('1572', pge.dotation)], validDate: closingValid(year, 8), enteredBy: cu(2), pieceRef: `INV${year}-PGE` });
@@ -630,38 +589,10 @@ export function postLedgers(st: GenState, ctx: PostingContext): { prior: Ledger;
     const rd = eur(rk.dotation[String(year)]!);
     const rr = eur(rk.reprise[String(year)]!);
     b.add({ journal: 'OD', date: yEnd, label: `Provisions pour litiges ${year}`, stream: 'CLO', lines: [D('68152', rd), C('1511', rd), D('1511', rr), C('78152', rr)], validDate: closingValid(year, 8), enteredBy: cu(1) });
-    // receivables impairment (per tenant deltas)
-    const allowPrev = year === 2024 ? allow23 : allowance('y2024');
-    const allowCur = allowance(key);
-    const impLines: EntryLine[] = [];
-    let dot = 0;
-    let rep = 0;
-    for (const a of ['4911', '4915', '4916']) {
-      const prev = allowPrev.get(a) ?? new Map();
-      const cur = allowCur.get(a) ?? new Map();
-      let up = 0;
-      let down = 0;
-      for (const id of new Set([...prev.keys(), ...cur.keys()])) {
-        const delta = (cur.get(id) ?? 0) - (prev.get(id) ?? 0);
-        if (delta > 0) up += delta;
-        else down -= delta;
-      }
-      if (up) impLines.push(C(a, up));
-      if (down) impLines.push(D(a, down));
-      dot += up;
-      rep += down;
-    }
-    // residence manager in receivership (clean: 80 % of the receivable)
-    const ahRate = sc.tenants.cleanMethod.residenceManagerRate;
-    const ahPrev = Math.round(managerBalance(st, 'ACCUEIL_HORIZONS', yPrevEnd) * ahRate);
-    const ahCur = Math.round(managerBalance(st, 'ACCUEIL_HORIZONS', yEnd) * ahRate);
-    if (ahCur > ahPrev) {
-      impLines.push(C('4914', ahCur - ahPrev, { aux: 'G001' }));
-      dot += ahCur - ahPrev;
-    }
-    impLines.push(D('68174', dot), C('78174', rep));
-    b.add({ journal: 'OD', date: yEnd, label: `Dépréciation des créances locatives ${year} (méthode décrite en annexe)`, stream: 'CLO', lines: impLines, validDate: closingValid(year, 9), enteredBy: cu(2), pieceRef: `INV${year}-DEPR` });
-    st.metrics[`impairmentCharge${year}`] = dot;
+    // receivables impairment (per tenant variations, method of the annex)
+    const imp = impairmentMovements(st.tenants, st.params, year, CLEAN_METHOD);
+    b.add({ journal: 'OD', date: yEnd, label: `Dépréciation des créances locatives ${year} (méthode décrite en annexe)`, stream: 'CLO', lines: imp.lines, validDate: closingValid(year, 9), enteredBy: cu(2), pieceRef: `INV${year}-DEPR` });
+    st.metrics[`impairmentCharge${year}`] = imp.dotation;
     // accrued interest
     const icneLines: EntryLine[] = [];
     let icneTotal = 0;
@@ -698,6 +629,14 @@ export function postLedgers(st: GenState, ctx: PostingContext): { prior: Ledger;
       else if (r.regularisation < 0) regLines.push(D('7031', -r.regularisation, ref), C('4196', -r.regularisation, ref));
     }
     b.add({ journal: 'OD', date: yEnd, label: `Régularisation des charges récupérables ${year} (état par programme)`, stream: 'CLO', lines: regLines, validDate: closingValid(year, 10), enteredBy: cu(2), pieceRef: `INV${year}-REGUL` });
+    // rent increase above the legal cap (+3,50 % voted, +3,26 % allowed): liability to the tenants
+    const legal = st.params.regulatory.rentRevision.byYear[String(year)];
+    if (legal?.votedByBoardPct && legal.votedByBoardPct > legal.legalCapPct) {
+      const byProg = rentExcessByProgramme(st, year);
+      const total = [...byProg.values()].reduce((x, y) => x + y, 0);
+      if (total) b.add({ journal: 'OD', date: yEnd, label: `Dette de restitution aux locataires – hausse de loyers ${year} au-delà de la variation de l’IRL`, stream: 'CLO', lines: [...[...byProg.entries()].map(([pid, x]) => D('70411', x, { refs: [`prog:${pid}`] })), C('4196', total)], validDate: closingValid(year, 13), enteredBy: cu(2), pieceRef: `INV${year}-RESTIT` });
+      st.metrics[`rentRestitution${year}`] = total;
+    }
     // tenants: procedure reclass and credit balances
     const pbPrev = presentBalances(prevKey, yPrevEnd);
     const pbCur = presentBalances(key, yEnd);
@@ -746,3 +685,21 @@ export function postLedgers(st: GenState, ctx: PostingContext): { prior: Ledger;
 }
 
 export type { Lease };
+
+/** Rents invoiced in `year` above the legal increase, by programme (leases running on 1 January). */
+export function rentExcessByProgramme(st: { leases: readonly Lease[]; params: GenState['params'] }, year: number): Map<string, Cents> {
+  const rev = st.params.regulatory.rentRevision.byYear[String(year)]!;
+  const m = new Map<string, Cents>();
+  for (const l of st.leases) {
+    if (!l.regulated || l.start > `${year}-01-01` || (l.end && l.end < `${year}-01-31`)) continue;
+    const legalRent = Math.round(l.rent.y2024 * (1 + rev.legalCapPct / 100));
+    const excess = l.rent.y2025 - legalRent;
+    if (excess <= 0) continue;
+    let months = 0;
+    for (let mo = 1; mo <= 12; mo++) {
+      if (l.start <= `${year}-${String(mo).padStart(2, '0')}-01` && (!l.end || l.end >= endOfMonth(year, mo))) months++;
+    }
+    m.set(l.programmeId, (m.get(l.programmeId) ?? 0) + excess * months);
+  }
+  return m;
+}

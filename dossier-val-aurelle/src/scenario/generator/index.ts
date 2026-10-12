@@ -11,7 +11,7 @@ import leversJson from '../params/levers.json';
 import { DEFAULT_LEVERS, eur, type GenState, type Levers } from './core';
 import { buildLoans, flatRateIcneError } from './loans';
 import { buildAssets, buildProgrammes, buildThirdParties, finaliseSubsidies } from './portfolio';
-import { postLedgers } from './posting';
+import { postLedgers, rentExcessByProgramme } from './posting';
 import {
   buildMaintenancePlan,
   buildOperatingInvoices,
@@ -122,21 +122,13 @@ export function generateWorld(params: Params = loadParams(), levers: Levers = st
   // anomaly calibration metrics (J2)
   st.metrics['icneFlatRateErrorA08'] = flatRateIcneError(st, '2025-12-31', 3.0);
   st.metrics['closFleuriNbvA03'] = closFleuriBookValue(st);
-  const voted = params.regulatory.rentRevision.byYear['2025']!.votedByBoardPct! / 100;
-  let excess = 0;
   let saules = 0;
   for (const l of st.leases) {
-    const inPlace = l.start <= '2025-01-01' && (!l.end || l.end >= '2025-01-31');
-    for (let m = 1; m <= 12; m++) {
-      const active = l.start <= `2025-${String(m).padStart(2, '0')}-01` && (!l.end || l.end >= endOfMonth(2025, m));
-      if (!active) continue;
-      const presented = inPlace && l.regulated ? Math.round(l.rent.y2024 * (1 + voted)) : l.rent.y2025;
-      if (inPlace && l.regulated) excess += presented - l.rent.y2025;
-      if (l.programmeId === 'SAU' && m === 10) saules += presented - l.rls.y2025;
-    }
+    const active = l.programmeId === 'SAU' && l.start <= '2025-10-01' && (!l.end || l.end >= endOfMonth(2025, 10));
+    if (active) saules += l.rent.y2025 - l.rls.y2025;
   }
   const sauOct = roll.get('SAU')!.get(2025)![9]!;
-  st.metrics['rentExcessA17'] = excess;
+  st.metrics['rentExcessA17'] = [...rentExcessByProgramme(st, 2025).values()].reduce((a, x) => a + x, 0);
   st.metrics['rentBatchSaulesOctoberA19'] = saules + sauOct.commercial + sauOct.parking;
 
   const datasets: ScenarioDatasets = {

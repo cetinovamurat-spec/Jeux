@@ -1,21 +1,21 @@
 {
   "_comment": "Empreinte du monde généré. Mettre à jour par « npm run generate -- --update-lock » après une modification voulue.",
   "fingerprint": {
-    "hash": "1dddef88557e43",
+    "hash": "0ad2f1adeb96fb",
     "entries": {
-      "prior": 5995,
-      "current": 6169
+      "prior": 6042,
+      "current": 6269
     },
     "lines": {
-      "prior": 26631,
-      "current": 26881
+      "prior": 26802,
+      "current": 27186
     },
     "netResult": {
-      "prior": 540016325,
-      "current": 483317983
+      "prior": 539974811,
+      "current": 483274155
     },
     "components": 5131,
-    "leases": 9863,
+    "leases": 9756,
     "invoices": 7261
   }
 }

@@ -1,10 +1,10 @@
 {
   "_comment": "Leviers de calibrage résolus par « npm run calibrate -- --solve » (ne pas modifier à la main).",
-  "maintenance2025Euros": 2764277,
-  "maintenance2024Euros": 3164361,
-  "constructionCostScale": 1.2805324653229653,
-  "pgeDotation2024Euros": 953542,
-  "subsidyScale": 0.9414624826509325,
-  "openingCashEuros": 16855123,
+  "maintenance2025Euros": 2422031,
+  "maintenance2024Euros": 3133200,
+  "constructionCostScale": 1.2484615101046763,
+  "pgeDotation2024Euros": 1349118,
+  "subsidyScale": 0.9625172375895811,
+  "openingCashEuros": 16934563,
   "loanExtensionYears": 4
 }

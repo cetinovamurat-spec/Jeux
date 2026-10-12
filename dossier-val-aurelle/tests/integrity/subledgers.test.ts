@@ -5,7 +5,8 @@ import { accumulatedDepreciation, accumulatedSubsidyRelease } from '../../src/en
 import { accruedInterest, outstandingAt } from '../../src/engine/subledgers/loans';
 import { buildAnnex } from '../../src/scenario/annex';
 import type { ScenarioDatasets } from '../../src/scenario/datasets';
-import { CLEAN_METHOD, postingDate, tenantAllowance } from '../../src/scenario/generator/posting';
+import { postingDate, rentExcessByProgramme } from '../../src/scenario/generator/posting';
+import { CLEAN_METHOD, managerReceivable, tenantAllowance } from '../../src/scenario/impairment';
 import { params, world } from '../helpers/world';
 
 const YEARS = [
@@ -70,8 +71,10 @@ describe('balance ↔ sub-ledgers', () => {
       });
       it('impairment of tenant receivables = allowance computed by the method of the annex', () => {
         let total = 0;
-        for (const t of ds.tenants) total += tenantAllowance(r.state, t, yk, CLEAN_METHOD)?.amount ?? 0;
+        for (const t of ds.tenants) total += tenantAllowance(t, yk, CLEAN_METHOD)?.amount ?? 0;
         expect(-bal(['4911', '4915', '4916'])).toBe(total);
+        expect(0 - bal(['4914'])).toBe(Math.round(managerReceivable(params(), 'ACCUEIL_HORIZONS', end) * CLEAN_METHOD.managerRate));
+        expect(bal(['4114'])).toBe(managerReceivable(params(), 'ACCUEIL_HORIZONS', end));
       });
       it('suppliers = unpaid invoices', () => {
         const unpaid = ds.invoices.filter((i) => (i.category === 'ouverture' || postingDate(i) <= end) && !(i.paidDate && i.paidDate <= end));
@@ -91,7 +94,8 @@ describe('balance ↔ sub-ledgers', () => {
         expect(ds.maintenancePlan.reduce((s, it) => s + it.provision[yk], 0)).toBe(pge.closing);
         const regul = ds.regularisations.filter((x) => `${x.year}-12-31` === end);
         expect(bal(['4181'])).toBe(regul.filter((x) => x.regularisation > 0).reduce((s, x) => s + x.regularisation, 0));
-        expect(-bal(['4196'])).toBe(regul.filter((x) => x.regularisation < 0).reduce((s, x) => s - x.regularisation, 0));
+        const restitution = key === 'current' ? [...rentExcessByProgramme(r.state, 2025).values()].reduce((s, x) => s + x, 0) : 0;
+        expect(-bal(['4196'])).toBe(regul.filter((x) => x.regularisation < 0).reduce((s, x) => s - x.regularisation, 0) + restitution);
       });
       it('annex tables reconcile with the balance', () => {
         const annex = buildAnnex(w, params(), key);

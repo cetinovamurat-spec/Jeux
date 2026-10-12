@@ -36,6 +36,8 @@ export interface Dwelling {
   chargeProvision: Cents;
   regulated: boolean;
   energyClass: 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G';
+  /** Technical vacancy (neutralised for demolition, works, heavy repairs): not re-let. */
+  technicalVacancy?: { from: IsoDate; reason: 'demolition' | 'works' | 'heavyRepairs' };
 }
 
 export interface Lease {

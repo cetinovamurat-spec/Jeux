@@ -367,6 +367,8 @@ function buildGlycinesB(st: GenState): void {
   buildings.forEach((b, i) =>
     addComponent(st, { programmeId: 'GLB', building: b.id, family: 'structure', operationId: op.id, cost: perBuilding[i]!, inServiceDate: g.rehabInService, suffix: '-R', label: 'Restructuration lourde (gros œuvre)' }),
   );
+  // demolition decided by the board on 18/06/2025: prospective revision of the depreciation plan (clean world)
+  for (const c of st.components.filter((x) => x.operationId === op.id)) c.revisedPlan = { from: g.revisedFrom, until: g.demolitionPlannedEnd };
   st.subsidies.push({
     id: 'SUB-GLB-H2015-ANRU',
     operationId: op.id,

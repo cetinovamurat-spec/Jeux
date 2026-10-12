@@ -342,7 +342,7 @@
     "aplShare": 0.47,
     "aplMonthlyMeanEuros": 235,
     "turnoverPerYear": 0.085,
-    "vacancyMonthsMean": 2,
+    "vacancyMonthsMean": 3.0,
     "departuresWithDebtShare": 0.33
   },
   "tenants": {
