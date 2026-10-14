@@ -126,7 +126,7 @@ export function TeamCard() {
       </div>
 
       <div className="border-t border-line px-3 py-2.5">
-        <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted">Encadrement – Sequana Audit</h3>
+        <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted">Encadrement – {gp.firmName}</h3>
         <ul className="grid gap-2 sm:grid-cols-2">
           {gp.firm.map((f) => (
             <li key={f.id} className="flex items-center gap-2 text-sm">

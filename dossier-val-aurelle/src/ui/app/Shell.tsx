@@ -45,7 +45,7 @@ export function Shell() {
     <div className="grid min-h-screen grid-cols-[13.5rem_1fr]">
       <aside className="sticky top-0 flex h-screen flex-col border-r border-line bg-panel">
         <div className="border-b border-line px-4 py-3">
-          <p className="text-xs uppercase tracking-wide text-muted">Sequana Audit</p>
+          <p className="text-xs uppercase tracking-wide text-muted">{gp.firmName}</p>
           <p className="text-sm font-semibold leading-tight">{c.params.scenario.entity.name}</p>
           <p className="text-xs text-muted">Exercice clos le 31/12/2025</p>
         </div>

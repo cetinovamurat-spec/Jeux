@@ -25,7 +25,7 @@ function navLabel(to: string): string {
 function PartnerMessage() {
   const c = useCase();
   const available = useAvailableDocuments();
-  const { firm, calendar, startDate } = c.params.game;
+  const { firm, firmName, calendar, startDate } = c.params.game;
   const partner = firm.find((f) => f.id === 'partner') ?? firm[0];
   const manager = firm.find((f) => f.id === 'manager');
   const { entity, years } = c.params.scenario;
@@ -77,7 +77,7 @@ function PartnerMessage() {
         {partner && (
           <p className="pt-1">
             <span className="font-semibold">{partner.name}</span>
-            <span className="text-muted"> – {partner.role}, Sequana Audit</span>
+            <span className="text-muted"> – {partner.role}, {firmName}</span>
           </p>
         )}
       </article>

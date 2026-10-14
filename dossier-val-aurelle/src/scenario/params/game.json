@@ -6,6 +6,7 @@
     { "id": "hugo", "name": "Hugo Mercier", "role": "Stagiaire", "hoursByDifficulty": { "assistant": 110, "senior": 90, "manager": 75 }, "speed": 0.85 },
     { "id": "sofia", "name": "Sofia Benali", "role": "Auditrice des systèmes d’information (mobilisable quelques heures)", "hoursByDifficulty": { "assistant": 12, "senior": 10, "manager": 8 }, "speed": 1.0 }
   ],
+  "firmName": "Sequana Audit",
   "firm": [
     { "id": "partner", "name": "Claire Delmas", "role": "Associée signataire" },
     { "id": "manager", "name": "Antoine Roussel", "role": "Manager" }

@@ -15,7 +15,7 @@ export function correspondenceDocuments(c: DocContext): DocumentModel[] {
   const cal = c.d.calendar;
   const sent = cal['confirmationsSent']!;
   const reply = (days: number) => addBusinessDays(sent, days);
-  const auditor = 'Sequana Audit';
+  const auditor = c.params.game.firmName;
 
   // ============================== courrier ==============================
   {

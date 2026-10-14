@@ -9,8 +9,8 @@ export function permanentDocuments(c: DocContext): DocumentModel[] {
   const chair = person(c, 'chairman');
   const ceo = person(c, 'ceo');
   const cfo = person(c, 'cfo');
-  const auditFirm = 'Sequana Audit';
-  const partner = 'Claire Delmas';
+  const auditFirm = c.params.game.firmName;
+  const partner = c.params.game.firm.find((m) => m.id === 'partner')!.name;
 
   // --- noise: by-laws, Kbis, organisation chart, CUS, engagement letter, independence
   docs.push(
