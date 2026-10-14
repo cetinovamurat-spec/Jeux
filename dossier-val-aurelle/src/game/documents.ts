@@ -1,10 +1,12 @@
 /**
- * Document management (GED): availability of documents for the player and
- * full-text search over their content. Pure, no React.
+ * Document management (GED): availability of documents for the player,
+ * full-text search over their content and the filtered list shown by the
+ * GED screen. Pure, no React.
  */
 import type { IsoDate } from '../engine/dates';
 import type { Block, DocumentModel } from '../scenario/documents';
-import { normalize } from './fec-query';
+import type { DocumentCategory } from '../scenario/documents/model';
+import type { DocumentState } from './state';
 
 export interface AvailabilityContext {
   date: IsoDate;
@@ -55,11 +57,54 @@ export function blockText(b: Block): string {
   }
 }
 
+// ---------------------------------------------------------------------------
+// folding (accent-, case- and ligature-insensitive search)
+// ---------------------------------------------------------------------------
+
+const LIGATURES: Readonly<Record<string, string>> = { œ: 'oe', Œ: 'oe', æ: 'ae', Æ: 'ae' };
+const COMBINING_MARKS = /[̀-ͯ]/g;
+
+export interface FoldedText {
+  /** Lower case, without accents, ligatures expanded (œ → oe), apostrophes as spaces. */
+  text: string;
+  /** `map[i]` is the position in the raw text of the character `text[i]` comes from. */
+  map: number[];
+}
+
+/** Folds a text for searching, keeping the positions in the raw text (snippets, highlighting). */
+export function foldText(raw: string): FoldedText {
+  let text = '';
+  const map: number[] = [];
+  let pos = 0;
+  for (const ch of raw) {
+    const code = ch.charCodeAt(0);
+    let f: string;
+    if (code < 128) f = ch === "'" ? ' ' : ch.toLowerCase();
+    else if (ch === '’') f = ' ';
+    else f = LIGATURES[ch] ?? ch.normalize('NFD').replace(COMBINING_MARKS, '').toLowerCase();
+    for (let k = 0; k < f.length; k++) map.push(pos);
+    text += f;
+    pos += ch.length;
+  }
+  return { text, map };
+}
+
+/** Folded words of a search query (letters and digits, more than one character, without duplicates). */
+export function searchWords(query: string): string[] {
+  return [...new Set(foldText(query).text.split(/[^a-z0-9]+/).filter((w) => w.length > 1))];
+}
+
+// ---------------------------------------------------------------------------
+// full-text search
+// ---------------------------------------------------------------------------
+
 export interface SearchHit {
   docId: string;
   score: number;
   /** Index of the first matching block, -1 for title or metadata. */
   block: number;
+  /** Every block containing at least one word of the query (in document order). */
+  blocks: number[];
   snippet: string;
 }
 
@@ -67,40 +112,151 @@ export interface DocumentIndex {
   search(query: string, docIds?: ReadonlySet<string>): SearchHit[];
 }
 
+/** Characters kept before and after the first occurrence in a snippet. */
+const SNIPPET_BEFORE = 60;
+const SNIPPET_AFTER = 120;
+
+interface IndexedBlock {
+  raw: string;
+  norm: string;
+  map: number[];
+}
+
+function snippetOf(b: IndexedBlock, words: readonly string[]): string {
+  let pos = -1;
+  for (const w of words) {
+    const p = b.norm.indexOf(w);
+    if (p >= 0 && (pos < 0 || p < pos)) pos = p;
+  }
+  if (pos < 0) return '';
+  const at = b.map[pos] ?? 0;
+  let start = Math.max(0, at - SNIPPET_BEFORE);
+  let end = Math.min(b.raw.length, at + SNIPPET_AFTER);
+  // cut on word boundaries when possible
+  if (start > 0) {
+    const sp = b.raw.indexOf(' ', start);
+    if (sp >= 0 && sp < at) start = sp + 1;
+  }
+  if (end < b.raw.length) {
+    const sp = b.raw.lastIndexOf(' ', end);
+    if (sp > at) end = sp;
+  }
+  return `${start > 0 ? '…' : ''}${b.raw.slice(start, end).trim()}${end < b.raw.length ? '…' : ''}`;
+}
+
+/**
+ * Index of the documents for the full-text search: every word of the query
+ * (accents, case and ligatures ignored, words of one character ignored) must
+ * appear in the document; a word found in the title, issuer, recipient or
+ * reference weighs 5, each block containing it weighs 1.
+ */
 export function buildDocumentIndex(docs: readonly DocumentModel[]): DocumentIndex {
-  const entries = docs.map((d) => ({
-    id: d.id,
-    head: normalize(`${d.title} ${d.issuer} ${d.recipient ?? ''} ${d.reference ?? ''}`),
-    blocks: d.blocks.map((b) => {
+  const entries = docs.map((d) => {
+    const head = foldText(`${d.title} ${d.issuer} ${d.recipient ?? ''} ${d.reference ?? ''}`).text;
+    const blocks: IndexedBlock[] = d.blocks.map((b) => {
       const raw = blockText(b);
-      return { raw, norm: normalize(raw) };
-    }),
-  }));
+      const f = foldText(raw);
+      return { raw, norm: f.text, map: f.map };
+    });
+    return { id: d.id, head, blocks, all: `${head} ${blocks.map((b) => b.norm).join(' ')}` };
+  });
   return {
     search(query, docIds) {
-      const words = normalize(query).split(/[^a-z0-9]+/).filter((w) => w.length > 1);
+      const words = searchWords(query);
       if (!words.length) return [];
       const hits: SearchHit[] = [];
       for (const e of entries) {
         if (docIds && !docIds.has(e.id)) continue;
-        const all = `${e.head} ${e.blocks.map((b) => b.norm).join(' ')}`;
-        if (!words.every((w) => all.includes(w))) continue;
+        if (!words.every((w) => e.all.includes(w))) continue;
         let score = 0;
         for (const w of words) {
           if (e.head.includes(w)) score += 5;
           for (const b of e.blocks) if (b.norm.includes(w)) score += 1;
         }
-        const block = e.blocks.findIndex((b) => words.some((w) => b.norm.includes(w)));
-        let snippet = '';
-        if (block >= 0) {
-          const b = e.blocks[block]!;
-          const pos = b.norm.indexOf(words.find((w) => b.norm.includes(w))!);
-          const start = Math.max(0, pos - 60);
-          snippet = `${start > 0 ? '…' : ''}${b.raw.slice(start, pos + 120)}${pos + 120 < b.raw.length ? '…' : ''}`;
-        }
-        hits.push({ docId: e.id, score, block, snippet });
+        const blocks: number[] = [];
+        e.blocks.forEach((b, i) => {
+          if (words.some((w) => b.norm.includes(w))) blocks.push(i);
+        });
+        const block = blocks[0] ?? -1;
+        const snippet = block >= 0 ? snippetOf(e.blocks[block]!, words) : '';
+        hits.push({ docId: e.id, score, block, blocks, snippet });
       }
       return hits.sort((a, b) => b.score - a.score || (a.docId < b.docId ? -1 : 1));
     },
   };
+}
+
+// ---------------------------------------------------------------------------
+// GED list: filters and sort
+// ---------------------------------------------------------------------------
+
+export type DocumentStatusFilter = 'all' | 'unread' | 'evidence' | 'annotated';
+export type DocumentSort = 'relevance' | 'dateDesc' | 'dateAsc' | 'title';
+
+export interface DocumentFilter {
+  category: DocumentCategory | 'all';
+  status: DocumentStatusFilter;
+  sort: DocumentSort;
+}
+
+export const DEFAULT_DOCUMENT_FILTER: Readonly<DocumentFilter> = { category: 'all', status: 'all', sort: 'dateDesc' };
+
+export interface ListedDocument {
+  doc: DocumentModel;
+  /** Search hit (null when no search is active). */
+  hit: SearchHit | null;
+}
+
+export function matchesStatus(state: DocumentState | undefined, status: DocumentStatusFilter): boolean {
+  switch (status) {
+    case 'all':
+      return true;
+    case 'unread':
+      return !state?.readOn;
+    case 'evidence':
+      return !!state?.evidence;
+    case 'annotated':
+      return (state?.annotations.length ?? 0) > 0;
+  }
+}
+
+const collator = new Intl.Collator('fr', { sensitivity: 'base', numeric: true });
+
+/**
+ * Documents of the GED list: `docs` (already restricted to the available
+ * ones) matching the search (`hits`, null when no search is active), the
+ * category and the status, sorted. The document `keep` (being read) stays in
+ * the list whatever its status, so that it does not vanish once it is read,
+ * kept as evidence or annotated. Sorting by relevance without a search falls
+ * back to the most recent first.
+ */
+export function listDocuments(
+  docs: readonly DocumentModel[],
+  states: Readonly<Record<string, DocumentState>>,
+  filter: DocumentFilter,
+  hits: readonly SearchHit[] | null,
+  keep?: string,
+): ListedDocument[] {
+  const byId = hits ? new Map(hits.map((h) => [h.docId, h])) : null;
+  const out: ListedDocument[] = [];
+  for (const doc of docs) {
+    const hit = byId ? byId.get(doc.id) : null;
+    if (hit === undefined) continue;
+    if (filter.category !== 'all' && doc.category !== filter.category) continue;
+    if (doc.id !== keep && !matchesStatus(states[doc.id], filter.status)) continue;
+    out.push({ doc, hit });
+  }
+  const byDate = (a: ListedDocument, b: ListedDocument) => (a.doc.date < b.doc.date ? -1 : a.doc.date > b.doc.date ? 1 : 0);
+  const byTitle = (a: ListedDocument, b: ListedDocument) => collator.compare(a.doc.title, b.doc.title) || (a.doc.id < b.doc.id ? -1 : a.doc.id > b.doc.id ? 1 : 0);
+  const sort = filter.sort === 'relevance' && !hits ? 'dateDesc' : filter.sort;
+  switch (sort) {
+    case 'relevance':
+      return out.sort((a, b) => (b.hit?.score ?? 0) - (a.hit?.score ?? 0) || byDate(b, a) || byTitle(a, b));
+    case 'dateDesc':
+      return out.sort((a, b) => byDate(b, a) || byTitle(a, b));
+    case 'dateAsc':
+      return out.sort((a, b) => byDate(a, b) || byTitle(a, b));
+    case 'title':
+      return out.sort((a, b) => byTitle(a, b) || byDate(b, a));
+  }
 }
