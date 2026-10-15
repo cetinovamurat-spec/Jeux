@@ -7,7 +7,7 @@ Légende :
 - **Origine** — CDC : fourni par le cahier des charges ; Prop. : proposition de ma part.
 - **Statut** — *À vérifier* (référence ou valeur à confirmer) ; *Défaut proposé* / *Défaut accepté (plan J0)* (choix de contenu proposé, accepté avec le plan J0, révisable à la revue métier de J2) ; **Validé** (confirmé par vous, avec la date).
 
-Dernière mise à jour : J3 (12/10/2026) — J2 validé le 12/10/2026 : les choix « à valider » de la section G sont acceptés par défaut, révisables à tout moment.
+Dernière mise à jour : J3 (15/10/2026) — J2 validé le 12/10/2026 : les choix « à valider » de la section G sont acceptés par défaut, révisables à tout moment. Section H : choix de J3 (consultation).
 
 ---
 
@@ -117,3 +117,18 @@ Dernière mise à jour : J3 (12/10/2026) — J2 validé le 12/10/2026 : les choi
 | PV-70 | Accès aux documents | Cinq modes : dossier initial, sur demande précise (libellé de demande), réponse de tiers à une date du calendrier, courrier postérieur à une date, document conditionnel (mails de la DAF si le chef comptable se confie). Mise en œuvre en J4. | `documents/model.ts` | Prop. | Défaut proposé |
 | PV-71 | Volume documentaire | 125 documents, dont 29 de « bruit » (23 %) ; 127 indices ; chaque anomalie a au moins deux indices dans des documents distincts, et chaque fausse piste au moins deux pièces qui l'écartent (tests bloquants). | `documents/` | CDC | Défaut proposé |
 
+---
+
+## H. Choix retenus en J3 (consultation)
+
+| ID | Sujet | Choix retenu | Où | Origine | Statut |
+|---|---|---|---|---|---|
+| PV-72 | Ratios HLM de la revue analytique | Annuités / loyers = (remboursements en capital des emprunts locatifs, hors anticipés, + intérêts des emprunts 6611) / loyers nets de RLS ; frais financiers / loyers ; impayés = créances locatives brutes (4111, 4114, 4115, 4116) / loyers quittancés avant RLS (soldes créditeurs 70411 à 70415) ; coût de gestion par logement = (641 + 645 + 62 + 635 hors TFPB 63512 et TEOM 63513) / logements familiaux en service au 31/12 ; vacance = taux au 31/12 toute vacance (PV-60). Définitions à rapprocher des indicateurs sectoriels usuels (Boléro, dossier individuel de situation) ; affichées à l'écran comme « propositions à valider ». | `params/analysis.json` → `review` | CDC + Prop. | Défaut proposé |
+| PV-73 | Moyenne triennale de l'autofinancement net | Moyenne simple des trois ratios annuels (2023 communiqué par la société, 2024 et 2025 calculés), comparée au taux de référence triennal ; une moyenne pondérée (somme des numérateurs / somme des dénominateurs) donnerait un résultat voisin. Méthode réglementaire à vérifier avec PV-10. | `game/analysis.ts` | Prop. | À vérifier |
+| PV-74 | Taux moyen du Livret A | Moyenne des taux en vigueur pondérée par le nombre de jours de l'exercice (historique PV-17), présentée à côté de la variation des frais financiers. | `game/analysis.ts` | Prop. | Défaut proposé |
+| PV-75 | Seuils de variation par défaut | 10 % et 100 000 € (les deux doivent être dépassés), modifiables par le joueur ; à relier au seuil de planification fixé par le joueur en J4. | `params/analysis.json` → `review` | Prop. | Défaut proposé |
+| PV-76 | Dépôts de garantie dans l'état des dettes | Présentés « à plus d'un an et cinq ans au plus » dans l'annexe du client (note : restituables en fin de bail). Classement au bilan : voir PV-23 et A22. | `annex.ts` | Prop. | Défaut proposé |
+| PV-77 | Horloge de J3 | Fixée au 23/02/2026 (début du final) pour que le projet de comptes, la balance et le FEC remis le 20/02/2026 soient consultables. En J4, la partie démarrera à l'intérim (17/11/2025) : à trancher alors ce qui est consultable avant le final (balance intermédiaire, FEC partiel). | `params/game.json` | Prop. | Défaut proposé |
+| PV-78 | Tests courants du FEC | Six préréglages génériques : écritures validées après la clôture ; datées ou validées un samedi ou un dimanche ; montants ronds (multiples de 1 000, 10 000 ou 100 000 €) ; couples débit → crédit de comptes vus dans au plus 2 écritures de l'exercice (à-nouveaux et écritures de plus de 20 lignes exclus) ; écritures sans pièce ; OD saisies manuellement (journaux d'opérations diverses, hors utilisateurs d'interface et de migration). Aucun n'est construit à partir des anomalies. | `game/fec-query.ts`, `params/game.json` | CDC + Prop. | Défaut proposé |
+| PV-79 | Champ « Saisi par » et format du FEC | Utilisateur du logiciel comptable : champ interne affiché et exporté en CSV, absent de l'export au format FEC (18 champs du format réglementaire, dans l'ordre de `engine/fec.ts` ; texte de référence non cité, liste et ordre des champs à vérifier). | `fec-query.ts`, `engine/fec.ts` | Prop. | À vérifier |
+| PV-80 | Marques de pointage par défaut | ✓ concordé avec la balance, Ⓒ pointé sur les comptes certifiés 2024, Σ total vérifié, ≠ écart à analyser, ? à revoir ; modifiables par le joueur. | `game/state.ts` | Prop. | Défaut proposé |

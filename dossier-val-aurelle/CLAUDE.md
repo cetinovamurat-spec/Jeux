@@ -13,7 +13,7 @@ Jeu de rôle d'audit légal (navigateur, 100 % client) : le joueur audite les co
 | J0 — Plan | **Validé le 12/10/2026** | Option 1 retenue pour D2 ; D1, D3 à D7 acceptées |
 | J1 — Moteur comptable | **Livré le 12/10/2026** | Monde propre 2024 + 2025 ; 34/34 cibles de calibrage ; 85 tests verts ; écran de contrôle |
 | J2 — Anomalies et contenus | **Validé le 12/10/2026** | 22 anomalies (30 parties), clé de correction calculée, 125 documents et 127 indices, 7 fausses pistes ; 53/53 cibles ; 131 tests verts ; dossier `docs/revue-metier/`. Choix « à valider » de la section G acceptés par défaut |
-| J3 — Consultation | En cours | |
+| J3 — Consultation | **Livré le 15/10/2026** | Bureau, GED, balance N / N-1, grand livre, explorateur du FEC, états et pointage, revue analytique ; état de jeu pur et sauvegarde automatique ; __TESTS__ tests verts |
 | J4 — Mécanique d'audit | À faire | |
 | J5 — Personnages | À faire | |
 | J6 — Synthèse | À faire | |
@@ -67,11 +67,23 @@ Jeu de rôle d'audit légal (navigateur, 100 % client) : le joueur audite les co
 - **Ajustements du générateur** (consignés en PV-57 à PV-61) : effacements de dettes limités aux locataires restés dans les lieux, factures échues intégrant les retards ordinaires, calage de la dotation présentée sans toucher aux ex-locataires, vacance technique paramétrée.
 - **Revue métier** : `npm run review-pack` écrit `docs/revue-metier/` (HTML et CSV, versionnés pour la validation).
 
+### Choix d'implémentation de J3
+
+- **Données du dossier.** Le Web Worker renvoie une seule charge utile (monde propre, clé de correction, documents, fausses pistes, données de contrôle). `src/ui/app/case.ts` (`CaseData`, lu par `useCase()`) en dérive paresseusement balances, annexe, FEC, index du FEC et index documentaire. Le joueur ne voit que le monde présenté ; le monde propre et la clé ne servent qu'au mode concepteur.
+- **État de jeu = fonctions pures** (`src/game/state.ts` : lecture, annotations, preuves, pointage, marques, requêtes, réglages, journal). Le store Zustand (`src/ui/app/store.ts`) ne fait que les appliquer et sauvegarde automatiquement dans `localStorage` (`val-aurelle:autosave`, différée de 400 ms). Format versionné (`schemaVersion`, schéma Zod, migrations) ; une sauvegarde d'un autre scénario est refusée (`persistence.ts`).
+- **État d'affichage** (recherche, filtres, onglet, tri) : stores Zustand propres à chaque écran, en mémoire seulement — il survit à la navigation, pas au rechargement. Les paramètres d'URL servent aux liens entre écrans (`/grand-livre?compte=&exercice=`, `/fec?ecriture=&requete=&exercice=`, `/etats?onglet=`, `/ged/:docId`).
+- **Horloge** : fixée en J3 au 23/02/2026 (début du final, `params/game.json` → `startDate`), pour que le projet de comptes, la balance et le FEC soient consultables. Elle avancera en J4 (PV-77).
+- **Disponibilité des documents** (`src/game/documents.ts`) : dossier initial (date du document ≤ date du jeu), courrier postérieur, sur demande, confirmation, condition ; les trois derniers modes seront alimentés en J4-J5. Le mode concepteur débloque tout.
+- **Mode concepteur** : `?designer=1` (avant ou après le `#`) l'active, `?designer=0` le coupe ; il est conservé dans l'état. Il montre les indices et l'accès des documents, les écarts présenté / propre (balance, grand livre, FEC, états, ratios) et l'écran de contrôle de J1 (`/controle`).
+- **Aucune aide à la détection hors mode concepteur** : pas de mise en évidence d'écritures, de lignes ou d'écarts ; les tests d'écritures (« tests courants ») et les seuils de la revue analytique sont génériques.
+- **Paramètres** : nom du cabinet, équipe, encadrement, budgets, jauges, calendrier, multiples des montants ronds, seuil des couples de comptes rares (`params/game.json`) ; regroupements de comptes des ratios HLM et seuils de variation par défaut (`params/analysis.json` → `review`).
+- **Vérification visuelle** : `node scripts/ui-check.mjs <url> <dossier> <route>[@designer]…` (Chromium : captures et erreurs de console).
+
 ## Commandes
 
 ```bash
 npm install
-npm run dev           # écran de contrôle (Vite)
+npm run dev           # jeu (Vite) ; écran de contrôle : ?designer=1#/controle
 npm test              # génère puis lance Vitest (≈ 20 s)
 npm run build         # typecheck + site statique (dist/)
 npm run build:single  # fichier HTML unique hors ligne (dist-single/index.html, ≈ 1 Mo)
@@ -90,7 +102,8 @@ npm run typecheck
 - `src/scenario/anomalies/` — `types.ts` (module, parties, signature, négociation, débrief), `draft.ts` (brouillon copie-sur-écriture), `closing.ts` (écritures dérivées), `modules/` (A01 à A22 par cycle), `presented.ts` (états, corrections, impacts), `synthesis.ts` (synthèse de référence).
 - `src/scenario/documents/` — `model.ts`, `context.ts` (formats, constructeur, indices), `catalog/` (permanent, gouvernance, comptabilité, contrats, courrier et tiers, bruit), `false-leads.ts` (F1 à F7), `index.ts` (`buildDocuments`).
 - `scripts/review-pack.ts` — dossier de revue métier.
-- `src/ui/` — écran de contrôle (J1) : cibles, balance, états, annexe, CAF, FEC.
-- `tests/` — moteur, intégrité (balance ↔ sous-ledgers ↔ annexe ↔ FEC), calibrage, déterminisme, garde-fous ; J2 : monde présenté et invariant (`anomalies/presented`), impacts du §5 (`anomalies/impacts`), composabilité deux à deux (`anomalies/composability`), documents et indices (`documents/`).
+- `src/game/` — règles pures du jeu (sans React) : `state.ts` (état et actions), `persistence.ts` (sauvegarde versionnée), `clock.ts` (périodes du calendrier), `documents.ts` (disponibilité, recherche plein texte, liste de la GED), `ledger.ts` (balance et grand livre), `fec-query.ts` (requêtes du FEC, couples rares, tests courants, exports), `ticking.ts` (pointage), `analysis.ts` (variations, ratios HLM, Livret A).
+- `src/ui/` — `app/` (coquille, routes, palette Ctrl+K, store, `CaseData`, chargement par le worker), `components/` (primitives, tableau virtualisé, rendu des documents), `worker/` (génération du dossier), `screens/` : `desk` (bureau), `ged`, `balance`, `ledger` (grand livre), `fec`, `statements` (états et pointage), `analysis` (revue analytique), `control` (écran de contrôle de J1, mode concepteur).
+- `tests/` — moteur, intégrité (balance ↔ sous-ledgers ↔ annexe ↔ FEC), calibrage, déterminisme, garde-fous ; J2 : monde présenté et invariant (`anomalies/presented`), impacts du §5 (`anomalies/impacts`), composabilité deux à deux (`anomalies/composability`), documents et indices (`documents/`) ; J3 : règles du jeu (`game/` : état, persistance, documents, grand livre, FEC, pointage, analyse).
 
 Dépendances de développement : les alertes `npm audit` (vitest, braces) concernent l'outillage de développement, pas le jeu livré.
