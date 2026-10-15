@@ -1,18 +1,63 @@
 /** §3.4 — the balance reconciles with every sub-ledger and with the annex tables. */
 import { describe, expect, it } from 'vitest';
-import { closingBalances, closingBalancesByAux, sumPrefixes } from '../../src/engine/balance';
+import { closingBalances, closingBalancesByAux, sumPrefixes, trialBalance } from '../../src/engine/balance';
 import { accumulatedDepreciation, accumulatedSubsidyRelease } from '../../src/engine/subledgers/depreciation';
 import { accruedInterest, outstandingAt } from '../../src/engine/subledgers/loans';
-import { buildAnnex } from '../../src/scenario/annex';
+import type { World } from '../../src/engine/types';
+import { buildAnnex, type AnnexTable } from '../../src/scenario/annex';
 import type { ScenarioDatasets } from '../../src/scenario/datasets';
+import { grantorAccounts } from '../../src/scenario/generator/core';
 import { postingDate, rentExcessByProgramme } from '../../src/scenario/generator/posting';
 import { CLEAN_METHOD, managerReceivable, tenantAllowance } from '../../src/scenario/impairment';
+import { correctionKey } from '../helpers/scenario';
 import { params, world } from '../helpers/world';
 
 const YEARS = [
   { key: 'prior' as const, end: '2024-12-31', yk: 'y2024' as const },
   { key: 'current' as const, end: '2025-12-31', yk: 'y2025' as const },
 ];
+
+/** Granted (131x) and released (1391x) accounts of a row of the subsidy table. */
+function subsidyRowAccounts(row: AnnexTable['rows'][number]): { granted: string; released: string } {
+  const granted = row.accounts.filter((a) => a.startsWith('131'));
+  const released = row.accounts.filter((a) => a.startsWith('139'));
+  expect([granted.length, released.length, row.accounts.length], row.id).toEqual([1, 1, 2]);
+  return { granted: granted[0]!, released: released[0]! };
+}
+
+/**
+ * The subsidy table of the annex (shown to the player) reconciles funder by
+ * funder with the balance: amount granted = credit balance of 131x, amounts
+ * released = debit balance of 1391x, share of the year = debits of 1391x.
+ */
+function checkSubsidyAnnex(w: World, key: 'prior' | 'current'): void {
+  const ledger = w.ledgers[key];
+  const b = closingBalances(ledger);
+  const movements = new Map(trialBalance(ledger, w.chart).rows.map((r) => [r.account, r]));
+  const table = buildAnnex(w, params(), key).find((t) => t.id === 'subventions')!;
+  // each account of the row is one account of the chart, not a prefix shared by several funders
+  for (const row of table.rows) {
+    for (const account of row.accounts) expect(w.chart.accounts.filter((a) => a.number.startsWith(account)).map((a) => a.number), `${row.id}:${account}`).toEqual([account]);
+  }
+  // every subsidy account of the balance belongs to exactly one funder row
+  for (const account of b.keys()) {
+    if (!account.startsWith('131') && !account.startsWith('139')) continue;
+    expect(table.rows.filter((r) => r.accounts.some((p) => account.startsWith(p))).map((r) => r.id), account).toHaveLength(1);
+  }
+  for (const row of table.rows) {
+    const { granted, released } = subsidyRowAccounts(row);
+    const v = row.values as Record<'montant' | 'reprisesCumulees' | 'net' | 'quotePartExercice', number>;
+    expect(v.montant, row.id).toBe(0 - (b.get(granted) ?? 0));
+    expect(v.reprisesCumulees, row.id).toBe(b.get(released) ?? 0);
+    expect(v.net, row.id).toBe(v.montant - v.reprisesCumulees);
+    expect(v.quotePartExercice, row.id).toBe(movements.get(released)?.debit ?? 0);
+    expect(v.reprisesCumulees, row.id).toBeGreaterThanOrEqual(0);
+    expect(v.reprisesCumulees, row.id).toBeLessThanOrEqual(v.montant);
+    expect(v.net, row.id).toBeGreaterThanOrEqual(0);
+  }
+  expect(table.rows.reduce((s, r) => s + r.values['montant']!, 0)).toBe(0 - sumPrefixes(b, ['131']));
+  expect(table.rows.reduce((s, r) => s + r.values['reprisesCumulees']!, 0)).toBe(sumPrefixes(b, ['139']));
+}
 
 describe('balance ↔ sub-ledgers', () => {
   const r = world();
@@ -47,6 +92,23 @@ describe('balance ↔ sub-ledgers', () => {
         expect(-bal(['131'])).toBe(granted);
         expect(bal(['139'])).toBe(released);
         expect(bal(['441'])).toBe(due);
+      });
+      it('annex subsidy table = balance (131x, 1391x) and subsidy register, funder by funder', () => {
+        checkSubsidyAnnex(w, key);
+        const table = buildAnnex(w, params(), key).find((t) => t.id === 'subventions')!;
+        for (const row of table.rows) {
+          const { granted, released } = subsidyRowAccounts(row);
+          let amount = 0;
+          let cumul = 0;
+          for (const s of ds.subsidies) {
+            if (s.decisionDate > end || (s.cancelledOn && s.cancelledOn <= end)) continue;
+            const ga = grantorAccounts(s.grantorId);
+            if (ga.equity === granted) amount += s.amount;
+            if (ga.released === released) cumul += accumulatedSubsidyRelease(s, ds.components, end);
+          }
+          expect(row.values['montant'], row.id).toBe(amount);
+          expect(row.values['reprisesCumulees'], row.id).toBe(cumul);
+        }
       });
       it('loans by account and accrued interest = debt schedule', () => {
         const byAccount = new Map<string, number>();
@@ -117,4 +179,9 @@ describe('balance ↔ sub-ledgers', () => {
       });
     });
   }
+});
+
+describe('presented world: annex subsidy table = balance', () => {
+  const presented = correctionKey().presented.world;
+  for (const { key, end } of YEARS) it(`${end}: funder by funder (131x, 1391x)`, () => checkSubsidyAnnex(presented, key));
 });

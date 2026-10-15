@@ -136,13 +136,16 @@ export function buildAnnex(world: World, params: Params, year: 'current' | 'prio
   });
 
   // 4. investment subsidies
-  const grantors: [string, string, string][] = [
-    ['etat', 'État', '1311'],
-    ['region', 'Région', '1312'],
-    ['departement', 'Département', '1313'],
-    ['communes', 'Communes et EPCI', '1314'],
-    ['action-logement', 'Action Logement', '1317'],
-    ['autres', 'Autres (ANRU…)', '1318'],
+  // [row id, label, subsidy account (131x), released account (1391x)]: the
+  // released account of each funder is a sub-account of 1391, never a prefix
+  // shared by several funders (see the chart of accounts).
+  const grantors: [string, string, string, string][] = [
+    ['etat', 'État', '1311', '13911'],
+    ['region', 'Région', '1312', '13912'],
+    ['departement', 'Département', '1313', '13913'],
+    ['communes', 'Communes et EPCI', '1314', '13914'],
+    ['action-logement', 'Action Logement', '1317', '13917'],
+    ['autres', 'Autres (ANRU…)', '1318', '13918'],
   ];
   tables.push({
     id: 'subventions',
@@ -153,12 +156,12 @@ export function buildAnnex(world: World, params: Params, year: 'current' | 'prio
       { id: 'net', label: 'Montant net au bilan' },
       { id: 'quotePartExercice', label: 'Quote-part de l’exercice' },
     ],
-    rows: grantors.map(([id, label, acc]) => {
+    rows: grantors.map(([id, label, acc, releasedAcc]) => {
       const gross = flows(ledger, { id, label, accounts: [acc] });
-      const released = flows(ledger, { id, label, accounts: [`139${acc.slice(3)}`] });
+      const released = flows(ledger, { id, label, accounts: [releasedAcc] });
       const montant = -(gross.opening + gross.debit - gross.credit);
       const cumul = released.opening + released.debit - released.credit;
-      return { id, label, accounts: [acc, `139${acc.slice(3)}`], values: { montant, reprisesCumulees: cumul, net: montant - cumul, quotePartExercice: released.debit } };
+      return { id, label, accounts: [acc, releasedAcc], values: { montant, reprisesCumulees: cumul, net: montant - cumul, quotePartExercice: released.debit } };
     }),
   });
 
