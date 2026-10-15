@@ -53,10 +53,10 @@ export function EntryPanel({ year, entryId, account, defaultYear, onClose, origi
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        onClose();
-      }
+      // an Escape already handled elsewhere (command palette, menu) leaves the panel open
+      if (e.key !== 'Escape' || e.defaultPrevented) return;
+      e.preventDefault();
+      onClose();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -211,9 +211,11 @@ export function EntryPanel({ year, entryId, account, defaultYear, onClose, origi
       </div>
 
       <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-4 py-2 text-sm">
-        <Link to={`/fec?ecriture=${encodeURIComponent(entryId)}&exercice=${year}`} className="font-medium text-accent underline-offset-2 hover:underline">
-          Ouvrir dans le FEC
-        </Link>
+        {first && (
+          <Link to={`/fec?ecriture=${encodeURIComponent(first.EcritureNum)}&exercice=${year}`} className="font-medium text-accent underline-offset-2 hover:underline">
+            Ouvrir dans le FEC
+          </Link>
+        )}
         {origin !== undefined && (
           <span className="text-xs text-muted">
             Concepteur – origine : {origin.startsWith('gen:') ? <span className="font-mono">{origin}</span> : <Badge tone="warn">{origin}</Badge>}

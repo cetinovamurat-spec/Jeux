@@ -1,6 +1,6 @@
 /** Project rules enforced by tests: layering and no hand-typed amounts in the UI and documents. */
 import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { dirname, join, relative, resolve, sep } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const SRC = resolve(import.meta.dirname, '../src');
@@ -16,19 +16,36 @@ function files(dir: string): string[] {
   }
 }
 
+/** Layer (first directory under src/) of every relative import or re-export of a file, whatever its depth. */
+function importedLayers(file: string, text: string): string[] {
+  const specifiers = [...text.matchAll(/(?:\bfrom\s*|\bimport\s*\(\s*|^\s*import\s+)['"]([^'"]+)['"]/gm)].map((m) => m[1]!);
+  return specifiers
+    .filter((s) => s.startsWith('.'))
+    .map((s) => relative(SRC, resolve(dirname(file), s)).split(sep)[0]!)
+    .filter((layer) => !layer.startsWith('..'));
+}
+
+const ALLOWED: Readonly<Record<string, readonly string[]>> = {
+  engine: ['engine'],
+  scenario: ['engine', 'scenario'],
+  game: ['engine', 'scenario', 'game'],
+};
+
 describe('layering', () => {
-  it('the engine imports neither the scenario, the game nor the UI', () => {
-    for (const f of files(join(SRC, 'engine'))) expect(readFileSync(f, 'utf8'), f).not.toMatch(/from '\.\.\/(\.\.\/)?(scenario|game|ui)\//);
+  it('resolves imports at any depth', () => {
+    const f = join(SRC, 'scenario/anomalies/modules/example.ts');
+    expect(importedLayers(f, "import { x } from '../../../game/state';\nexport { y } from '../../../ui/app/store';\nimport '../../../engine/money';")).toEqual(['game', 'ui', 'engine']);
   });
-  it('the scenario does not import the game or the UI', () => {
-    for (const f of files(join(SRC, 'scenario'))) expect(readFileSync(f, 'utf8'), f).not.toMatch(/from '\.\.\/(\.\.\/)?(game|ui)\//);
-  });
-  it('the game rules do not import the UI or React', () => {
-    for (const f of files(join(SRC, 'game'))) {
-      const text = readFileSync(f, 'utf8');
-      expect(text, f).not.toMatch(/from '\.\.\/(\.\.\/)?ui\//);
-      expect(text, f).not.toMatch(/from 'react/);
-    }
+  for (const [layer, allowed] of Object.entries(ALLOWED)) {
+    it(`${layer} only imports ${allowed.join(', ')}`, () => {
+      for (const f of files(join(SRC, layer))) {
+        const text = readFileSync(f, 'utf8');
+        for (const imported of importedLayers(f, text)) expect(allowed, `${f} imports ${imported}`).toContain(imported);
+      }
+    });
+  }
+  it('the engine, the scenario and the game rules do not import React', () => {
+    for (const layer of Object.keys(ALLOWED)) for (const f of files(join(SRC, layer))) expect(readFileSync(f, 'utf8'), f).not.toMatch(/from 'react/);
   });
 });
 

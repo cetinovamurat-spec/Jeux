@@ -6,7 +6,7 @@
  * Colours: the two years are an ordinal pair of the accent hue — the current
  * year in the accent, the prior year in the accent mixed with the panel
  * surface (validated as an ordinal ramp in both themes: one hue, distinct
- * lightness, light end above 2:1 on the surface). Text never wears a series
+ * lightness, the prior-year series at least 3:1 against the surface, the non-text contrast of WCAG AA). Text never wears a series
  * colour; identity is carried by keys next to the text.
  */
 import type { CSSProperties, ReactNode } from 'react';
@@ -16,7 +16,7 @@ import { useAnalysisView } from './analysisView';
 export const SERIES = { current: 'var(--accent)', prior: 'var(--series-prior)' } as const;
 
 /** CSS variables of the chart area (set on the figure so that SVG attributes and tooltips can use them). */
-export const CHART_VARS = { '--series-prior': 'color-mix(in oklab, var(--accent) 55%, var(--panel))' } as CSSProperties;
+export const CHART_VARS = { '--series-prior': 'color-mix(in oklab, var(--accent) 65%, var(--panel))' } as CSSProperties;
 
 export const AXIS_TICK = { fill: 'var(--muted)', fontSize: 11 } as const;
 export const AXIS_LINE = { stroke: 'var(--line)' } as const;

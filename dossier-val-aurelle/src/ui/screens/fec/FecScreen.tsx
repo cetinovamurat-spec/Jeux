@@ -3,7 +3,7 @@
  * the client — usual tests, combinable filters, saved queries, journal summary,
  * exports, entry detail with the rare account pairs. Search params:
  * ?exercice=2024|2025, ?requete=<savedQueryId> (loads a saved query),
- * ?ecriture=<entryId> (opens the detail of an entry).
+ * ?ecriture=<EcritureNum> (opens the detail of an entry; with ?exercice).
  *
  * Generic tools only: nothing points at a particular entry outside the
  * designer mode (origin column and comparison with the clean world).
@@ -23,6 +23,7 @@ import { Badge, Button, cx, PageHeader } from '../../components/ui';
 import { CriteriaPanel } from './CriteriaPanel';
 import { buildDiagnostics, isTouched } from './diagnostics';
 import { EntryDetail } from './EntryDetail';
+import { entryIdsByNumber, entryNumber } from './entryKey';
 import { rareThreshold, useFecView, type PanelTab } from './fecStore';
 import { FilterPanel } from './FilterPanel';
 import { JournalSummary } from './JournalSummary';
@@ -53,7 +54,7 @@ export function FecScreen() {
     const n = Number(yearParam) as Year;
     if (years.includes(n)) return n;
     // A link to an entry of the prior year without ?exercice opens that year.
-    if (entryParam && !c.fecIndex(current as Year).entryLines.has(entryParam) && c.fecIndex(prior as Year).entryLines.has(entryParam)) return prior as Year;
+    if (entryParam && !entryIdsByNumber(c.fecIndex(current as Year)).has(entryParam) && entryIdsByNumber(c.fecIndex(prior as Year)).has(entryParam)) return prior as Year;
     return current as Year;
   }, [c, yearParam, entryParam, years, current, prior]);
   const index = useMemo(() => c.fecIndex(year), [c, year]);
@@ -105,8 +106,23 @@ export function FecScreen() {
       ),
     [setParams],
   );
-  const selectEntry = useCallback((id: string | null) => editParams((p) => (id ? p.set('ecriture', id) : p.delete('ecriture'))), [editParams]);
-  const closeEntry = useCallback(() => selectEntry(null), [selectEntry]);
+  // The detail takes the focus; closing it gives the focus back to the row that opened it.
+  const opener = useRef<HTMLElement | null>(null);
+  const selectEntry = useCallback(
+    (id: string | null) => {
+      const num = id === null ? undefined : entryNumber(index, id);
+      if (num !== undefined) opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      editParams((p) => (num !== undefined ? p.set('ecriture', num) : p.delete('ecriture')));
+    },
+    [editParams, index],
+  );
+  const closeEntry = useCallback(() => {
+    selectEntry(null);
+    const el = opener.current;
+    requestAnimationFrame(() => {
+      if (el?.isConnected) el.focus();
+    });
+  }, [selectEntry]);
   const setYear = (y: Year) =>
     editParams((p) => {
       p.set('exercice', String(y));
@@ -147,7 +163,8 @@ export function FecScreen() {
   // --- layout ---------------------------------------------------------------
   const fillRef = useRef<HTMLDivElement>(null);
   const height = useFillHeight(fillRef);
-  const entryFound = entryParam !== null && index.entryLines.has(entryParam);
+  const entryId = entryParam === null ? null : (entryIdsByNumber(index).get(entryParam) ?? null);
+  const entryFound = entryId !== null;
   const threshold = view.rareOn ? rareThreshold(view.rareText) : gp.rarePairMaxOccurrences;
   const blank = isEmptyQuery(view.query) && !view.accountsText.trim() && !view.minText.trim() && !view.maxText.trim();
   const activeFilters = describeQuery(view.query).length;
@@ -223,8 +240,8 @@ export function FecScreen() {
       </CriteriaPanel>
 
       <div ref={fillRef} style={{ height: height ?? `calc(100vh - ${FALLBACK_OFFSET})` }} className="flex min-h-0 flex-col gap-3">
-        <section aria-labelledby="fec-results-title" className="flex min-h-[13rem] min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-line bg-panel">
-          <div className="border-b border-line px-3 py-2">
+        <section aria-labelledby="fec-results-title" className="flex min-h-[16rem] min-w-0 flex-1 flex-col overflow-clip rounded-lg border border-line bg-panel">
+          <div className="shrink-0 border-b border-line px-3 py-2">
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
               <h2 id="fec-results-title" className="text-sm font-semibold">
                 Résultats
@@ -274,14 +291,14 @@ export function FecScreen() {
               <Button onClick={view.reset}>Réinitialiser les filtres</Button>
             </div>
           ) : (
-            <ResultsTable index={index} lines={result.lines} selectedEntry={entryFound ? entryParam : null} onSelect={selectEntry} roles={roles} diagnostics={diagnostics} />
+            <ResultsTable index={index} lines={result.lines} selectedEntry={entryId} onSelect={selectEntry} roles={roles} diagnostics={diagnostics} />
           )}
         </section>
 
         {entryParam !== null &&
-          (entryFound ? (
-            <div className="flex max-h-[55%] min-h-0 shrink-0 flex-col">
-              <EntryDetail key={entryParam} index={index} entryId={entryParam} threshold={threshold} roles={roles} diagnostic={diagnostics?.entries.get(entryParam)} designer={designer} onClose={closeEntry} />
+          (entryId !== null ? (
+            <div className="flex max-h-[45%] min-h-0 shrink-0 flex-col">
+              <EntryDetail key={entryId} index={index} entryId={entryId} threshold={threshold} roles={roles} diagnostic={diagnostics?.entries.get(entryId)} designer={designer} onClose={closeEntry} />
             </div>
           ) : (
             <div role="alert" className="flex shrink-0 items-center gap-3 rounded-lg border border-line bg-panel px-4 py-3 text-sm">

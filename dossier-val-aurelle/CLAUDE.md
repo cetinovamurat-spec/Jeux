@@ -13,7 +13,7 @@ Jeu de rôle d'audit légal (navigateur, 100 % client) : le joueur audite les co
 | J0 — Plan | **Validé le 12/10/2026** | Option 1 retenue pour D2 ; D1, D3 à D7 acceptées |
 | J1 — Moteur comptable | **Livré le 12/10/2026** | Monde propre 2024 + 2025 ; 34/34 cibles de calibrage ; 85 tests verts ; écran de contrôle |
 | J2 — Anomalies et contenus | **Validé le 12/10/2026** | 22 anomalies (30 parties), clé de correction calculée, 125 documents et 127 indices, 7 fausses pistes ; 53/53 cibles ; 131 tests verts ; dossier `docs/revue-metier/`. Choix « à valider » de la section G acceptés par défaut |
-| J3 — Consultation | **Livré le 15/10/2026** | Bureau, GED, balance N / N-1, grand livre, explorateur du FEC, états et pointage, revue analytique ; état de jeu pur et sauvegarde automatique ; __TESTS__ tests verts |
+| J3 — Consultation | **Livré le 15/10/2026** | Bureau, GED, balance N / N-1, grand livre, explorateur du FEC, états et pointage, revue analytique ; état de jeu pur et sauvegarde automatique ; revue adversariale (18 constats corrigés) ; 279 tests verts |
 | J4 — Mécanique d'audit | À faire | |
 | J5 — Personnages | À faire | |
 | J6 — Synthèse | À faire | |
@@ -75,7 +75,9 @@ Jeu de rôle d'audit légal (navigateur, 100 % client) : le joueur audite les co
 - **Horloge** : fixée en J3 au 23/02/2026 (début du final, `params/game.json` → `startDate`), pour que le projet de comptes, la balance et le FEC soient consultables. Elle avancera en J4 (PV-77).
 - **Disponibilité des documents** (`src/game/documents.ts`) : dossier initial (date du document ≤ date du jeu), courrier postérieur, sur demande, confirmation, condition ; les trois derniers modes seront alimentés en J4-J5. Le mode concepteur débloque tout.
 - **Mode concepteur** : `?designer=1` (avant ou après le `#`) l'active, `?designer=0` le coupe ; il est conservé dans l'état. Il montre les indices et l'accès des documents, les écarts présenté / propre (balance, grand livre, FEC, états, ratios) et l'écran de contrôle de J1 (`/controle`).
-- **Aucune aide à la détection hors mode concepteur** : pas de mise en évidence d'écritures, de lignes ou d'écarts ; les tests d'écritures (« tests courants ») et les seuils de la revue analytique sont génériques.
+- **Aucune aide à la détection hors mode concepteur** : pas de mise en évidence d'écritures, de lignes ou d'écarts ; les tests d'écritures (« tests courants ») et les seuils de la revue analytique sont génériques. L'identifiant interne d'une écriture (qui peut nommer l'anomalie qui l'a créée) n'est jamais montré : les adresses utilisent le numéro du FEC (`?ecriture=OD000189&exercice=2025`, `screens/fec/entryKey.ts`). L'écran de contrôle refuse l'accès hors mode concepteur.
+- **Recherche** : un seul pliage du texte (casse, accents, ligatures œ/æ, apostrophes) pour la GED, le FEC, le grand livre, la balance et la palette (`src/game/text.ts`).
+- **Accessibilité** : tableaux virtualisés à un seul arrêt de tabulation (flèches, Page précédente/suivante, Début, Fin), onglets à tabindex itinérant, palette annoncée (`aria-activedescendant`), pages « introuvable » et « erreur » en français ; la sauvegarde automatique est écrite immédiatement quand la page est masquée ou fermée.
 - **Paramètres** : nom du cabinet, équipe, encadrement, budgets, jauges, calendrier, multiples des montants ronds, seuil des couples de comptes rares (`params/game.json`) ; regroupements de comptes des ratios HLM et seuils de variation par défaut (`params/analysis.json` → `review`).
 - **Vérification visuelle** : `node scripts/ui-check.mjs <url> <dossier> <route>[@designer]…` (Chromium : captures et erreurs de console).
 

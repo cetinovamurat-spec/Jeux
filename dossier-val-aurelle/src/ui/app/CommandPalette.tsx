@@ -19,6 +19,10 @@ interface Item {
   run: () => void;
 }
 
+function optionId(i: number): string {
+  return `palette-option-${i}`;
+}
+
 export function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
   const c = useCase();
   const navigate = useNavigate();
@@ -28,6 +32,10 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   const [q, setQ] = useState('');
   const [active, setActive] = useState(0);
   const input = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (open) document.getElementById(optionId(active))?.scrollIntoView({ block: 'nearest' });
+  }, [open, active, q]);
 
   useEffect(() => {
     if (open) {
@@ -68,7 +76,12 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
             setActive(0);
           }}
           onKeyDown={(e) => {
-            if (e.key === 'Escape') onClose();
+            if (e.key === 'Escape') {
+              // handled here only: an entry panel open under the palette must stay open
+              e.preventDefault();
+              e.stopPropagation();
+              onClose();
+            }
             if (e.key === 'ArrowDown') {
               e.preventDefault();
               setActive((a) => Math.min(shown.length - 1, a + 1));
@@ -84,12 +97,15 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
           role="combobox"
           aria-expanded="true"
           aria-controls="palette-results"
+          aria-activedescendant={shown[active] ? optionId(active) : undefined}
+          aria-autocomplete="list"
           className="w-full border-b border-line bg-panel px-4 py-3 text-base outline-none"
         />
         <ul id="palette-results" role="listbox" className="max-h-[50vh] overflow-auto py-1">
           {shown.map((it, i) => (
             <li
               key={it.id}
+              id={optionId(i)}
               role="option"
               aria-selected={i === active}
               onMouseEnter={() => setActive(i)}

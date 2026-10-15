@@ -19,6 +19,7 @@ import { StatementsScreen } from '../screens/statements/StatementsScreen';
 import { CaseData } from './case';
 import { CaseProvider } from './context';
 import { useCaseLoader } from './dossier';
+import { DesignerOnly, NotFound, RootError, ScreenError } from './RouteStates';
 import { Shell } from './Shell';
 import { useGame } from './store';
 
@@ -26,35 +27,50 @@ const router = createHashRouter([
   {
     path: '/',
     element: <Shell />,
+    errorElement: <RootError />,
     children: [
-      { index: true, element: <DeskScreen /> },
-      { path: 'ged', element: <GedScreen /> },
-      { path: 'ged/:docId', element: <GedScreen /> },
-      { path: 'balance', element: <BalanceScreen /> },
-      { path: 'grand-livre', element: <LedgerScreen /> },
-      { path: 'fec', element: <FecScreen /> },
-      { path: 'etats', element: <StatementsScreen /> },
-      { path: 'analyse', element: <AnalysisScreen /> },
       {
-        path: 'controle',
-        element: <ControlScreen />,
+        errorElement: <ScreenError />,
         children: [
-          { index: true, element: <Targets /> },
-          { path: 'balance', element: <ControlBalance /> },
-          { path: 'etats', element: <ControlStatements /> },
-          { path: 'annexe', element: <ControlAnnex /> },
-          { path: 'analyse', element: <ControlAnalysis /> },
-          { path: 'fec', element: <ControlFec /> },
+          { index: true, element: <DeskScreen /> },
+          { path: 'ged', element: <GedScreen /> },
+          { path: 'ged/:docId', element: <GedScreen /> },
+          { path: 'balance', element: <BalanceScreen /> },
+          { path: 'grand-livre', element: <LedgerScreen /> },
+          { path: 'fec', element: <FecScreen /> },
+          { path: 'etats', element: <StatementsScreen /> },
+          { path: 'analyse', element: <AnalysisScreen /> },
+          {
+            path: 'controle',
+            element: (
+              <DesignerOnly>
+                <ControlScreen />
+              </DesignerOnly>
+            ),
+            children: [
+              { index: true, element: <Targets /> },
+              { path: 'balance', element: <ControlBalance /> },
+              { path: 'etats', element: <ControlStatements /> },
+              { path: 'annexe', element: <ControlAnnex /> },
+              { path: 'analyse', element: <ControlAnalysis /> },
+              { path: 'fec', element: <ControlFec /> },
+            ],
+          },
+          { path: '*', element: <NotFound /> },
         ],
       },
     ],
   },
 ]);
 
-/** `?designer=1` (before or after the hash) switches the designer mode on; `?designer=0` switches it off. */
-function designerFlag(): boolean | null {
+/**
+ * `?designer=1` (before or after the hash) switches the designer mode on;
+ * `?designer=0` switches it off. On a change of address only the parameter
+ * after the hash counts (the one before it was applied at load).
+ */
+function designerFlag(hashOnly: boolean): boolean | null {
   const read = (s: string) => new URLSearchParams(s).get('designer');
-  const v = read(window.location.search) ?? read(window.location.hash.split('?')[1] ?? '');
+  const v = read(window.location.hash.split('?')[1] ?? '') ?? (hashOnly ? null : read(window.location.search));
   return v === null ? null : v === '1';
 }
 
@@ -62,8 +78,15 @@ export function App() {
   const state = useCaseLoader();
   const act = useGame((s) => s.act);
   useEffect(() => {
-    const flag = designerFlag();
-    if (flag !== null) act((s) => setDesigner(s, flag));
+    // on load, and on every change of address (a link or a typed URL with ?designer= after the #)
+    const apply = (hashOnly: boolean) => {
+      const flag = designerFlag(hashOnly);
+      if (flag !== null) act((s) => (s.settings.designer === flag ? s : setDesigner(s, flag)));
+    };
+    const onHashChange = () => apply(true);
+    apply(false);
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
   }, [act]);
   const data = useMemo(() => (state.status === 'ready' ? new CaseData(state.payload, loadParams()) : null), [state]);
   if (state.status === 'error')

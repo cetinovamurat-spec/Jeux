@@ -1,10 +1,13 @@
 /**
  * Virtualised, sortable table (ARIA grid) for large data: balance, ledger,
  * FEC. Columns are CSS grid tracks; rows can be clicked or activated with
- * Enter when `onRowClick` is given.
+ * Enter when `onRowClick` is given. Keyboard: the rows are a single Tab stop
+ * (roving tabindex); arrows, Page up / Page down, Home and End move between
+ * them. Rows carry `data-row-index` (position in the sorted rows), so that a
+ * screen can give the focus back to a row.
  */
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { useMemo, useRef, useState, type ReactNode } from 'react';
+import { useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { cx } from './ui';
 
 export interface Column<T> {
@@ -50,6 +53,28 @@ export function DataTable<T>({ rows, columns, rowKey, ariaLabel, height = '65vh'
   const parentRef = useRef<HTMLDivElement>(null);
   const v = useVirtualizer({ count: sorted.length, getScrollElement: () => parentRef.current, estimateSize: () => rowHeight, overscan: 16 });
   const template = columns.map((c) => c.width).join(' ');
+  // Roving tabindex: the active row (or, when it is scrolled away, the first rendered one) is the Tab stop.
+  const [active, setActive] = useState(0);
+  const items = v.getVirtualItems();
+  const tabStop = items.some((i) => i.index === active) ? active : (items[0]?.index ?? -1);
+  const pageRows = Math.max(1, Math.floor((parentRef.current?.clientHeight ?? rowHeight * 10) / rowHeight) - 1);
+  const focusRow = (index: number) => {
+    setActive(index);
+    v.scrollToIndex(index, { align: 'auto' });
+    requestAnimationFrame(() => parentRef.current?.querySelector<HTMLElement>(`[data-row-index="${index}"]`)?.focus({ preventScroll: true }));
+  };
+  const onRowKey = (e: KeyboardEvent<HTMLDivElement>, index: number, row: T) => {
+    const last = sorted.length - 1;
+    const next =
+      e.key === 'ArrowDown' ? Math.min(last, index + 1) : e.key === 'ArrowUp' ? Math.max(0, index - 1) : e.key === 'PageDown' ? Math.min(last, index + pageRows) : e.key === 'PageUp' ? Math.max(0, index - pageRows) : e.key === 'Home' ? 0 : e.key === 'End' ? last : null;
+    if (next !== null) {
+      e.preventDefault();
+      focusRow(next);
+    } else if (e.key === 'Enter' && onRowClick) {
+      e.preventDefault();
+      onRowClick(row);
+    }
+  };
   const toggle = (c: Column<T>) => {
     if (!c.sortValue) return;
     setSort((s) => (s?.id === c.id ? (s.dir === 'asc' ? { id: c.id, dir: 'desc' } : null) : { id: c.id, dir: 'asc' }));
@@ -65,7 +90,11 @@ export function DataTable<T>({ rows, columns, rowKey, ariaLabel, height = '65vh'
               aria-sort={sort?.id === c.id ? (sort.dir === 'asc' ? 'ascending' : 'descending') : c.sortValue ? 'none' : undefined}
               className={cx(c.align === 'right' && 'text-right', c.sortValue && 'cursor-pointer select-none hover:text-ink')}
               onClick={() => toggle(c)}
-              onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && toggle(c)}
+              onKeyDown={(e) => {
+                if (e.key !== 'Enter' && e.key !== ' ') return;
+                e.preventDefault(); // Space would also scroll the table
+                toggle(c);
+              }}
               tabIndex={c.sortValue ? 0 : undefined}
             >
               {c.header}
@@ -74,16 +103,18 @@ export function DataTable<T>({ rows, columns, rowKey, ariaLabel, height = '65vh'
           ))}
         </div>
         <div style={{ height: v.getTotalSize(), position: 'relative', minWidth: 'max-content' }}>
-          {v.getVirtualItems().map((item) => {
+          {items.map((item) => {
             const row = sorted[item.index]!;
             return (
               <div
                 key={rowKey(row, item.index)}
                 role="row"
                 aria-rowindex={item.index + 2}
-                tabIndex={onRowClick ? 0 : undefined}
+                data-row-index={item.index}
+                tabIndex={item.index === tabStop ? 0 : -1}
+                onFocus={() => setActive(item.index)}
                 onClick={onRowClick ? () => onRowClick(row) : undefined}
-                onKeyDown={onRowClick ? (e) => e.key === 'Enter' && onRowClick(row) : undefined}
+                onKeyDown={(e) => onRowKey(e, item.index, row)}
                 className={cx('absolute left-0 right-0 grid items-center gap-x-3 border-b border-line px-3', onRowClick && 'cursor-pointer hover:bg-accent-soft', rowClassName?.(row))}
                 style={{ top: item.start, height: item.size, gridTemplateColumns: template }}
               >

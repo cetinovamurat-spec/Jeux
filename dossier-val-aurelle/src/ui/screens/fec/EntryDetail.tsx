@@ -3,7 +3,7 @@
  * user, and the debit → credit account pairs with their frequency in the year.
  * In designer mode only: origin of the entry and comparison with the clean world.
  */
-import { useEffect, useMemo, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { formatEuro } from '../../../engine/format';
 import { entryLinesOf, pairsOf, rarePairsOf, type FecIndex } from '../../../game/fec-query';
@@ -36,6 +36,11 @@ export function EntryDetail({ index, entryId, threshold, roles, diagnostic, desi
   const lines = useMemo(() => entryLinesOf(index, entryId), [index, entryId]);
   const pairs = useMemo(() => pairsOf(index, entryId), [index, entryId]);
   const rare = useMemo(() => rarePairsOf(index, entryId, threshold), [index, entryId, threshold]);
+  // The detail takes the focus when it opens (keyboard users reach it at once).
+  const closeRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    closeRef.current?.focus({ preventScroll: true });
+  }, [entryId]);
   // Escape closes the detail (except inside a dialog such as the command palette).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -73,7 +78,7 @@ export function EntryDetail({ index, entryId, threshold, roles, diagnostic, desi
             {diagnostic.change === 'added' ? `Ajoutée (${originLabel(diagnostic.origin)})` : diagnostic.change === 'modified' ? 'Modifiée par rapport au monde propre' : `Origine ${originLabel(diagnostic.origin)}`}
           </Badge>
         )}
-        <Button variant="ghost" className="ml-auto px-2 py-0.5 text-xs" onClick={onClose} aria-label="Fermer le détail de l’écriture" title="Fermer (Échap)">
+        <Button ref={closeRef} variant="ghost" className="ml-auto px-2 py-0.5 text-xs" onClick={onClose} aria-label="Fermer le détail de l’écriture" title="Fermer (Échap)">
           Fermer ✕
         </Button>
       </header>

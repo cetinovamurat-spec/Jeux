@@ -34,14 +34,33 @@ export const useGame = create<Store>((set) => ({
   reset: () => set({ game: initialState(loadParams()) }),
 }));
 
+const AUTOSAVE_DELAY_MS = 400;
 let timer: ReturnType<typeof setTimeout> | null = null;
-useGame.subscribe((st) => {
+
+function save(): void {
+  timer = null;
+  try {
+    globalThis.localStorage?.setItem(AUTOSAVE_KEY, serialize(useGame.getState().game));
+  } catch {
+    // storage unavailable (private mode, quota): the game goes on without autosave
+  }
+}
+
+/** Writes a pending autosave at once (the page is being hidden, closed or reloaded). */
+function flush(): void {
+  if (!timer) return;
+  clearTimeout(timer);
+  save();
+}
+
+useGame.subscribe(() => {
   if (timer) clearTimeout(timer);
-  timer = setTimeout(() => {
-    try {
-      globalThis.localStorage?.setItem(AUTOSAVE_KEY, serialize(st.game));
-    } catch {
-      // storage unavailable (private mode, quota): the game goes on without autosave
-    }
-  }, 400);
+  timer = setTimeout(save, AUTOSAVE_DELAY_MS);
 });
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('pagehide', flush);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') flush();
+  });
+}
