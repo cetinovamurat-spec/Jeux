@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { closingBalances, trialBalance } from '../../src/engine/balance';
 import { importChart, parseChartCsv } from '../../src/engine/chart';
-import { buildFec, fecToText, FEC_FIELDS } from '../../src/engine/fec';
+import { buildFec, compareFecEntries, fecToText, FEC_FIELDS } from '../../src/engine/fec';
 import { credit, debit, checkEntry } from '../../src/engine/ledger';
 import type { JournalEntry, Ledger } from '../../src/engine/types';
 import { loadParams } from '../../src/scenario/params';
@@ -32,6 +32,30 @@ describe('ledger, balance and FEC', () => {
     const text = fecToText(fec);
     expect(text.split('\r\n')[0]!.split('|')).toHaveLength(18);
     expect(FEC_FIELDS).toHaveLength(18);
+  });
+  it('puts the opening entries (AN) first, whatever their validation date, without changing the numbering', () => {
+    const p = loadParams();
+    const journals = [
+      { code: 'AN', label: 'À-nouveaux', kind: 'opening' as const },
+      { code: 'OD', label: 'Opérations diverses', kind: 'misc' as const },
+    ];
+    const opening: JournalEntry = { ...e('opening', '2025-01-01', '2025-02-24', [debit('5121', 50_000), credit('1068', 50_000)]), journal: 'AN' };
+    const january = e('january', '2025-01-03', '2025-01-03', [debit('5121', 1_000), credit('7088', 1_000)]);
+    const withOpening: Ledger = { ...ledger, entries: [january, ...ledger.entries, opening] };
+    const fec = buildFec(withOpening, p.chart, journals, {});
+    expect(fec.slice(0, 2).map((l) => [l.JournalCode, l.EcritureNum, l.ValidDate])).toEqual([
+      ['AN', 'AN000001', '20250224'],
+      ['AN', 'AN000001', '20250224'],
+    ]);
+    // the other entries keep the validation order and their per-journal numbers
+    expect([...new Set(fec.slice(2).map((l) => `${l.entryId}:${l.EcritureNum}`))]).toEqual(['january:OD000001', 'early:OD000002', 'late:OD000003']);
+    const text = fecToText(fec).split('\r\n');
+    expect(text[1]!.startsWith('AN|')).toBe(true);
+    // comparator: AN before any other journal, then (ValidDate, date, id)
+    expect(compareFecEntries(opening, january)).toBeLessThan(0);
+    expect(compareFecEntries(january, opening)).toBeGreaterThan(0);
+    expect(compareFecEntries(january, ledger.entries[1]!)).toBeLessThan(0);
+    expect(compareFecEntries(january, january)).toBe(0);
   });
   it('builds a balanced trial balance', () => {
     const tb = trialBalance(ledger, loadParams().chart);

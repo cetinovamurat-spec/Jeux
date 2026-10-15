@@ -1,6 +1,6 @@
 /** §3.4 — integrity of the clean world (bloquant). */
 import { describe, expect, it } from 'vitest';
-import { closingBalances, closingBalancesByAux, trialBalance } from '../../src/engine/balance';
+import { closingBalances, closingBalancesByAux, OPENING_JOURNAL, trialBalance } from '../../src/engine/balance';
 import { buildFec } from '../../src/engine/fec';
 import { checkLedger } from '../../src/engine/ledger';
 import { buildStatements } from '../../src/engine/statements';
@@ -28,6 +28,11 @@ describe('ledgers', () => {
       for (const l of fec) byAccount.set(l.CompteNum, (byAccount.get(l.CompteNum) ?? 0) + l.debitCents - l.creditCents);
       const balances = closingBalances(ledger);
       for (const [a, b] of balances) expect(byAccount.get(a) ?? 0).toBe(b);
+      // the opening entries (à-nouveaux) open the file, then validation order
+      const an = fec.filter((l) => l.JournalCode === OPENING_JOURNAL).length;
+      expect(an).toBeGreaterThan(0);
+      expect(fec.slice(0, an).every((l) => l.JournalCode === OPENING_JOURNAL)).toBe(true);
+      for (let i = an + 1; i < fec.length; i++) expect(fec[i - 1]!.validDate <= fec[i]!.validDate || fec[i]!.entryId === fec[i - 1]!.entryId).toBe(true);
       // continuous numbering per journal
       for (const j of w.journals) {
         const nums = [...new Set(fec.filter((l) => l.JournalCode === j.code).map((l) => l.EcritureNum))];
