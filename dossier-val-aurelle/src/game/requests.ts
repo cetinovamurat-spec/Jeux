@@ -49,3 +49,12 @@ export function upcomingRequests(_s: RequestsState, _ctx: UpcomingContext): Upco
 export function hoursCharged(_s: RequestsState, _params: Params): HoursCharge[] {
   return [];
 }
+
+/**
+ * Sends a document request (family × object) at the game date; the answer
+ * arrives later (interlocutor delay, date of the document). Stub: J4c
+ * implements it (ids, duplicate detection, cost, journal).
+ */
+export function sendRequest<S extends { requests: RequestsState; clock: { date: IsoDate } }>(s: S, _family: string, _object: string): S {
+  return s;
+}
