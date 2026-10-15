@@ -14,6 +14,7 @@ import { formatDateFr } from '../../../engine/dates';
 import { formatFecAmount } from '../../../engine/format';
 import { clearTicks, tickProgress, type TickProgress } from '../../../game/ticking';
 import { useCase } from '../../app/context';
+import { useAvailabilityText } from '../../app/DataGate';
 import { useAvailableDocuments, useDesigner } from '../../app/hooks';
 import { useGame } from '../../app/store';
 import { download } from '../../components/download';
@@ -59,9 +60,13 @@ export function StatementsScreen() {
   const designer = useDesigner();
   const [params, setParams] = useSearchParams();
   const { current: cy, prior: py } = c.params.scenario.years;
-  const tabs = useMemo(() => buildTabs(c), [c]);
+  // before the draft accounts of 2025, only the certified 2024 accounts can be ticked
+  const draft = c.view.statements2025;
+  const allTabs = useMemo(() => buildTabs(c), [c]);
+  const tabs = useMemo(() => (draft ? allTabs : allTabs.filter((t) => t.id === 'certifies')), [allTabs, draft]);
   const tabId = parseTab(params.get('onglet'));
   const tab = tabs.find((t) => t.id === tabId) ?? tabs[0]!;
+  const draftText = useAvailabilityText('statements2025');
 
   const ticks = useGame((s) => s.game.ticks);
   const marks = useGame((s) => s.game.tickMarks);
@@ -147,8 +152,8 @@ export function StatementsScreen() {
         title="États financiers et pointage"
         description={
           <>
-            Projet de comptes annuels {cy} remis par la société et comptes certifiés {py}. Pointez chaque montant des états et de l’annexe sur la balance, et la colonne {py} sur les comptes certifiés, à l’aide de vos marques de pointage. Cliquez sur
-            une rubrique pour afficher les comptes qui la composent.
+            {draft ? `Projet de comptes annuels ${cy} remis par la société et comptes certifiés ${py}. ` : `Comptes certifiés ${py}. `}Pointez chaque montant des états et de l’annexe sur la balance, et la colonne {py} sur les comptes certifiés, à l’aide de vos marques de pointage.
+            Cliquez sur une rubrique pour afficher les comptes qui la composent.
           </>
         }
         actions={
@@ -164,6 +169,11 @@ export function StatementsScreen() {
           </>
         }
       />
+      {draftText && (
+        <p role="status" className="mb-3 rounded-md border border-line bg-panel px-3 py-2 text-sm text-muted">
+          Le projet de comptes 2025 n’est pas encore remis : seuls les comptes certifiés 2024 peuvent être pointés. {draftText}.
+        </p>
+      )}
 
       <div ref={tabsRef}>
         <Tabs idPrefix="etats" value={tab.id} onChange={goTab} label="États financiers, annexe et comptes certifiés" items={tabs.map((t) => ({ id: t.id, label: <TabLabel tab={t} p={progress.get(t.id)} /> }))} />

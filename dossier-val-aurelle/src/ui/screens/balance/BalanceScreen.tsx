@@ -62,8 +62,9 @@ export function BalanceScreen() {
   const navigate = useNavigate();
   const view = useBalanceView();
   const { current, prior } = c.params.scenario.years;
-  const currentEnd = formatDateFr(`${current}-12-31`);
-  const priorEnd = formatDateFr(`${prior}-12-31`);
+  // dates of the balances shown: 31/12, or the interim cutoff (extraction) and the same date one year earlier
+  const currentEnd = formatDateFr(c.view.cutoff);
+  const priorEnd = formatDateFr(c.view.priorCutoff);
 
   // Designer mode only: balances of the clean world, to show what the anomalies changed.
   const clean = useMemo(() => (designer ? { current: closingBalances(c.clean.ledgers.current), prior: closingBalances(c.clean.ledgers.prior) } : null), [c, designer]);

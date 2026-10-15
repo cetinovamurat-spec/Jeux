@@ -1,4 +1,5 @@
 /** Browser-safe fingerprint of a generated world (stored in scenario.lock.json and in save files). */
+import lock from '../../scenario.lock.json';
 import { closingBalances, netResult } from '../engine/balance';
 import type { GenerationResult } from './generator';
 
@@ -39,3 +40,6 @@ export function worldFingerprint(r: GenerationResult): WorldFingerprint {
     invoices: ds['invoices']!.length,
   };
 }
+
+/** Fingerprint of the world the game was built with (scenario.lock.json, versioned): stored in the saves. */
+export const SCENARIO_HASH: string = lock.fingerprint.hash;

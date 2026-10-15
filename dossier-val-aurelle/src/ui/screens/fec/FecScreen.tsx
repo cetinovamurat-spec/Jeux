@@ -11,6 +11,7 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 import { fecToText } from '../../../engine/fec';
+import { formatDateFr } from '../../../engine/dates';
 import { formatEuro } from '../../../engine/format';
 import { describeQuery, fecToCsv, isEmptyQuery, journalSummary, runQuery, sameQuery, standardTests, type FecQuery } from '../../../game/fec-query';
 import type { SavedQuery } from '../../../game/state';
@@ -47,12 +48,14 @@ export function FecScreen() {
 
   // --- year and index -------------------------------------------------------
   const { current, prior } = c.params.scenario.years;
-  const years = useMemo(() => [current, prior] as Year[], [current, prior]);
+  // before the extraction of 2025, only the FEC of the certified 2024 accounts
+  const years = useMemo(() => (c.view.ledger2025 === 'none' ? [prior] : [current, prior]) as Year[], [c, current, prior]);
   const yearParam = params.get('exercice');
   const entryParam = params.get('ecriture');
   const year = useMemo<Year>(() => {
     const n = Number(yearParam) as Year;
     if (years.includes(n)) return n;
+    if (c.view.ledger2025 === 'none') return prior as Year;
     // A link to an entry of the prior year without ?exercice opens that year.
     if (entryParam && !entryIdsByNumber(c.fecIndex(current as Year)).has(entryParam) && entryIdsByNumber(c.fecIndex(prior as Year)).has(entryParam)) return prior as Year;
     return current as Year;
@@ -178,7 +181,7 @@ export function FecScreen() {
     <>
       <PageHeader
         title="FEC – tests d’écritures"
-        description={`FEC ${year} remis par le client : ${plural(index.lines.length, 'ligne', 'lignes')}, ${plural(index.entryLines.size, 'écriture', 'écritures')}.`}
+        description={`${year === current && c.view.ledger2025 === 'interim' ? `Extraction du FEC ${year} au ${formatDateFr(c.view.cutoff)} (écritures validées à cette date)` : `FEC ${year} remis par le client`} : ${plural(index.lines.length, 'ligne', 'lignes')}, ${plural(index.entryLines.size, 'écriture', 'écritures')}.`}
         actions={
           <>
             <div role="group" aria-label="Exercice" className="inline-flex rounded-md border border-line bg-panel p-0.5">

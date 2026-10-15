@@ -5,15 +5,22 @@ export interface NavItem {
   short: string;
   description: string;
   designerOnly?: boolean;
+  /** 2025 data the screen needs (game/vintages.ts): the entry is greyed and the screen explains when it will be available. */
+  needs?: DataNeed;
 }
+
+export type DataNeed = 'ledger2025' | 'statements2025';
 
 export const NAV: readonly NavItem[] = [
   { to: '/', label: 'Bureau', short: 'Bureau', description: 'Agenda, équipe, budget, jauges et messages' },
+  { to: '/planification', label: 'Planification', short: 'Planification', description: 'Seuils de signification, évaluation des risques, programme de travail' },
+  { to: '/travaux', label: 'Travaux', short: 'Travaux', description: 'Procédures lancées, feuilles de travail, feuilles maîtresses par cycle' },
   { to: '/ged', label: 'Gestion documentaire', short: 'GED', description: 'Documents reçus : recherche, lecture, annotations, preuves' },
-  { to: '/balance', label: 'Balance N / N-1', short: 'Balance', description: 'Balance générale 2025 et 2024, variations' },
+  { to: '/balance', label: 'Balance N / N-1', short: 'Balance', description: 'Balance générale 2025 et 2024, variations', needs: 'ledger2025' },
   { to: '/grand-livre', label: 'Grand livre', short: 'Grand livre', description: 'Mouvements d’un compte, écritures et contreparties' },
   { to: '/fec', label: 'FEC – tests d’écritures', short: 'FEC', description: 'Filtres combinables, requêtes enregistrées, export' },
   { to: '/etats', label: 'États financiers et pointage', short: 'États', description: 'Bilan, compte de résultat, annexe ; pointage' },
-  { to: '/analyse', label: 'Revue analytique', short: 'Analyse', description: 'Variations, ratios HLM, graphiques' },
+  { to: '/analyse', label: 'Revue analytique', short: 'Analyse', description: 'Variations, ratios HLM, graphiques', needs: 'statements2025' },
+  { to: '/constats', label: 'Constats', short: 'Constats', description: 'Constats, questions, tableau des anomalies' },
   { to: '/controle', label: 'Contrôle (concepteur)', short: 'Contrôle', description: 'Comptes propres, cibles de calibrage, clé de correction', designerOnly: true },
 ];

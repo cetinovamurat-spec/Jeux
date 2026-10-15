@@ -3,7 +3,7 @@
  * date and coverage of the clues by the documents read so far.
  */
 import { useMemo } from 'react';
-import { isAvailable, type AvailabilityContext } from '../../../game/documents';
+import { availabilityContext, isAvailable, type AvailabilityContext } from '../../../game/documents';
 import type { DocumentModel } from '../../../scenario/documents';
 import { useCase } from '../../app/context';
 import { useGame } from '../../app/store';
@@ -31,11 +31,14 @@ function targetOrder(a: string, b: string): number {
 
 export function DesignerCard() {
   const c = useCase();
-  const date = useGame((s) => s.game.clock.date);
+  const clock = useGame((s) => s.game.clock);
+  const requests = useGame((s) => s.game.requests);
+  const confirmations = useGame((s) => s.game.confirmations);
   const docs = useGame((s) => s.game.documents);
 
   const stats = useMemo(() => {
-    const ctx: AvailabilityContext = { date, designer: false, answeredRequests: new Set(), sentConfirmations: new Set(), conditions: new Set() };
+    // what the player has at the date (the designer mode itself unlocks everything)
+    const ctx: AvailabilityContext = availabilityContext({ clock, settings: { theme: 'system', designer: false }, requests, confirmations }, c.params);
     const byKind = new Map<AvailabilityKind, { total: number; available: number }>();
     let available = 0;
     let read = 0;
@@ -73,7 +76,7 @@ export function DesignerCard() {
       anomalies: all.filter((t) => t.target.startsWith('A')),
       falseLeads: all.filter((t) => t.target.startsWith('F')),
     };
-  }, [c, date, docs]);
+  }, [c, clock, requests, confirmations, docs]);
 
   const touched = (list: TargetCoverage[]) => list.filter((t) => t.read > 0).length;
 

@@ -2,15 +2,21 @@
  * Case data on the main thread: the presented world (what the player
  * audits) and lazily computed, cached derivations. The clean world and the
  * correction key are only used by the designer mode and the control screens.
+ *
+ * A CaseData is a view of the case at a data vintage (game/vintages.ts):
+ * `at(view)` returns the view (cached), with the same API; the 2025 ledger is
+ * then empty, the extraction at the interim cutoff, or the final ledger. The
+ * 2024 data, the documents and the indexes are shared by every view.
  */
 import { keyFigures, type KeyFigures } from '../../engine/analysis';
 import { closingBalances, trialBalance } from '../../engine/balance';
 import { accountMap } from '../../engine/chart';
 import { buildFec } from '../../engine/fec';
 import type { Cents } from '../../engine/money';
-import type { Account, FecLineInternal, FinancialStatements, TrialBalance, World } from '../../engine/types';
+import type { Account, FecLineInternal, FinancialStatements, Ledger, TrialBalance, World } from '../../engine/types';
 import { buildFecIndex, type FecIndex } from '../../game/fec-query';
 import { buildDocumentIndex, type DocumentIndex } from '../../game/documents';
+import { emptyLedger, FULL_VIEW_KEY, ledgerAt, viewKey, type DataView } from '../../game/vintages';
 import { buildAnnex, type AnnexTable } from '../../scenario/annex';
 import { loanRepayments, type CorrectionKey } from '../../scenario/anomalies/presented';
 import type { Synthesis } from '../../scenario/anomalies/synthesis';
@@ -25,7 +31,7 @@ export type Year = 2025 | 2024;
 export interface BalanceRow {
   account: string;
   label: string;
-  /** Closing balance of the previous year (debit positive). */
+  /** Balance of the previous year at the same date as `closing` (31/12/2024, or the interim cutoff one year earlier), debit positive. */
   prior: Cents;
   /** Movements of the year (opening entry excluded). */
   debit: Cents;
@@ -46,6 +52,16 @@ function lazy<T>(f: () => T): () => T {
   };
 }
 
+const FULL_VIEW: DataView = { ledger2025: 'draft', statements2025: true, cutoff: '2025-12-31', priorCutoff: '2024-12-31' };
+
+/** Caches shared by every view of the case (2024 data, documents). */
+interface Shared {
+  views: Map<string, CaseData>;
+  fec2024?: FecLineInternal[];
+  fecIndex2024?: FecIndex;
+  documentIndex?: DocumentIndex;
+}
+
 export class CaseData {
   readonly presented: World;
   readonly clean: World;
@@ -57,9 +73,14 @@ export class CaseData {
   readonly falseLeads: readonly FalseLead[];
   readonly accounts: ReadonlyMap<string, Account>;
 
+  /** Ledger of 2025 in this view (empty, extraction, or final). */
+  readonly ledger2025: Ledger;
+
   constructor(
     readonly payload: CasePayload,
     readonly params: Params,
+    readonly view: DataView = FULL_VIEW,
+    private readonly shared: Shared = { views: new Map() },
   ) {
     this.key = payload.key;
     this.presented = payload.key.presented.world;
@@ -70,6 +91,24 @@ export class CaseData {
     this.documentsById = new Map(payload.documents.map((d) => [d.id, d]));
     this.falseLeads = payload.falseLeads;
     this.accounts = accountMap(this.presented.chart);
+    const current = this.presented.ledgers.current;
+    this.ledger2025 = view.ledger2025 === 'draft' ? current : view.ledger2025 === 'interim' ? ledgerAt(current, view.cutoff) : emptyLedger(current);
+    if (!shared.views.has(viewKey(view))) shared.views.set(viewKey(view), this);
+  }
+
+  /** The case at another data vintage (cached; the full view is the case itself when it was built without a view). */
+  at(view: DataView): CaseData {
+    const key = viewKey(view);
+    const found = this.shared.views.get(key);
+    if (found && found.view.cutoff === view.cutoff) return found;
+    const v = new CaseData(this.payload, this.params, view, this.shared);
+    this.shared.views.set(key, v);
+    return v;
+  }
+
+  /** All the data (designer mode, control screens). */
+  get full(): CaseData {
+    return this.shared.views.get(FULL_VIEW_KEY) ?? this.at(FULL_VIEW);
   }
 
   get datasets(): ScenarioDatasets {
@@ -81,17 +120,20 @@ export class CaseData {
   }
 
   /** Closing balances of the presented world (debit positive). */
-  readonly balances = lazy(() => ({ current: closingBalances(this.presented.ledgers.current), prior: closingBalances(this.presented.ledgers.prior) }));
+  readonly balances = lazy(() => ({ current: closingBalances(this.ledger2025), prior: closingBalances(this.presented.ledgers.prior) }));
 
   readonly trialBalances = lazy((): { current: TrialBalance; prior: TrialBalance } => ({
-    current: trialBalance(this.presented.ledgers.current, this.presented.chart),
+    current: trialBalance(this.ledger2025, this.presented.chart),
     prior: trialBalance(this.presented.ledgers.prior, this.presented.chart),
   }));
+
+  /** Balances of 2024 at the same date as the 2025 data of the view (the interim cutoff one year earlier, or 31/12/2024). */
+  readonly comparisonPrior = lazy(() => (this.view.ledger2025 === 'interim' ? closingBalances(ledgerAt(this.presented.ledgers.prior, this.view.priorCutoff)) : this.balances().prior));
 
   /** Balance N / N-1 rows: every account with a balance or a movement in either year. */
   readonly balanceRows = lazy((): BalanceRow[] => {
     const cur = new Map(this.trialBalances().current.rows.map((r) => [r.account, r]));
-    const prior = this.balances().prior;
+    const prior = this.comparisonPrior();
     const accounts = [...new Set([...cur.keys(), ...prior.keys()])].sort();
     return accounts.map((account) => {
       const r = cur.get(account);
@@ -116,26 +158,20 @@ export class CaseData {
     y2024: keyFigures(this.balances().prior, this.params.analysis, loanRepayments(this.presented, 2024)),
   }));
 
-  private readonly fecCache = new Map<Year, FecLineInternal[]>();
+  private fec2025?: FecLineInternal[];
   fec(year: Year): FecLineInternal[] {
-    let f = this.fecCache.get(year);
-    if (!f) {
-      const w = this.presented;
-      f = buildFec(year === 2025 ? w.ledgers.current : w.ledgers.prior, w.chart, w.journals, w.auxiliaries);
-      this.fecCache.set(year, f);
-    }
-    return f;
+    const w = this.presented;
+    if (year === 2024) return (this.shared.fec2024 ??= buildFec(w.ledgers.prior, w.chart, w.journals, w.auxiliaries));
+    return (this.fec2025 ??= buildFec(this.ledger2025, w.chart, w.journals, w.auxiliaries));
   }
 
-  private readonly fecIndexCache = new Map<Year, FecIndex>();
+  private fecIndex2025?: FecIndex;
   fecIndex(year: Year): FecIndex {
-    let i = this.fecIndexCache.get(year);
-    if (!i) {
-      i = buildFecIndex(this.fec(year), { closingDate: `${year}-12-31`, maxLinesForPairs: 20 });
-      this.fecIndexCache.set(year, i);
-    }
-    return i;
+    if (year === 2024) return (this.shared.fecIndex2024 ??= buildFecIndex(this.fec(2024), { closingDate: '2024-12-31', maxLinesForPairs: 20 }));
+    return (this.fecIndex2025 ??= buildFecIndex(this.fec(2025), { closingDate: '2025-12-31', maxLinesForPairs: 20 }));
   }
 
-  readonly documentIndex = lazy((): DocumentIndex => buildDocumentIndex(this.documents));
+  documentIndex(): DocumentIndex {
+    return (this.shared.documentIndex ??= buildDocumentIndex(this.documents));
+  }
 }

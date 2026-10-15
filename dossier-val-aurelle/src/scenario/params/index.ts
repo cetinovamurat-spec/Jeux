@@ -12,6 +12,18 @@ import anomaliesJson from './anomalies.json';
 import documentsJson from './documents.json';
 import gameJson from './game.json';
 import referencesJson from './references.json';
+import proceduresJson from './procedures.json';
+import planningJson from './planning.json';
+import cyclesJson from './cycles.json';
+import requestsJson from './requests.json';
+import samplingJson from './sampling.json';
+import disclosureItemsJson from './disclosure-items.json';
+import { cyclesParamsSchema, type CyclesParams } from '../schemas/cycles';
+import { disclosureItemsParamsSchema, type DisclosureItemsParams } from '../schemas/disclosure-items';
+import { planningParamsSchema, type PlanningParams } from '../schemas/planning';
+import { proceduresParamsSchema, type ProceduresParams } from '../schemas/procedures';
+import { requestsParamsSchema, type RequestsParams } from '../schemas/requests';
+import { samplingParamsSchema, type SamplingParams } from '../schemas/sampling';
 import { parseChartCsv } from '../../engine/chart';
 import type { AnalysisDefinitions } from '../../engine/analysis';
 import type { ChartOfAccounts, StatementLineDef } from '../../engine/types';
@@ -61,6 +73,13 @@ export interface Params {
   documents: DocumentsParams;
   game: GameParams;
   references: readonly Reference[];
+  // J4 catalogues (one schema file each in src/scenario/schemas/)
+  procedures: ProceduresParams;
+  planning: PlanningParams;
+  cycles: CyclesParams;
+  requests: RequestsParams;
+  sampling: SamplingParams;
+  disclosureItems: DisclosureItemsParams;
 }
 
 let cached: Params | null = null;
@@ -83,6 +102,12 @@ export function loadParams(): Params {
     documents: documentsParamsSchema.parse(documentsJson),
     game: gameParamsSchema.parse(gameJson),
     references: referencesSchema.parse(referencesJson).references,
+    procedures: proceduresParamsSchema.parse(proceduresJson),
+    planning: planningParamsSchema.parse(planningJson),
+    cycles: cyclesParamsSchema.parse(cyclesJson),
+    requests: requestsParamsSchema.parse(requestsJson),
+    sampling: samplingParamsSchema.parse(samplingJson),
+    disclosureItems: disclosureItemsParamsSchema.parse(disclosureItemsJson),
   };
   return cached;
 }

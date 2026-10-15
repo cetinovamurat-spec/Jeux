@@ -12,12 +12,16 @@ import { FecScreen as ControlFec } from '../screens/control/Fec';
 import { StatementsScreen as ControlStatements } from '../screens/control/Statements';
 import { Targets } from '../screens/control/Targets';
 import { DeskScreen } from '../screens/desk/DeskScreen';
+import { FindingsScreen } from '../screens/findings/FindingsScreen';
+import { PlanningScreen } from '../screens/planning/PlanningScreen';
+import { WorkScreen } from '../screens/work/WorkScreen';
 import { FecScreen } from '../screens/fec/FecScreen';
 import { GedScreen } from '../screens/ged/GedScreen';
 import { LedgerScreen } from '../screens/ledger/LedgerScreen';
 import { StatementsScreen } from '../screens/statements/StatementsScreen';
 import { CaseData } from './case';
 import { CaseProvider } from './context';
+import { DataGate } from './DataGate';
 import { useCaseLoader } from './dossier';
 import { DesignerOnly, NotFound, RootError, ScreenError } from './RouteStates';
 import { Shell } from './Shell';
@@ -33,13 +37,30 @@ const router = createHashRouter([
         errorElement: <ScreenError />,
         children: [
           { index: true, element: <DeskScreen /> },
+          { path: 'planification', element: <PlanningScreen /> },
+          { path: 'travaux', element: <WorkScreen /> },
+          { path: 'constats', element: <FindingsScreen /> },
           { path: 'ged', element: <GedScreen /> },
           { path: 'ged/:docId', element: <GedScreen /> },
-          { path: 'balance', element: <BalanceScreen /> },
+          {
+            path: 'balance',
+            element: (
+              <DataGate need="ledger2025" title="Balance N / N-1">
+                <BalanceScreen />
+              </DataGate>
+            ),
+          },
           { path: 'grand-livre', element: <LedgerScreen /> },
           { path: 'fec', element: <FecScreen /> },
           { path: 'etats', element: <StatementsScreen /> },
-          { path: 'analyse', element: <AnalysisScreen /> },
+          {
+            path: 'analyse',
+            element: (
+              <DataGate need="statements2025" title="Revue analytique">
+                <AnalysisScreen />
+              </DataGate>
+            ),
+          },
           {
             path: 'controle',
             element: (

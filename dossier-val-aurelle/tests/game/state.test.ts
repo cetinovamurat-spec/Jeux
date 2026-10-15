@@ -75,11 +75,42 @@ describe('game state', () => {
     let s = fresh();
     s = setTheme(setDesigner(markRead(s, 'doc-a'), true), 'dark');
     s = saveQuery(addAnnotation(s, 'doc-a', 'note'), 'Q', { ...EMPTY_QUERY, keywords: 'régul' });
-    const r = deserialize(serialize(s), s.scenarioId);
+    const r = deserialize(serialize(s), fresh());
     expect(r.ok && r.state).toEqual(s);
-    expect(deserialize('{', s.scenarioId).ok).toBe(false);
-    expect(deserialize(serialize(s), 'autre-dossier').ok).toBe(false);
-    expect(deserialize(JSON.stringify({ ...s, schemaVersion: 99 }), s.scenarioId).ok).toBe(false);
+    expect(r.ok && (r.migratedFrom ?? r.contentChanged)).toBeFalsy();
+    expect(deserialize('{', fresh()).ok).toBe(false);
+    expect(deserialize(serialize({ ...s, scenarioId: 'autre-dossier' }), fresh()).ok).toBe(false);
+    expect(deserialize(JSON.stringify({ ...s, schemaVersion: 99 }), fresh()).ok).toBe(false);
+  });
+  it('flags a save made with another generated world or another content version', () => {
+    const r = deserialize(serialize({ ...fresh(), scenarioHash: 'autre' }), fresh());
+    expect(r.ok && r.contentChanged).toBe(true);
+  });
+  it('restarts a J3 game (schema 1) at the beginning of the engagement, keeping settings, tick marks and saved queries', () => {
+    const v1 = {
+      schemaVersion: 1,
+      scenarioId: 'val-aurelle-2025',
+      difficulty: 'senior',
+      clock: { date: '2026-02-23' },
+      settings: { theme: 'dark', designer: true },
+      documents: { 'doc-a': { readOn: '2026-02-23', annotations: [], evidence: true } },
+      ticks: { 'etats:P_CP:n': 'balance' },
+      tickMarks: [{ id: 'mark9', symbol: '¤', label: 'Vu', tone: 'ok' }],
+      savedQueries: [{ id: 'query3', name: 'Q', query: { ...EMPTY_QUERY, keywords: 'x' }, createdOn: '2026-02-23' }],
+      journal: [{ on: '2026-02-23', kind: 'documentRead', detail: 'doc-a' }],
+      seq: 9,
+    };
+    const r = deserialize(JSON.stringify(v1), fresh());
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.migratedFrom).toBe(1);
+    expect(r.state.clock.date).toBe(fresh().clock.date);
+    expect(r.state.settings).toEqual({ theme: 'dark', designer: true });
+    expect(r.state.tickMarks.map((m) => m.id)).toEqual(['mark9']);
+    expect(r.state.savedQueries.map((q) => q.id)).toEqual(['query3']);
+    expect(r.state.seq).toBe(9);
+    expect(r.state.documents).toEqual({});
+    expect(r.state.journal).toEqual([]);
   });
 });
 

@@ -1,35 +1,221 @@
 {
   "_comment": "Paramètres de jeu (§4.5, §4.6, §10.2, §10.9) : équipe, budgets, jauges, calendrier, délais de réponse. Révisables sans toucher au code.",
   "team": [
-    { "id": "senior", "name": "Vous", "role": "Auditeur senior, en charge du dossier", "hoursByDifficulty": { "assistant": 160, "senior": 140, "manager": 120 }, "speed": 1.25 },
-    { "id": "lea", "name": "Léa Garnier", "role": "Assistante de 1re année", "hoursByDifficulty": { "assistant": 130, "senior": 110, "manager": 95 }, "speed": 1.0 },
-    { "id": "hugo", "name": "Hugo Mercier", "role": "Stagiaire", "hoursByDifficulty": { "assistant": 110, "senior": 90, "manager": 75 }, "speed": 0.85 },
-    { "id": "sofia", "name": "Sofia Benali", "role": "Auditrice des systèmes d’information (mobilisable quelques heures)", "hoursByDifficulty": { "assistant": 12, "senior": 10, "manager": 8 }, "speed": 1.0 }
+    {
+      "id": "senior",
+      "name": "Vous",
+      "role": "Auditeur senior, en charge du dossier",
+      "hoursByDifficulty": {
+        "assistant": 160,
+        "senior": 140,
+        "manager": 120
+      },
+      "speed": 1.25
+    },
+    {
+      "id": "lea",
+      "name": "Léa Garnier",
+      "role": "Assistante de 1re année",
+      "hoursByDifficulty": {
+        "assistant": 130,
+        "senior": 110,
+        "manager": 95
+      },
+      "speed": 1.0
+    },
+    {
+      "id": "hugo",
+      "name": "Hugo Mercier",
+      "role": "Stagiaire",
+      "hoursByDifficulty": {
+        "assistant": 110,
+        "senior": 90,
+        "manager": 75
+      },
+      "speed": 0.85
+    },
+    {
+      "id": "sofia",
+      "name": "Sofia Benali",
+      "role": "Auditrice des systèmes d’information (mobilisable quelques heures)",
+      "hoursByDifficulty": {
+        "assistant": 12,
+        "senior": 10,
+        "manager": 8
+      },
+      "speed": 1.0
+    }
   ],
   "firmName": "Sequana Audit",
   "firm": [
-    { "id": "partner", "name": "Claire Delmas", "role": "Associée signataire" },
-    { "id": "manager", "name": "Antoine Roussel", "role": "Manager" }
+    {
+      "id": "partner",
+      "name": "Claire Delmas",
+      "role": "Associée signataire"
+    },
+    {
+      "id": "manager",
+      "name": "Antoine Roussel",
+      "role": "Manager"
+    }
   ],
-  "budgetHours": { "assistant": 400, "senior": 340, "manager": 290 },
+  "budgetHours": {
+    "assistant": 400,
+    "senior": 340,
+    "manager": 290
+  },
   "overrunTolerancePct": 10,
   "gauges": {
-    "clientRelation": { "label": "Relation client", "initial": 70, "lowThreshold": 30 },
-    "partnerTrust": { "label": "Confiance de l’associée", "initial": 60, "lowThreshold": 30 },
-    "karimTrust": { "label": "Confiance du chef comptable", "initial": 20, "lowThreshold": 0 }
+    "clientRelation": {
+      "label": "Relation client",
+      "initial": 70,
+      "lowThreshold": 30
+    },
+    "partnerTrust": {
+      "label": "Confiance de l’associée",
+      "initial": 60,
+      "lowThreshold": 30
+    },
+    "karimTrust": {
+      "label": "Confiance du chef comptable",
+      "initial": 20,
+      "lowThreshold": 0
+    }
   },
   "calendar": [
-    { "id": "planning", "label": "Prise de connaissance et planification", "from": "2025-11-03", "to": "2025-11-14" },
-    { "id": "interim", "label": "Intérim", "from": "2025-11-17", "to": "2025-11-20" },
-    { "id": "confirmations", "label": "Envoi des demandes de confirmation", "from": "2026-01-06", "to": "2026-01-06" },
-    { "id": "final", "label": "Final", "from": "2026-02-23", "to": "2026-03-13" },
-    { "id": "completion", "label": "Synthèse (DAF le 17/03, DG le 19/03)", "from": "2026-03-16", "to": "2026-03-20" },
-    { "id": "board", "label": "Arrêté des comptes par le conseil", "from": "2026-03-26", "to": "2026-03-26" },
-    { "id": "reporting", "label": "Rapport (signature au plus tard)", "from": "2026-03-27", "to": "2026-05-20" },
-    { "id": "generalMeeting", "label": "Assemblée générale", "from": "2026-06-18", "to": "2026-06-18" }
+    {
+      "id": "planning",
+      "label": "Prise de connaissance et planification",
+      "from": "2025-11-03",
+      "to": "2025-11-14"
+    },
+    {
+      "id": "interim",
+      "label": "Intérim",
+      "from": "2025-11-17",
+      "to": "2025-11-20"
+    },
+    {
+      "id": "confirmations",
+      "label": "Envoi des demandes de confirmation",
+      "from": "2026-01-06",
+      "to": "2026-01-06"
+    },
+    {
+      "id": "final",
+      "label": "Final",
+      "from": "2026-02-23",
+      "to": "2026-03-13"
+    },
+    {
+      "id": "completion",
+      "label": "Synthèse (DAF le 17/03, DG le 19/03)",
+      "from": "2026-03-16",
+      "to": "2026-03-20"
+    },
+    {
+      "id": "board",
+      "label": "Arrêté des comptes par le conseil",
+      "from": "2026-03-26",
+      "to": "2026-03-26"
+    },
+    {
+      "id": "reporting",
+      "label": "Rapport (signature au plus tard)",
+      "from": "2026-03-27",
+      "to": "2026-05-20"
+    },
+    {
+      "id": "generalMeeting",
+      "label": "Assemblée générale",
+      "from": "2026-06-18",
+      "to": "2026-06-18"
+    }
   ],
-  "startDate": "2026-02-23",
-  "responseDelaysBusinessDays": { "chiefAccountant": 1, "cfo": 2, "assetDirector": 3, "rentManager": 2, "ceo": 3, "thirdPartyMin": 5, "thirdPartyMax": 15 },
-  "roundAmountMultiplesEuros": [1000, 10000, 100000],
+  "startDate": "2025-11-03",
+  "dataVintages": {
+    "_comment": "Millésimes des données comptables 2025 (plan J4 §4). Comptes certifiés 2024 : dès le début. Extraction au 31/10/2025 : sur demande au chef comptable, et remise d'office au début de l'intérim. Balance et FEC définitifs, puis états et annexe : à leur date (planning de clôture de la DAF).",
+    "interim": {
+      "cutoff": "2025-10-31",
+      "request": "interim-extraction",
+      "deliveredAtPeriod": "interim"
+    },
+    "draftLedger": {
+      "from": "2026-02-06"
+    },
+    "draftStatements": {
+      "from": "2026-02-20"
+    }
+  },
+  "holidays": {
+    "_comment": "Jours fériés français de la période de jeu (à vérifier, PV-82) : jours ouvrés du jeu seulement ; le générateur du monde n'en tient pas compte.",
+    "dates": [
+      "2025-11-11",
+      "2025-12-25",
+      "2026-01-01",
+      "2026-04-06",
+      "2026-05-01",
+      "2026-05-08",
+      "2026-05-14",
+      "2026-05-25"
+    ]
+  },
+  "onSite": {
+    "_comment": "Présence sur site par membre (identifiants des périodes du calendrier) ; capacité par jour ouvré sur site. Hors site, les heures ne sont pas disponibles.",
+    "capacityHoursPerDay": 7,
+    "members": {
+      "senior": [
+        "planning",
+        "interim",
+        "final",
+        "completion",
+        "reporting"
+      ],
+      "lea": [
+        "interim",
+        "final"
+      ],
+      "hugo": [
+        "interim",
+        "final"
+      ],
+      "sofia": [
+        "interim",
+        "final"
+      ]
+    }
+  },
+  "difficulty": {
+    "_comment": "Leviers des niveaux (§10.9) : délais des interlocuteurs, rappels de méthode, coût de l'aide « Demander conseil à Antoine ».",
+    "assistant": {
+      "responseDelayFactor": 1,
+      "reminders": true,
+      "aid": "free"
+    },
+    "senior": {
+      "responseDelayFactor": 1,
+      "reminders": true,
+      "aid": "partnerTrust"
+    },
+    "manager": {
+      "responseDelayFactor": 1.5,
+      "reminders": false,
+      "aid": "unavailable"
+    }
+  },
+  "responseDelaysBusinessDays": {
+    "chiefAccountant": 1,
+    "cfo": 2,
+    "assetDirector": 3,
+    "rentManager": 2,
+    "ceo": 3,
+    "thirdPartyMin": 5,
+    "thirdPartyMax": 15
+  },
+  "roundAmountMultiplesEuros": [
+    1000,
+    10000,
+    100000
+  ],
   "rarePairMaxOccurrences": 2
 }

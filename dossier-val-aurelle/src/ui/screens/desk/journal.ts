@@ -27,28 +27,42 @@ function docSubject(id: string, ctx: JournalContext): Pick<EventView, 'subject' 
   return title === undefined ? { subject: `${id} (document inconnu)` } : { subject: title, to: docLink(id) };
 }
 
+/** Generic wording of the J4-J6 event kinds; the event may carry its subject in `data.title`. */
+const KIND_TEXT: Readonly<Record<string, string>> = {
+  clock: 'Date du dossier :',
+  materiality: 'Seuils de signification :',
+  risk: 'Évaluation des risques :',
+  program: 'Programme de travail :',
+  execution: 'Procédure :',
+  request: 'Demande de documents :',
+  confirmation: 'Demande de confirmation :',
+  sample: 'Échantillon :',
+  recalc: 'Recalcul :',
+  finding: 'Constat :',
+  worksheet: 'Feuille de travail :',
+};
+
 export function describeEvent(e: JournalEvent, ctx: JournalContext): EventView {
+  const ref = e.ref ?? '';
   switch (e.kind) {
     case 'documentRead':
-      return { text: 'Document consulté :', ...docSubject(e.detail, ctx) };
+      return { text: 'Document consulté :', ...docSubject(ref, ctx) };
     case 'annotation':
-      return { text: 'Annotation ajoutée :', ...docSubject(e.detail, ctx) };
-    case 'evidence': {
-      const i = e.detail.lastIndexOf(':');
-      const id = i < 0 ? e.detail : e.detail.slice(0, i);
-      const removed = i >= 0 && e.detail.slice(i + 1) === 'retrait';
-      return { text: removed ? 'Pièce retirée des éléments probants :' : 'Pièce conservée comme élément probant :', ...docSubject(id, ctx) };
-    }
+      return { text: 'Annotation ajoutée :', ...docSubject(ref, ctx) };
+    case 'evidence':
+      return { text: e.data?.['kept'] === false ? 'Pièce retirée des éléments probants :' : 'Pièce conservée comme élément probant :', ...docSubject(ref, ctx) };
     case 'query': {
-      const q = ctx.savedQueries.find((s) => s.name === e.detail);
-      return { text: 'Requête FEC enregistrée :', subject: `« ${e.detail} »`, to: q ? `/fec?requete=${encodeURIComponent(q.id)}` : '/fec' };
+      const q = ctx.savedQueries.find((s) => s.name === ref);
+      return { text: 'Requête FEC enregistrée :', subject: `« ${ref} »`, to: q ? `/fec?requete=${encodeURIComponent(q.id)}` : '/fec' };
     }
     case 'tick':
-      return { text: 'Pointage des états :', subject: e.detail, to: '/etats' };
+      return { text: 'Pointage des états :', subject: ref, to: '/etats' };
     case 'setting':
-      return { text: 'Réglage modifié :', subject: e.detail };
-    default:
-      return { text: 'Action enregistrée :', subject: (e as JournalEvent).detail };
+      return { text: 'Réglage modifié :', subject: ref };
+    default: {
+      const title = e.data?.['title'];
+      return { text: KIND_TEXT[e.kind] ?? 'Action enregistrée :', subject: typeof title === 'string' ? title : ref };
+    }
   }
 }
 

@@ -1,29 +1,53 @@
 /** Game shell: sidebar navigation, top bar (date, period, gauges, budget), command palette, theme. */
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router';
-import { formatDateFr } from '../../engine/dates';
-import { periodAt } from '../../game/clock';
 import { setTheme, type ThemeChoice } from '../../game/state';
 import { Badge, cx, Gauge, Kbd, Select } from '../components/ui';
-import { useCase } from './context';
+import { useFullCase } from './context';
+import { useAvailabilityText } from './DataGate';
+import { TimeControls } from './TimeControls';
 import { CommandPalette } from './CommandPalette';
-import { NAV } from './routes';
+import { NAV, type NavItem } from './routes';
 import { useGame } from './store';
 
+function NavEntry({ item }: { item: NavItem }) {
+  const unavailable = useAvailabilityText(item.needs);
+  return (
+    <NavLink
+      to={item.to}
+      end={item.to === '/'}
+      title={unavailable ? `${item.description} – ${unavailable}` : item.description}
+      className={({ isActive }) =>
+        cx('mx-2 block rounded-md px-3 py-1.5 text-sm', isActive ? 'bg-accent-soft font-semibold text-accent' : unavailable ? 'text-muted hover:bg-sunken' : 'text-ink hover:bg-sunken', item.designerOnly && 'italic')
+      }
+    >
+      {item.label}
+      {unavailable && <span className="sr-only"> (pas encore disponible)</span>}
+    </NavLink>
+  );
+}
+
+/** Hours in the French format (« 12,5 »). */
+function formatHours(h: number): string {
+  return h.toLocaleString('fr-FR', { maximumFractionDigits: 1 });
+}
+
 export function Shell() {
-  const c = useCase();
-  const game = useGame((s) => s.game);
+  const c = useFullCase();
+  const settings = useGame((s) => s.game.settings);
+  const difficulty = useGame((s) => s.game.difficulty);
+  const executions = useGame((s) => s.game.program.executions);
   const act = useGame((s) => s.act);
   const [palette, setPalette] = useState(false);
   const location = useLocation();
-  const designer = game.settings.designer;
+  const designer = settings.designer;
   const gp = c.params.game;
 
   useEffect(() => {
     const root = document.documentElement;
-    if (game.settings.theme === 'system') delete root.dataset['theme'];
-    else root.dataset['theme'] = game.settings.theme;
-  }, [game.settings.theme]);
+    if (settings.theme === 'system') delete root.dataset['theme'];
+    else root.dataset['theme'] = settings.theme;
+  }, [settings.theme]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -38,8 +62,8 @@ export function Shell() {
 
   useEffect(() => setPalette(false), [location.pathname]);
 
-  const period = periodAt(gp.calendar, game.clock.date);
-  const budget = gp.budgetHours[game.difficulty];
+  const budget = gp.budgetHours[difficulty];
+  const used = executions.filter((e) => e.assignee !== 'sofia').reduce((t, e) => t + e.hours, 0);
 
   return (
     <div className="grid min-h-screen grid-cols-[13.5rem_1fr]">
@@ -51,15 +75,7 @@ export function Shell() {
         </div>
         <nav aria-label="Navigation principale" className="flex-1 overflow-auto py-2">
           {NAV.filter((n) => designer || !n.designerOnly).map((n) => (
-            <NavLink
-              key={n.to}
-              to={n.to}
-              end={n.to === '/'}
-              title={n.description}
-              className={({ isActive }) => cx('mx-2 block rounded-md px-3 py-1.5 text-sm', isActive ? 'bg-accent-soft font-semibold text-accent' : 'text-ink hover:bg-sunken', n.designerOnly && 'italic')}
-            >
-              {n.label}
-            </NavLink>
+            <NavEntry key={n.to} item={n} />
           ))}
         </nav>
         <div className="space-y-2 border-t border-line px-4 py-3 text-xs">
@@ -68,7 +84,7 @@ export function Shell() {
           </button>
           <label className="flex items-center justify-between gap-2 text-muted">
             Thème
-            <Select aria-label="Thème" value={game.settings.theme} onChange={(e) => act((s) => setTheme(s, e.target.value as ThemeChoice))} className="py-0.5 text-xs">
+            <Select aria-label="Thème" value={settings.theme} onChange={(e) => act((s) => setTheme(s, e.target.value as ThemeChoice))} className="py-0.5 text-xs">
               <option value="system">Système</option>
               <option value="light">Clair</option>
               <option value="dark">Sombre</option>
@@ -79,10 +95,7 @@ export function Shell() {
       </aside>
       <div className="min-w-0">
         <header className="sticky top-0 z-20 flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-line bg-panel/95 px-5 py-2 backdrop-blur">
-          <div>
-            <p className="text-sm font-semibold">{formatDateFr(game.clock.date)}</p>
-            <p className="text-xs text-muted">{period.current ? period.current.label : period.next ? `Avant : ${period.next.label.toLowerCase()}` : 'Mission terminée'}</p>
-          </div>
+          <TimeControls />
           <div className="flex flex-wrap gap-4">
             {Object.entries(gp.gauges).map(([id, g]) => (
               <Gauge key={id} label={g.label} value={g.initial} low={g.lowThreshold} />
@@ -90,7 +103,9 @@ export function Shell() {
           </div>
           <div className="ml-auto text-right text-xs">
             <p className="text-muted">Budget</p>
-            <p className="font-mono text-sm">0 / {budget} h</p>
+            <p className={cx('font-mono text-sm', used > budget && 'text-warn')}>
+              {formatHours(used)} / {budget} h
+            </p>
           </div>
         </header>
         <main className="px-5 py-4">

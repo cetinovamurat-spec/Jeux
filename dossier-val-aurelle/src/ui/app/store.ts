@@ -9,13 +9,25 @@ import { loadParams } from '../../scenario/params';
 
 const AUTOSAVE_KEY = 'val-aurelle:autosave';
 
+/** What happened to the saved game at load (shown once on the desk). */
+export type LoadNotice = 'restarted' | 'contentChanged' | null;
+let loadNotice: LoadNotice = null;
+export function takeLoadNotice(): LoadNotice {
+  const n = loadNotice;
+  loadNotice = null;
+  return n;
+}
+
 function load(): GameState {
   const fresh = initialState(loadParams());
   try {
     const text = globalThis.localStorage?.getItem(AUTOSAVE_KEY);
     if (!text) return fresh;
-    const r = deserialize(text, fresh.scenarioId);
-    return r.ok ? r.state : fresh;
+    const r = deserialize(text, fresh);
+    if (!r.ok) return fresh;
+    if (r.migratedFrom !== undefined) loadNotice = 'restarted';
+    else if (r.contentChanged) loadNotice = 'contentChanged';
+    return r.state;
   } catch {
     return fresh;
   }

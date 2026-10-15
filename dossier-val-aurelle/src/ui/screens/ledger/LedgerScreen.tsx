@@ -53,7 +53,8 @@ export function LedgerScreen() {
   const c = useCase();
   const [params, setParams] = useSearchParams();
   const { current, prior } = c.params.scenario.years;
-  const year = (params.get('exercice') === String(prior) ? prior : current) as Year;
+  // before the extraction of 2025, only the certified 2024 accounts can be consulted
+  const year = (params.get('exercice') === String(prior) || c.view.ledger2025 === 'none' ? prior : current) as Year;
   const account = (params.get('compte') ?? '').trim();
 
   const fec = c.fec(year);
@@ -315,7 +316,7 @@ function AccountView({ year, account, fec, indices }: { year: Year; account: str
   const view = useLedgerView();
   const { current } = c.params.scenario.years;
   const label = c.accountLabel(account);
-  const closingDate = formatDateFr(`${year}-12-31`);
+  const closingDate = formatDateFr(year === current ? c.view.cutoff : `${year}-12-31`);
 
   const ledger = useMemo(() => accountLedger(fec, account, indices), [fec, account, indices]);
   const entries = useMemo(() => new Set(ledger.rows.map((r) => r.line.entryId)).size, [ledger]);

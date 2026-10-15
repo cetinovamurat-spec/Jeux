@@ -6,7 +6,10 @@
 import type { IsoDate } from '../engine/dates';
 import type { Block, DocumentModel } from '../scenario/documents';
 import type { DocumentCategory } from '../scenario/documents/model';
-import type { DocumentState } from './state';
+import type { Params } from '../scenario/params';
+import { sentConfirmations } from './confirmations';
+import { answeredRequests } from './requests';
+import type { DocumentState, GameState } from './state';
 import { foldText, type FoldedText } from './text';
 
 export interface AvailabilityContext {
@@ -19,6 +22,20 @@ export interface AvailabilityContext {
   conditions: ReadonlySet<string>;
   /** Designer mode unlocks every document. */
   designer: boolean;
+}
+
+/**
+ * Availability context of the documents at the game date, from the game
+ * state: requests answered and confirmations sent (J4c), conditions met (J5).
+ */
+export function availabilityContext(s: Pick<GameState, 'clock' | 'settings' | 'requests' | 'confirmations'>, params: Params, date: IsoDate = s.clock.date): AvailabilityContext {
+  return {
+    date,
+    designer: s.settings.designer,
+    answeredRequests: answeredRequests(s.requests, params, date),
+    sentConfirmations: sentConfirmations(s.confirmations, params, date),
+    conditions: new Set<string>(),
+  };
 }
 
 export function isAvailable(doc: DocumentModel, ctx: AvailabilityContext): boolean {

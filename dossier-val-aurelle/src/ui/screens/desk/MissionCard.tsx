@@ -4,6 +4,7 @@ import { formatDateFr, type IsoDate } from '../../../engine/dates';
 import { formatEuro, formatMEuro, formatPercent } from '../../../engine/format';
 import type { Cents } from '../../../engine/money';
 import { useCase } from '../../app/context';
+import { useAvailabilityText } from '../../app/DataGate';
 import { useGame } from '../../app/store';
 import { Badge, Card, cx } from '../../components/ui';
 
@@ -63,7 +64,9 @@ export function MissionCard() {
     return out;
   }, [cal, reporting]);
 
+  const draftText = useAvailabilityText('statements2025');
   const rows = useMemo<FigureRow[]>(() => {
+    if (!c.view.statements2025) return [];
     const f = c.figures().y2025;
     const lines = c.statements.lines;
     return [
@@ -126,6 +129,7 @@ export function MissionCard() {
           </dl>
         </section>
       </div>
+      {c.view.statements2025 ? (
       <section aria-labelledby="desk-figures" className="border-t border-line px-3 pb-3 pt-2.5">
         <SectionTitle id="desk-figures">Chiffres clés – projet de comptes du client</SectionTitle>
         <table className="w-full text-sm">
@@ -167,6 +171,9 @@ export function MissionCard() {
           Projet de comptes remis par le client, non audité. La colonne {years.prior} reprend le comparatif tel que présenté par le client. Le détail figure dans les écrans « États financiers » et « Balance ».
         </p>
       </section>
+      ) : (
+        <p className="border-t border-line px-3 py-2.5 text-xs text-muted">{draftText}.</p>
+      )}
     </Card>
   );
 }

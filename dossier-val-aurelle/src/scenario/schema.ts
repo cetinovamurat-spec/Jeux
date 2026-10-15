@@ -390,6 +390,7 @@ export const documentsParamsSchema = z.object({
 export type DocumentsParams = z.infer<typeof documentsParamsSchema>;
 
 const byDifficulty = z.object({ assistant: z.number(), senior: z.number(), manager: z.number() });
+const difficultyLevel = z.object({ responseDelayFactor: z.number().positive(), reminders: z.boolean(), aid: z.enum(['free', 'partnerTrust', 'unavailable']) });
 export const gameParamsSchema = z.object({
   team: z.array(z.object({ id: z.enum(['senior', 'lea', 'hugo', 'sofia']), name: z.string(), role: z.string(), hoursByDifficulty: byDifficulty, speed: z.number().positive() })),
   firmName: z.string(),
@@ -399,6 +400,14 @@ export const gameParamsSchema = z.object({
   gauges: z.record(z.enum(['clientRelation', 'partnerTrust', 'karimTrust']), z.object({ label: z.string(), initial: z.number().min(0).max(100), lowThreshold: z.number() })),
   calendar: z.array(z.object({ id: z.string(), label: z.string(), from: isoDate, to: isoDate })),
   startDate: isoDate,
+  dataVintages: z.object({
+    interim: z.object({ cutoff: isoDate, request: z.string(), deliveredAtPeriod: z.string() }),
+    draftLedger: z.object({ from: isoDate }),
+    draftStatements: z.object({ from: isoDate }),
+  }),
+  holidays: z.object({ dates: z.array(isoDate) }),
+  onSite: z.object({ capacityHoursPerDay: z.number().positive(), members: z.record(z.enum(['senior', 'lea', 'hugo', 'sofia']), z.array(z.string())) }),
+  difficulty: z.object({ assistant: difficultyLevel, senior: difficultyLevel, manager: difficultyLevel }),
   responseDelaysBusinessDays: z.record(z.string(), z.number()),
   roundAmountMultiplesEuros: z.array(z.number().positive()),
   rarePairMaxOccurrences: z.number().int().positive(),
