@@ -86,7 +86,7 @@ npm install
 npm run dev           # jeu (Vite) ; écran de contrôle : ?designer=1#/controle
 npm test              # génère puis lance Vitest (≈ 20 s)
 npm run build         # typecheck + site statique (dist/)
-npm run build:single  # fichier HTML unique hors ligne (dist-single/index.html, ≈ 1 Mo)
+npm run build:single  # fichier HTML unique hors ligne (dist-single/index.html, ≈ 2 Mo)
 npm run generate      # fichiers d'inspection dans generated/ ; « -- --update-lock » met à jour scenario.lock.json
 npm run calibrate     # rapport cibles / obtenu (propres et présentés) ; « -- --solve » recalcule params/levers.json
 npm run review-pack   # dossier de revue métier : docs/revue-metier/ (HTML + CSV)
