@@ -1,5 +1,5 @@
 /** Small shared UI primitives (sober professional style, keyboard accessible). */
-import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from 'react';
+import type { ButtonHTMLAttributes, InputHTMLAttributes, KeyboardEvent, ReactNode, Ref, SelectHTMLAttributes } from 'react';
 import type { Tone } from '../../game/state';
 
 export function cx(...c: (string | false | null | undefined)[]): string {
@@ -23,8 +23,9 @@ export function Button({ variant = 'default', className, ...p }: ButtonHTMLAttri
   );
 }
 
-export function TextInput({ className, ...p }: InputHTMLAttributes<HTMLInputElement>) {
-  return <input {...p} className={cx('rounded-md border border-line bg-panel px-2 py-1 text-sm placeholder:text-muted', className)} />;
+/** Text input; `invalid` shows the error border and sets aria-invalid. */
+export function TextInput({ className, invalid, ...p }: InputHTMLAttributes<HTMLInputElement> & { ref?: Ref<HTMLInputElement>; invalid?: boolean }) {
+  return <input aria-invalid={invalid || undefined} {...p} className={cx('rounded-md border bg-panel px-2 py-1 text-sm placeholder:text-muted', invalid ? 'border-ko' : 'border-line', className)} />;
 }
 
 export function Select({ className, children, ...p }: SelectHTMLAttributes<HTMLSelectElement>) {
@@ -98,22 +99,34 @@ export function EmptyState({ children }: { children: ReactNode }) {
   return <p className="px-4 py-8 text-center text-sm text-muted">{children}</p>;
 }
 
-/** Accessible tabs (role=tablist); content is rendered by the caller. */
-export function Tabs<T extends string>({ value, onChange, items, label }: { value: T; onChange: (v: T) => void; items: readonly { id: T; label: ReactNode }[]; label: string }) {
+/**
+ * Accessible tabs (role=tablist, roving tabindex: arrow keys, Home and End
+ * select and focus a tab). Content is rendered by the caller in an element
+ * with `id={tabPanelId(idPrefix)}`, `role="tabpanel"` and
+ * `aria-labelledby={tabId(idPrefix, value)}`.
+ */
+export function Tabs<T extends string>({ value, onChange, items, label, idPrefix }: { value: T; onChange: (v: T) => void; items: readonly { id: T; label: ReactNode }[]; label: string; idPrefix: string }) {
+  const onKeyDown = (e: KeyboardEvent<HTMLButtonElement>, i: number) => {
+    const n = items.length;
+    const next = e.key === 'ArrowRight' ? (i + 1) % n : e.key === 'ArrowLeft' ? (i - 1 + n) % n : e.key === 'Home' ? 0 : e.key === 'End' ? n - 1 : -1;
+    if (next < 0) return;
+    e.preventDefault();
+    onChange(items[next]!.id);
+    e.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next]?.focus();
+  };
   return (
     <div role="tablist" aria-label={label} className="flex flex-wrap gap-1 border-b border-line">
-      {items.map((it) => (
+      {items.map((it, i) => (
         <button
           key={it.id}
+          id={tabId(idPrefix, it.id)}
           type="button"
           role="tab"
           aria-selected={it.id === value}
+          aria-controls={tabPanelId(idPrefix)}
+          tabIndex={it.id === value ? 0 : -1}
           onClick={() => onChange(it.id)}
-          onKeyDown={(e) => {
-            const i = items.findIndex((x) => x.id === value);
-            if (e.key === 'ArrowRight') onChange(items[(i + 1) % items.length]!.id);
-            if (e.key === 'ArrowLeft') onChange(items[(i - 1 + items.length) % items.length]!.id);
-          }}
+          onKeyDown={(e) => onKeyDown(e, i)}
           className={cx('-mb-px rounded-t-md border px-3 py-1.5 text-sm', it.id === value ? 'border-line border-b-panel bg-panel font-semibold text-accent' : 'border-transparent text-muted hover:text-ink')}
         >
           {it.label}
@@ -121,6 +134,14 @@ export function Tabs<T extends string>({ value, onChange, items, label }: { valu
       ))}
     </div>
   );
+}
+
+export function tabId(idPrefix: string, id: string): string {
+  return `${idPrefix}-tab-${id}`;
+}
+
+export function tabPanelId(idPrefix: string): string {
+  return `${idPrefix}-panel`;
 }
 
 /** Horizontal meter for a 0–100 gauge. */

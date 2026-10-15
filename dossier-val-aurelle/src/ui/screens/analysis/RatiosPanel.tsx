@@ -8,7 +8,7 @@
 import { Fragment, type ReactNode } from 'react';
 import { formatDateFr } from '../../../engine/dates';
 import { formatEuro, formatPercent } from '../../../engine/format';
-import { meetsReference, RATIO_CONVENTIONS, trailingMean, variation, type AverageRate } from '../../../game/analysis';
+import { meetsReference, trailingMean, variation, type AverageRate } from '../../../game/analysis';
 import { useCase } from '../../app/context';
 import { Amount } from '../../components/Amount';
 import { Badge, Card, cx } from '../../components/ui';
@@ -214,7 +214,7 @@ function ComponentsTable() {
   const { presented: p } = useRatios();
   const { current, prior } = c.params.scenario.years;
   const a = c.params.analysis;
-  const conv = RATIO_CONVENTIONS;
+  const conv = c.params.analysis.review.hlmRatios;
   const amounts: { label: string; get: (y: YearAnalysis) => number; strong?: boolean }[] = [
     { label: `Loyers nets de RLS (comptes ${ruleText(a.rents)})`, get: (y) => y.figures.rents, strong: true },
     { label: 'Excédent brut d’exploitation', get: (y) => y.figures.ebe },
@@ -316,7 +316,7 @@ function LivretACard() {
   const la = useLivretA();
   const { presented: p } = useRatios();
   const { current, prior } = c.params.scenario.years;
-  const conv = RATIO_CONVENTIONS;
+  const conv = c.params.analysis.review.hlmRatios;
   const avgCur = la.current.averagePct;
   const avgPri = la.prior.averagePct;
   const rows: { label: ReactNode; cur: ReactNode; pri: ReactNode; change: ReactNode; strong?: boolean }[] = [

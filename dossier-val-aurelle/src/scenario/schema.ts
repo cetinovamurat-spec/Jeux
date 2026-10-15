@@ -99,8 +99,21 @@ export const regulatorySchema = z.object({
 export type RegulatoryParams = z.infer<typeof regulatorySchema>;
 
 const prefixRule = z.object({ include: z.array(z.string()), exclude: z.array(z.string()).optional() });
+export const analyticalReviewSchema = z.object({
+  hlmRatios: z.object({
+    loanInterest: prefixRule,
+    rentReceivables: prefixRule,
+    billedRents: prefixRule,
+    monthlyRents: z.array(z.string()).min(1),
+    managementCost: prefixRule,
+  }),
+  variationThresholds: z.object({ pct: z.number().positive(), euros: z.number().positive() }),
+});
+export type AnalyticalReviewParams = z.infer<typeof analyticalReviewSchema>;
+
 export const analysisSchema = z.object({
   toValidate: z.boolean(),
+  review: analyticalReviewSchema,
   rents: prefixRule,
   chargeRecoveries: prefixRule,
   ebe: z.object({ products: prefixRule, charges: prefixRule }),

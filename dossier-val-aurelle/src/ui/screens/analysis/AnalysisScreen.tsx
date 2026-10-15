@@ -7,7 +7,7 @@
  */
 import { useCase } from '../../app/context';
 import { useDesigner } from '../../app/hooks';
-import { Badge, PageHeader, Tabs } from '../../components/ui';
+import { Badge, PageHeader, tabId, tabPanelId, Tabs } from '../../components/ui';
 import { useAnalysisView, type AnalysisTab } from './analysisView';
 import { Charts } from './Charts';
 import { RatiosPanel } from './RatiosPanel';
@@ -45,8 +45,8 @@ export function AnalysisScreen() {
           ) : undefined
         }
       />
-      <Tabs value={active.id} onChange={(id) => update({ tab: id })} items={TABS} label="Revue analytique" />
-      <div role="tabpanel" aria-label={active.label} className="pt-3">
+      <Tabs idPrefix="analyse" value={active.id} onChange={(id) => update({ tab: id })} items={TABS} label="Revue analytique" />
+      <div id={tabPanelId('analyse')} role="tabpanel" aria-labelledby={tabId('analyse', active.id)} className="pt-3">
         {active.id === 'income' && <VariationReview key="income" kind="income" />}
         {active.id === 'balance' && <VariationReview key="balance" kind="balance" />}
         {active.id === 'ratios' && <RatiosPanel />}

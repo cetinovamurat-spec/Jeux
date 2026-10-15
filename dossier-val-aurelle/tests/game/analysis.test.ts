@@ -4,14 +4,12 @@ import type { StatementLineDef, StatementLineValue } from '../../src/engine/type
 import {
   chargeLines,
   debtService,
-  DEFAULT_VARIATION_THRESHOLDS,
   exceedsThresholds,
   hlmRatios,
   managementCost,
   meetsReference,
   monthlyCredits,
   netSelfFinancingSeries,
-  RATIO_CONVENTIONS,
   readThreshold,
   rentArrears,
   safeRatio,
@@ -24,6 +22,10 @@ import {
   type MonthlyFecLine,
 } from '../../src/game/analysis';
 import { loadParams } from '../../src/scenario/params';
+
+const REVIEW = loadParams().analysis.review;
+const RATIO_CONVENTIONS = REVIEW.hlmRatios;
+const DEFAULT_VARIATION_THRESHOLDS = REVIEW.variationThresholds;
 
 describe('threshold inputs', () => {
   it('reads French decimals, grouped thousands and signs as absolute values', () => {
@@ -164,23 +166,23 @@ describe('HLM ratios', () => {
   ]);
 
   it('debt service = capital repayments + loan interest, over net rents', () => {
-    expect(debtService(balances, 600_000, 2_000_000)).toEqual({ repayments: 600_000, interest: 400_000, annuities: 1_000_000, rents: 2_000_000, ratio: 0.5 });
-    expect(debtService(balances, 600_000, 0).ratio).toBeNull();
+    expect(debtService(balances, 600_000, 2_000_000, RATIO_CONVENTIONS)).toEqual({ repayments: 600_000, interest: 400_000, annuities: 1_000_000, rents: 2_000_000, ratio: 0.5 });
+    expect(debtService(balances, 600_000, 0, RATIO_CONVENTIONS).ratio).toBeNull();
   });
 
   it('rent arrears = gross rent receivables / billed rents', () => {
-    expect(rentArrears(balances)).toEqual({ receivables: 200_000, billedRents: 2_000_000, ratio: 0.1 });
-    expect(rentArrears(new Map()).ratio).toBeNull();
+    expect(rentArrears(balances, RATIO_CONVENTIONS)).toEqual({ receivables: 200_000, billedRents: 2_000_000, ratio: 0.1 });
+    expect(rentArrears(new Map(), RATIO_CONVENTIONS).ratio).toBeNull();
   });
 
   it('management cost per dwelling excludes property and household waste taxes', () => {
-    expect(managementCost(balances, 4)).toEqual({ cost: 460_000, dwellings: 4, perDwelling: 115_000 });
-    expect(managementCost(balances, 3).perDwelling).toBe(153_333);
-    expect(managementCost(balances, 0).perDwelling).toBeNull();
+    expect(managementCost(balances, 4, RATIO_CONVENTIONS)).toEqual({ cost: 460_000, dwellings: 4, perDwelling: 115_000 });
+    expect(managementCost(balances, 3, RATIO_CONVENTIONS).perDwelling).toBe(153_333);
+    expect(managementCost(balances, 0, RATIO_CONVENTIONS).perDwelling).toBeNull();
   });
 
   it('assembles the ratios from balances and key figures', () => {
-    const r = hlmRatios({ balances, rents: 1_700_000, ebeOnRents: 0.52, loanRepayments: 450_000, financialCharges: 425_000, netSelfFinancingRatio: 0.031, dwellings: 4, vacancyRate: 0.25 });
+    const r = hlmRatios({ balances, rents: 1_700_000, ebeOnRents: 0.52, loanRepayments: 450_000, financialCharges: 425_000, netSelfFinancingRatio: 0.031, dwellings: 4, vacancyRate: 0.25 }, RATIO_CONVENTIONS);
     expect(r.netSelfFinancing).toBe(0.031);
     expect(r.ebeOnRents).toBe(0.52);
     expect(r.debtService.annuities).toBe(850_000);

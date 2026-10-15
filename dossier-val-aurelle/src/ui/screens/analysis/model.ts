@@ -8,7 +8,7 @@ import { keyFigures, type KeyFigures } from '../../../engine/analysis';
 import { closingBalances } from '../../../engine/balance';
 import type { Cents } from '../../../engine/money';
 import type { World } from '../../../engine/types';
-import { hlmRatios, monthlyCredits, netSelfFinancingSeries, RATIO_CONVENTIONS, sumRule, timeWeightedRate, type AverageRate, type HlmRatios, type YearRatio } from '../../../game/analysis';
+import { hlmRatios, monthlyCredits, netSelfFinancingSeries, sumRule, timeWeightedRate, type AverageRate, type HlmRatios, type RatioConventions, type YearRatio } from '../../../game/analysis';
 import { loanRepayments } from '../../../scenario/anomalies/presented';
 import type { ScenarioDatasets } from '../../../scenario/datasets';
 import { vacancy, type VacancyFigures } from '../../../scenario/report';
@@ -27,7 +27,7 @@ export interface YearAnalysis {
   interest: Cents;
 }
 
-function yearAnalysis(year: number, figures: KeyFigures, balances: ReadonlyMap<string, Cents>, ds: ScenarioDatasets): YearAnalysis {
+function yearAnalysis(year: number, figures: KeyFigures, balances: ReadonlyMap<string, Cents>, ds: ScenarioDatasets, conv: RatioConventions): YearAnalysis {
   const vac = vacancy(ds, year);
   const ratios = hlmRatios({
     balances,
@@ -38,8 +38,8 @@ function yearAnalysis(year: number, figures: KeyFigures, balances: ReadonlyMap<s
     netSelfFinancingRatio: figures.netSelfFinancingRatio,
     dwellings: vac.stock,
     vacancyRate: vac.totalRate,
-  });
-  return { year, figures, vacancy: vac, ratios, billedRents: ratios.arrears.billedRents, receivables: ratios.arrears.receivables, interest: sumRule(balances, RATIO_CONVENTIONS.loanInterest) };
+  }, conv);
+  return { year, figures, vacancy: vac, ratios, billedRents: ratios.arrears.billedRents, receivables: ratios.arrears.receivables, interest: sumRule(balances, conv.loanInterest) };
 }
 
 export interface RatioSet {
@@ -57,8 +57,8 @@ function presentedRatios(c: CaseData): RatioSet {
   const { current: cy, prior: py } = c.params.scenario.years;
   const b = c.balances();
   const f = c.figures();
-  const current = yearAnalysis(cy, f.y2025, b.current, c.datasets);
-  const prior = yearAnalysis(py, f.y2024, b.prior, c.datasets);
+  const current = yearAnalysis(cy, f.y2025, b.current, c.datasets, c.params.analysis.review.hlmRatios);
+  const prior = yearAnalysis(py, f.y2024, b.prior, c.datasets, c.params.analysis.review.hlmRatios);
   const series = netSelfFinancingSeries(c.params.scenario.history, [
     { year: py, ratio: prior.figures.netSelfFinancingRatio },
     { year: cy, ratio: current.figures.netSelfFinancingRatio },
@@ -71,8 +71,8 @@ function cleanRatios(c: CaseData): RatioSet {
   const { current: cy, prior: py } = c.params.scenario.years;
   const ds = datasetsOf(c.clean);
   const priorBalances = closingBalances(c.clean.ledgers.prior);
-  const current = yearAnalysis(cy, c.key.cleanFigures.figures, c.key.cleanFigures.balances, ds);
-  const prior = yearAnalysis(py, keyFigures(priorBalances, c.params.analysis, loanRepayments(c.clean, py)), priorBalances, ds);
+  const current = yearAnalysis(cy, c.key.cleanFigures.figures, c.key.cleanFigures.balances, ds, c.params.analysis.review.hlmRatios);
+  const prior = yearAnalysis(py, keyFigures(priorBalances, c.params.analysis, loanRepayments(c.clean, py)), priorBalances, ds, c.params.analysis.review.hlmRatios);
   const series = netSelfFinancingSeries(c.params.scenario.history, [
     { year: py, ratio: prior.figures.netSelfFinancingRatio },
     { year: cy, ratio: current.figures.netSelfFinancingRatio },
@@ -109,8 +109,8 @@ export function useMonthlyRents(): MonthRow[] {
   const c = useCase();
   return useMemo(() => {
     const { current, prior } = c.params.scenario.years;
-    const cur = monthlyCredits(c.fec(current as Year), RATIO_CONVENTIONS.monthlyRents);
-    const pri = monthlyCredits(c.fec(prior as Year), RATIO_CONVENTIONS.monthlyRents);
+    const cur = monthlyCredits(c.fec(current as Year), c.params.analysis.review.hlmRatios.monthlyRents);
+    const pri = monthlyCredits(c.fec(prior as Year), c.params.analysis.review.hlmRatios.monthlyRents);
     return cur.map((v, i) => ({ month: i + 1, prior: pri[i] ?? 0, current: v }));
   }, [c]);
 }

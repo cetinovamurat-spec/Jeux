@@ -3,9 +3,9 @@
  * analytical review. Account numbers quoted in the definitions are read from
  * the conventions (game rules and params), never typed here.
  */
-import type { AnalysisDefinitions, PrefixRule } from '../../../engine/analysis';
+import type { PrefixRule } from '../../../engine/analysis';
 import { formatAmount, formatKEuro, formatMEuro, formatPercent } from '../../../engine/format';
-import { RATIO_CONVENTIONS } from '../../../game/analysis';
+import type { AnalysisParams } from '../../../scenario/params';
 
 export const MONTHS_SHORT = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'] as const;
 export const MONTHS_LONG = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'] as const;
@@ -100,8 +100,8 @@ export interface RatioText {
 }
 
 /** Labels and definitions of the HLM ratios (conventions proposed, to be validated). */
-export function ratioTexts(a: AnalysisDefinitions): Record<'netSelfFinancing' | 'mean3' | 'ebeOnRents' | 'debtService' | 'financialCharges' | 'vacancy' | 'arrears' | 'managementCost', RatioText> {
-  const conv = RATIO_CONVENTIONS;
+export function ratioTexts(a: AnalysisParams): Record<'netSelfFinancing' | 'mean3' | 'ebeOnRents' | 'debtService' | 'financialCharges' | 'vacancy' | 'arrears' | 'managementCost', RatioText> {
+  const conv = a.review.hlmRatios;
   const rents = `loyers nets de RLS (comptes ${ruleText(a.rents)})`;
   return {
     netSelfFinancing: {

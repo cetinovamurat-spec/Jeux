@@ -17,7 +17,7 @@ import { useCase } from '../../app/context';
 import { useAvailableDocuments, useDesigner } from '../../app/hooks';
 import { useGame } from '../../app/store';
 import { download } from '../../components/download';
-import { Button, cx, PageHeader, Tabs } from '../../components/ui';
+import { Button, cx, PageHeader, tabId as tabElementId, tabPanelId, Tabs } from '../../components/ui';
 import { useFillHeight } from '../balance/hooks';
 import { DetailPanel } from './DetailPanel';
 import { AnnexDiagnostics, StatementDiagnostics } from './Diagnostics';
@@ -166,10 +166,10 @@ export function StatementsScreen() {
       />
 
       <div ref={tabsRef}>
-        <Tabs value={tab.id} onChange={goTab} label="États financiers, annexe et comptes certifiés" items={tabs.map((t) => ({ id: t.id, label: <TabLabel tab={t} p={progress.get(t.id)} /> }))} />
+        <Tabs idPrefix="etats" value={tab.id} onChange={goTab} label="États financiers, annexe et comptes certifiés" items={tabs.map((t) => ({ id: t.id, label: <TabLabel tab={t} p={progress.get(t.id)} /> }))} />
       </div>
 
-      <div role="tabpanel" aria-label={tab.label} className="rounded-b-lg border-x border-b border-line bg-panel">
+      <div id={tabPanelId('etats')} role="tabpanel" aria-labelledby={tabElementId('etats', tab.id)} className="rounded-b-lg border-x border-b border-line bg-panel">
         <TickToolbar
           tabLabel={tab.label}
           progress={tabProgress}

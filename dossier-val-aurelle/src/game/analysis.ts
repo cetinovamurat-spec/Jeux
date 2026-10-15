@@ -12,37 +12,26 @@ import { OPENING_JOURNAL, sumPrefixes } from '../engine/balance';
 import { addDays, daysBetween, isoDate, maxDate, minDate, type IsoDate } from '../engine/dates';
 import type { Cents } from '../engine/money';
 import type { FecLineInternal, StatementId, StatementLineDef, StatementLineValue } from '../engine/types';
+import type { AnalyticalReviewParams } from '../scenario/schema';
 import { parseDecimal, variation, type Variation } from './ledger';
 
 export { variation, type Variation };
 
 // ---------------------------------------------------------------------------
-// Conventions (proposals to validate)
+// Conventions (params/analysis.json → review, proposals to validate)
 // ---------------------------------------------------------------------------
 
-export interface RatioConventions {
-  /** Interest on loans (intérêts des emprunts), added to capital repayments for the debt service. */
-  loanInterest: PrefixRule;
-  /** Gross rent receivables (créances locatives brutes, before impairment). */
-  rentReceivables: PrefixRule;
-  /** Billed rents (loyers quittancés, before RLS). */
-  billedRents: PrefixRule;
-  /** Rents of the monthly chart (dwellings, commercial premises, parking; residences billed separately). */
-  monthlyRents: readonly string[];
-  /** Management cost: staff, other external services, taxes other than property tax and household waste tax. */
-  managementCost: PrefixRule;
-}
-
-export const RATIO_CONVENTIONS: RatioConventions = {
-  loanInterest: { include: ['6611'] },
-  rentReceivables: { include: ['4111', '4114', '4115', '4116'] },
-  billedRents: { include: ['70411', '70412', '70413', '70414', '70415'] },
-  monthlyRents: ['70411', '70412', '70414', '70415'],
-  managementCost: { include: ['641', '645', '62', '635'], exclude: ['63512', '63513'] },
-};
+/**
+ * Account groupings of the HLM ratios: interest on loans (added to capital
+ * repayments for the debt service), gross rent receivables (before
+ * impairment), billed rents (before RLS), rents of the monthly chart, and
+ * the management cost (staff, other external services, taxes other than
+ * property tax and household waste tax).
+ */
+export type RatioConventions = AnalyticalReviewParams['hlmRatios'];
 
 /** Default thresholds of the variation review (generic starting point, editable by the player). */
-export const DEFAULT_VARIATION_THRESHOLDS = { pct: 10, euros: 100_000 } as const;
+export type VariationThresholdDefaults = AnalyticalReviewParams['variationThresholds'];
 
 // ---------------------------------------------------------------------------
 // Small numeric helpers
@@ -213,26 +202,26 @@ export interface HlmRatios {
 }
 
 /** Annuities / rents = (capital repayments + loan interest) / net rents. */
-export function debtService(balances: ReadonlyMap<string, Cents>, loanRepayments: Cents, rents: Cents, conv: RatioConventions = RATIO_CONVENTIONS): DebtService {
+export function debtService(balances: ReadonlyMap<string, Cents>, loanRepayments: Cents, rents: Cents, conv: RatioConventions): DebtService {
   const interest = sumRule(balances, conv.loanInterest);
   const annuities = loanRepayments + interest;
   return { repayments: loanRepayments, interest, annuities, rents, ratio: safeRatio(annuities, rents) };
 }
 
 /** Gross rent receivables / billed rents (credit balances of the rent accounts). */
-export function rentArrears(balances: ReadonlyMap<string, Cents>, conv: RatioConventions = RATIO_CONVENTIONS): RentArrears {
+export function rentArrears(balances: ReadonlyMap<string, Cents>, conv: RatioConventions): RentArrears {
   const receivables = sumRule(balances, conv.rentReceivables);
   const billedRents = -sumRule(balances, conv.billedRents);
   return { receivables, billedRents, ratio: safeRatio(receivables, billedRents) };
 }
 
 /** Management cost per family dwelling in the stock at 31/12. */
-export function managementCost(balances: ReadonlyMap<string, Cents>, dwellings: number, conv: RatioConventions = RATIO_CONVENTIONS): ManagementCost {
+export function managementCost(balances: ReadonlyMap<string, Cents>, dwellings: number, conv: RatioConventions): ManagementCost {
   const cost = sumRule(balances, conv.managementCost);
   return { cost, dwellings, perDwelling: dwellings === 0 ? null : Math.round(cost / dwellings) };
 }
 
-export function hlmRatios(i: RatioInputs, conv: RatioConventions = RATIO_CONVENTIONS): HlmRatios {
+export function hlmRatios(i: RatioInputs, conv: RatioConventions): HlmRatios {
   return {
     netSelfFinancing: i.netSelfFinancingRatio,
     ebeOnRents: i.ebeOnRents,

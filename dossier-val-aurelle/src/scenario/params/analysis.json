@@ -1,5 +1,5 @@
 {
- "_comment": "Conventions d'analyse (préfixes de comptes). À valider : PV-10, PV-24, PV-25.",
+ "_comment": "Conventions d'analyse (préfixes de comptes). À valider : PV-10, PV-24, PV-25 ; revue analytique (ratios HLM, seuils par défaut) : PV-72 à PV-75.",
  "toValidate": true,
  "rents": {
   "include": [
@@ -79,6 +79,55 @@
    "include": [
     "6752"
    ]
+  }
+ },
+ "review": {
+  "_comment": "Revue analytique du joueur (J3) : regroupements de comptes des ratios HLM et seuils de variation proposés par défaut. Propositions à valider.",
+  "hlmRatios": {
+   "loanInterest": {
+    "include": [
+     "6611"
+    ]
+   },
+   "rentReceivables": {
+    "include": [
+     "4111",
+     "4114",
+     "4115",
+     "4116"
+    ]
+   },
+   "billedRents": {
+    "include": [
+     "70411",
+     "70412",
+     "70413",
+     "70414",
+     "70415"
+    ]
+   },
+   "monthlyRents": [
+    "70411",
+    "70412",
+    "70414",
+    "70415"
+   ],
+   "managementCost": {
+    "include": [
+     "641",
+     "645",
+     "62",
+     "635"
+    ],
+    "exclude": [
+     "63512",
+     "63513"
+    ]
+   }
+  },
+  "variationThresholds": {
+   "pct": 10,
+   "euros": 100000
   }
  }
 }

@@ -5,7 +5,7 @@
  */
 import { create } from 'zustand';
 import { formatAmount } from '../../../engine/format';
-import { DEFAULT_VARIATION_THRESHOLDS } from '../../../game/analysis';
+import { loadParams } from '../../../scenario/params';
 
 export type AnalysisTab = 'income' | 'balance' | 'ratios' | 'charts';
 
@@ -21,7 +21,8 @@ export interface AnalysisView {
 }
 
 export function defaultThresholdTexts(): Pick<AnalysisView, 'pctText' | 'eurosText'> {
-  return { pctText: String(DEFAULT_VARIATION_THRESHOLDS.pct), eurosText: formatAmount(Math.round(DEFAULT_VARIATION_THRESHOLDS.euros * 100), 0) };
+  const t = loadParams().analysis.review.variationThresholds;
+  return { pctText: String(t.pct).replace('.', ','), eurosText: formatAmount(Math.round(t.euros * 100), 0) };
 }
 
 interface AnalysisViewStore extends AnalysisView {

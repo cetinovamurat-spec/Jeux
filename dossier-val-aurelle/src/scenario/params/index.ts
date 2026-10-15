@@ -28,6 +28,7 @@ import {
   regulatorySchema,
   scenarioSchema,
   statementsSchema,
+  type AnalyticalReviewParams,
   type AnomaliesParams,
   type DocumentsParams,
   type GameParams,
@@ -40,6 +41,9 @@ import {
   type ScenarioParams,
 } from '../schema';
 
+/** Analysis conventions of the engine, plus the conventions of the player's analytical review. */
+export type AnalysisParams = AnalysisDefinitions & { review: AnalyticalReviewParams };
+
 export const CHART_FRAMEWORK = 'Plan de comptes OLS applicable aux exercices 2025 (proposition à valider)';
 
 export interface Params {
@@ -50,7 +54,7 @@ export interface Params {
   regulatory: RegulatoryParams;
   calibration: CalibrationParams;
   statements: readonly StatementLineDef[];
-  analysis: AnalysisDefinitions;
+  analysis: AnalysisParams;
   chart: ChartOfAccounts;
   chartCsv: string;
   anomalies: AnomaliesParams;

@@ -215,7 +215,8 @@ export function buildAnnex(world: World, params: Params, year: 'current' | 'prio
         return { id: g.id, label: g.label, accounts: g.accounts, values: { montant: amount, moinsUnAn: longTerm ? 0 : amount, unACinqAns: longTerm ? amount : 0, plusCinqAns: 0 } };
       }),
     ],
-    notes: ['Les dépôts de garantie sont présentés à plus d’un an (convention à valider).'],
+    // Deposits are repaid at the end of the lease: presented beyond one year (convention to validate, PV-76).
+    notes: ['Les dépôts de garantie reçus des locataires, restituables en fin de bail, sont présentés à plus d’un an.'],
   });
 
   // 6. receivables
