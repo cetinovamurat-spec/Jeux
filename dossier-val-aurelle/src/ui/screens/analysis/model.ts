@@ -22,7 +22,7 @@ export interface YearAnalysis {
   vacancy: VacancyFigures;
   ratios: HlmRatios;
   /** Components shown next to the ratios. */
-  billedRents: Cents;
+  billedRentsAndCharges: Cents;
   receivables: Cents;
   interest: Cents;
 }
@@ -39,7 +39,7 @@ function yearAnalysis(year: number, figures: KeyFigures, balances: ReadonlyMap<s
     dwellings: vac.stock,
     vacancyRate: vac.totalRate,
   }, conv);
-  return { year, figures, vacancy: vac, ratios, billedRents: ratios.arrears.billedRents, receivables: ratios.arrears.receivables, interest: sumRule(balances, conv.loanInterest) };
+  return { year, figures, vacancy: vac, ratios, billedRentsAndCharges: ratios.arrears.billedRentsAndCharges, receivables: ratios.arrears.receivables, interest: sumRule(balances, conv.loanInterest) };
 }
 
 export interface RatioSet {
@@ -104,7 +104,7 @@ export interface MonthRow {
   current: Cents;
 }
 
-/** Billed rents by month of the entry date, both years, from the FEC (opening entries excluded). */
+/** Billed rents (rents only, charges and RLS excluded) by month of the entry date, both years, from the FEC (opening entries excluded). */
 export function useMonthlyRents(): MonthRow[] {
   const c = useCase();
   return useMemo(() => {

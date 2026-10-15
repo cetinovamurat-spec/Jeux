@@ -7,7 +7,7 @@
 import { useMemo } from 'react';
 import { Bar, BarChart, CartesianGrid, Cell, LabelList, Line, LineChart, ReferenceLine, Tooltip, XAxis, YAxis } from 'recharts';
 import { formatEuro, formatPercent } from '../../../engine/format';
-import { chargeLines, trailingMean, variation } from '../../../game/analysis';
+import { chargeLines, rentAccountsLeftOut, trailingMean, variation } from '../../../game/analysis';
 import { useCase } from '../../app/context';
 import { Amount } from '../../components/Amount';
 import { Signed } from '../balance/tableParts';
@@ -54,7 +54,7 @@ function MonthlyRentsChart() {
   const totalCur = rows.reduce((s, r) => s + r.current, 0);
   const totalPri = rows.reduce((s, r) => s + r.prior, 0);
   const conv = c.params.analysis.review.hlmRatios;
-  const left = conv.billedRents.include.filter((a) => !conv.monthlyRents.includes(a));
+  const left = rentAccountsLeftOut(c.accounts.values(), c.params.analysis.rents, conv.monthlyRents);
   const accountsText = (list: readonly string[]) => listFr(list.map((a) => `${a} (${c.accountLabel(a).toLowerCase()})`));
   return (
     <ChartCard
@@ -63,7 +63,7 @@ function MonthlyRentsChart() {
       title="Loyers quittancés mensuels"
       description={
         <>
-          Crédits des comptes {accountsText(conv.monthlyRents)} par mois de la date d’écriture du FEC, à-nouveaux exclus.
+          Loyers seuls, avant RLS et hors charges récupérables : crédits des comptes {accountsText(conv.monthlyRents)} par mois de la date d’écriture du FEC, à-nouveaux exclus.
           {left.length > 0 && <> Non retenus : {accountsText(left)}.</>}
         </>
       }

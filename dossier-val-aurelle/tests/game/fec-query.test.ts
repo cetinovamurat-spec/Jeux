@@ -243,6 +243,28 @@ describe('runQuery', () => {
   });
 });
 
+describe('keywords with ligatures (same folding as the GED)', () => {
+  const index = buildFecIndex(
+    [
+      ...entry({ id: 'AC9', journal: 'AC', label: 'Honoraires de maîtrise d’œuvre', lines: [['2313', 250000, 0], ['4041', 0, 250000, 'F120', 'Atelier Lumen Architectes']] }),
+      ...entry({ id: 'OD9', label: 'Recouvrement des créances', lines: [['6288', 1000, 0], ['401', 0, 1000]] }),
+      ...entry({ id: 'OD8', label: 'Couvreur, réfection de toiture', lines: [['6231', 500, 0], ['401', 0, 500]] }),
+    ],
+    { closingDate: '2025-12-31' },
+  );
+  it('finds a label with œ typed with or without the ligature', () => {
+    expect(entryIds(index, run(index, { keywords: 'oeuvre' }).lines)).toEqual(['AC9']);
+    expect(entryIds(index, run(index, { keywords: 'œuvre' }).lines)).toEqual(['AC9']);
+    expect(entryIds(index, run(index, { keywords: 'maîtrise d’œuvre' }).lines)).toEqual(['AC9']);
+    expect(entryIds(index, run(index, { keywords: "maitrise d'oeuvre" }).lines)).toEqual(['AC9']);
+    expect(entryIds(index, run(index, { keywords: 'MAÎTRISE D’ŒUVRE' }).lines)).toEqual(['AC9']);
+  });
+  it('does not reduce « œuvre » to « uvre » (no match on « recouvrement » or « couvreur »)', () => {
+    expect(run(index, { keywords: 'œuvre' }).lines).toHaveLength(2);
+    expect(run(index, { keywords: 'uvre' }).entries).toBe(3);
+  });
+});
+
 describe('pairs of an entry', () => {
   const index = makeIndex();
   it('rarePairsOf lists the pairs seen in at most N entries with their count', () => {

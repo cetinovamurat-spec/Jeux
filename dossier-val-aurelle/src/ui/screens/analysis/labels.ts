@@ -103,6 +103,7 @@ export interface RatioText {
 export function ratioTexts(a: AnalysisParams): Record<'netSelfFinancing' | 'mean3' | 'ebeOnRents' | 'debtService' | 'financialCharges' | 'vacancy' | 'arrears' | 'managementCost', RatioText> {
   const conv = a.review.hlmRatios;
   const rents = `loyers nets de RLS (comptes ${ruleText(a.rents)})`;
+  const leftOut = listFr(conv.managementCost.leftOut.map((l) => `${l.prefix} (${l.reason})`));
   return {
     netSelfFinancing: {
       label: 'Ratio d’autofinancement net HLM',
@@ -129,12 +130,12 @@ export function ratioTexts(a: AnalysisParams): Record<'netSelfFinancing' | 'mean
       definition: 'Logements familiaux sans bail en cours au 31/12 / logements familiaux en service à cette date (logements vendus exclus), vacance technique comprise.',
     },
     arrears: {
-      label: 'Impayés : créances locatives / loyers quittancés',
-      definition: `Créances locatives brutes, avant dépréciation (comptes ${ruleText(conv.rentReceivables)}) / loyers quittancés de l’exercice, avant RLS (soldes créditeurs des comptes ${ruleText(conv.billedRents)}).`,
+      label: 'Impayés : créances locatives / loyers et charges quittancés',
+      definition: `Créances locatives brutes, avant dépréciation (comptes ${ruleText(conv.rentReceivables)}) / loyers et charges quittancés de l’exercice, nets de RLS (solde créditeur net des comptes ${ruleText(conv.billedRentsAndCharges)} : loyers, déduction faite de la RLS, provisions et régularisation des charges). Les deux termes portent sur ce qui est facturé aux locataires.`,
     },
     managementCost: {
       label: 'Coût de gestion par logement',
-      definition: `Charges de personnel, autres services extérieurs et impôts et taxes (comptes ${ruleText(conv.managementCost)}) / logements familiaux en service au 31/12.`,
+      definition: `Charges de personnel, services extérieurs non récupérables autres que l’entretien, autres services extérieurs, impôts et taxes autres que la taxe foncière et la taxe d’enlèvement des ordures ménagères (comptes ${ruleText(conv.managementCost)}) / logements familiaux en service au 31/12.${leftOut ? ` Non retenus : ${leftOut}.` : ''}`,
     },
   };
 }

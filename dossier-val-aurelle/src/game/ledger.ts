@@ -8,7 +8,7 @@
 import { OPENING_JOURNAL } from '../engine/balance';
 import type { Cents } from '../engine/money';
 import type { FecLineInternal } from '../engine/types';
-import { normalize } from './fec-query';
+import { fold } from './text';
 
 // ---------------------------------------------------------------------------
 // Balance N / N-1
@@ -41,7 +41,7 @@ export function variation(prior: Cents, closing: Cents): Variation {
 }
 
 export interface BalanceFilter {
-  /** Account prefix (digits) or words of the label, accent-insensitive. */
+  /** Account prefix (digits) or words of the label, case-, accent- and ligature-insensitive. */
   text: string;
   /** Account class ('1' … '7'); '' for every class. */
   accountClass: string;
@@ -60,9 +60,9 @@ export const EMPTY_BALANCE_FILTER: Readonly<BalanceFilter> = { text: '', account
  * prefix of the account number, any other word inside the label.
  */
 export function matchesAccount(account: string, label: string, text: string): boolean {
-  const words = normalize(text).split(/[\s–—-]+/).filter(Boolean);
+  const words = fold(text).split(/[\s–—-]+/).filter(Boolean);
   if (!words.length) return true;
-  const folded = normalize(label);
+  const folded = fold(label);
   return words.every((w) => (/^\d+$/.test(w) ? account.startsWith(w) : folded.includes(w)));
 }
 
@@ -232,7 +232,7 @@ export interface LedgerFilter {
   journal: string;
   /** Auxiliary account; '' for all, NO_AUX for the lines without one. */
   aux: string;
-  /** Words to find in the line label or the piece reference (accent-insensitive). */
+  /** Words to find in the line label or the piece reference (case-, accent- and ligature-insensitive). */
   text: string;
 }
 
@@ -243,13 +243,13 @@ export function isLedgerFilterActive(f: LedgerFilter): boolean {
 }
 
 export function ledgerLineMatcher(f: LedgerFilter): (line: FecLineInternal) => boolean {
-  const words = normalize(f.text).split(/\s+/).filter(Boolean);
+  const words = fold(f.text).split(/\s+/).filter(Boolean);
   const aux = f.aux === NO_AUX ? '' : f.aux;
   return (l) => {
     if (f.journal && l.JournalCode !== f.journal) return false;
     if (f.aux && l.CompAuxNum !== aux) return false;
     if (words.length) {
-      const text = normalize(`${l.EcritureLib} ${l.PieceRef}`);
+      const text = fold(`${l.EcritureLib} ${l.PieceRef}`);
       if (!words.every((w) => text.includes(w))) return false;
     }
     return true;
@@ -312,6 +312,6 @@ export function resolveAccount(text: string, accounts: readonly { account: strin
   if (/^\d+$/.test(t)) return accounts.find((a) => a.account.startsWith(t))?.account ?? null;
   const matches = accounts.filter((a) => matchesAccount(a.account, a.label, t));
   // A label starting with the text typed wins over one merely containing it.
-  const q = normalize(t).trim();
-  return (matches.find((a) => normalize(a.label).startsWith(q)) ?? matches[0])?.account ?? null;
+  const q = fold(t).trim();
+  return (matches.find((a) => fold(a.label).startsWith(q)) ?? matches[0])?.account ?? null;
 }

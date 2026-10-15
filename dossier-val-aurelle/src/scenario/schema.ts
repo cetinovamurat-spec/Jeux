@@ -103,9 +103,14 @@ export const analyticalReviewSchema = z.object({
   hlmRatios: z.object({
     loanInterest: prefixRule,
     rentReceivables: prefixRule,
-    billedRents: prefixRule,
+    /** Rents and charges billed, net of the RLS (same basis as the rent receivables). */
+    billedRentsAndCharges: prefixRule,
+    /** Rents only (monthly chart). */
     monthlyRents: z.array(z.string()).min(1),
-    managementCost: prefixRule,
+    managementCost: prefixRule.extend({
+      /** Accounts deliberately left out of the rule, with the reason shown in the ratio definition. */
+      leftOut: z.array(z.object({ prefix: z.string(), reason: z.string().min(1) })),
+    }),
   }),
   variationThresholds: z.object({ pct: z.number().positive(), euros: z.number().positive() }),
 });

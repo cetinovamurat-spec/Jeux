@@ -7,6 +7,7 @@ import type { IsoDate } from '../engine/dates';
 import type { Block, DocumentModel } from '../scenario/documents';
 import type { DocumentCategory } from '../scenario/documents/model';
 import type { DocumentState } from './state';
+import { foldText, type FoldedText } from './text';
 
 export interface AvailabilityContext {
   date: IsoDate;
@@ -58,36 +59,10 @@ export function blockText(b: Block): string {
 }
 
 // ---------------------------------------------------------------------------
-// folding (accent-, case- and ligature-insensitive search)
+// folding (accent-, case- and ligature-insensitive search, shared with the FEC and the ledger: ./text)
 // ---------------------------------------------------------------------------
 
-const LIGATURES: Readonly<Record<string, string>> = { œ: 'oe', Œ: 'oe', æ: 'ae', Æ: 'ae' };
-const COMBINING_MARKS = /[̀-ͯ]/g;
-
-export interface FoldedText {
-  /** Lower case, without accents, ligatures expanded (œ → oe), apostrophes as spaces. */
-  text: string;
-  /** `map[i]` is the position in the raw text of the character `text[i]` comes from. */
-  map: number[];
-}
-
-/** Folds a text for searching, keeping the positions in the raw text (snippets, highlighting). */
-export function foldText(raw: string): FoldedText {
-  let text = '';
-  const map: number[] = [];
-  let pos = 0;
-  for (const ch of raw) {
-    const code = ch.charCodeAt(0);
-    let f: string;
-    if (code < 128) f = ch === "'" ? ' ' : ch.toLowerCase();
-    else if (ch === '’') f = ' ';
-    else f = LIGATURES[ch] ?? ch.normalize('NFD').replace(COMBINING_MARKS, '').toLowerCase();
-    for (let k = 0; k < f.length; k++) map.push(pos);
-    text += f;
-    pos += ch.length;
-  }
-  return { text, map };
-}
+export { foldText, type FoldedText };
 
 /** Folded words of a search query (letters and digits, more than one character, without duplicates). */
 export function searchWords(query: string): string[] {

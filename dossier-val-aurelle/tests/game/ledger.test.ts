@@ -189,6 +189,17 @@ describe('account ledger', () => {
     expect(text.rows.map((r) => r.line.EcritureNum)).toEqual(['BQ000001']);
     const piece = filterLedger(l, ledgerLineMatcher({ ...EMPTY_LEDGER_FILTER, text: 'rem-12' }));
     expect(piece.rows).toHaveLength(1);
+    // ligatures are folded as in the GED and the FEC: « oeuvre » finds « maîtrise d’œuvre »
+    const works = [
+      line({ account: '2313', debit: 900, EcritureLib: 'Honoraires de maîtrise d’œuvre' }),
+      line({ account: '2313', debit: 100, EcritureLib: 'Recouvrement des frais' }),
+    ];
+    const lumen = accountLedger(works, '2313');
+    for (const typed of ['oeuvre', 'œuvre', "maitrise d'oeuvre", 'MAÎTRISE D’ŒUVRE'])
+      expect(
+        filterLedger(lumen, ledgerLineMatcher({ ...EMPTY_LEDGER_FILTER, text: typed })).rows.map((r) => r.line.EcritureLib),
+        typed,
+      ).toEqual(['Honoraires de maîtrise d’œuvre']);
     expect(isLedgerFilterActive(EMPTY_LEDGER_FILTER)).toBe(false);
     expect(isLedgerFilterActive({ ...EMPTY_LEDGER_FILTER, text: ' x ' })).toBe(true);
   });

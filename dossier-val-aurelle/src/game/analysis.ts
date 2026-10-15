@@ -11,7 +11,7 @@ import type { PrefixRule } from '../engine/analysis';
 import { OPENING_JOURNAL, sumPrefixes } from '../engine/balance';
 import { addDays, daysBetween, isoDate, maxDate, minDate, type IsoDate } from '../engine/dates';
 import type { Cents } from '../engine/money';
-import type { FecLineInternal, StatementId, StatementLineDef, StatementLineValue } from '../engine/types';
+import type { Account, FecLineInternal, StatementId, StatementLineDef, StatementLineValue } from '../engine/types';
 import type { AnalyticalReviewParams } from '../scenario/schema';
 import { parseDecimal, variation, type Variation } from './ledger';
 
@@ -24,9 +24,11 @@ export { variation, type Variation };
 /**
  * Account groupings of the HLM ratios: interest on loans (added to capital
  * repayments for the debt service), gross rent receivables (before
- * impairment), billed rents (before RLS), rents of the monthly chart, and
- * the management cost (staff, other external services, taxes other than
- * property tax and household waste tax).
+ * impairment), rents and charges billed net of the RLS (the basis of the
+ * receivables), rents of the monthly chart (rents only), and the management
+ * cost (staff, non-recoverable external services other than maintenance,
+ * other external services, taxes other than property tax and household waste
+ * tax; the accounts left out on purpose carry their reason).
  */
 export type RatioConventions = AnalyticalReviewParams['hlmRatios'];
 
@@ -45,6 +47,11 @@ export function safeRatio(n: number, d: number): number | null {
 /** Debit-positive sum of closing balances matching a prefix rule. */
 export function sumRule(balances: ReadonlyMap<string, Cents>, rule: PrefixRule): Cents {
   return sumPrefixes(balances, rule.include, rule.exclude ?? []);
+}
+
+/** Whether an account falls under a prefix rule (one included prefix, no excluded one). */
+export function ruleCovers(rule: PrefixRule, account: string): boolean {
+  return rule.include.some((p) => account.startsWith(p)) && !(rule.exclude ?? []).some((p) => account.startsWith(p));
 }
 
 /** A threshold field as typed by the player: its absolute value, or null when empty; `invalid` when it cannot be read. */
@@ -180,7 +187,8 @@ export interface DebtService {
 
 export interface RentArrears {
   receivables: Cents;
-  billedRents: Cents;
+  /** Rents and charges billed in the year, net of the RLS (credit balances, positive). */
+  billedRentsAndCharges: Cents;
   ratio: number | null;
 }
 
@@ -208,11 +216,15 @@ export function debtService(balances: ReadonlyMap<string, Cents>, loanRepayments
   return { repayments: loanRepayments, interest, annuities, rents, ratio: safeRatio(annuities, rents) };
 }
 
-/** Gross rent receivables / billed rents (credit balances of the rent accounts). */
+/**
+ * Gross rent receivables / rents and charges billed net of the RLS (net
+ * credit balance of the rule: the RLS, a debit, is deducted). Both sides are
+ * on the basis of what is billed to the tenants.
+ */
 export function rentArrears(balances: ReadonlyMap<string, Cents>, conv: RatioConventions): RentArrears {
   const receivables = sumRule(balances, conv.rentReceivables);
-  const billedRents = -sumRule(balances, conv.billedRents);
-  return { receivables, billedRents, ratio: safeRatio(receivables, billedRents) };
+  const billedRentsAndCharges = -sumRule(balances, conv.billedRentsAndCharges);
+  return { receivables, billedRentsAndCharges, ratio: safeRatio(receivables, billedRentsAndCharges) };
 }
 
 /** Management cost per family dwelling in the stock at 31/12. */
@@ -312,6 +324,20 @@ export function timeWeightedRate(history: readonly { from: IsoDate; ratePct: num
 // ---------------------------------------------------------------------------
 
 export type MonthlyFecLine = Pick<FecLineInternal, 'JournalCode' | 'CompteNum' | 'EcritureDate' | 'creditCents'>;
+
+/**
+ * Rent accounts of the chart left out of the monthly chart: accounts under the
+ * rents rule whose normal side is credit (the RLS, a debit, is not a rent)
+ * and that no monthly-rent prefix covers. In chart order.
+ */
+export function rentAccountsLeftOut(accounts: Iterable<Pick<Account, 'number' | 'normalSide'>>, rents: PrefixRule, monthlyRents: readonly string[]): string[] {
+  const out: string[] = [];
+  for (const a of accounts) {
+    if (a.normalSide !== 'credit' || !ruleCovers(rents, a.number)) continue;
+    if (!monthlyRents.some((p) => a.number.startsWith(p))) out.push(a.number);
+  }
+  return out;
+}
 
 /**
  * Sum of the credits posted to the given accounts (prefixes), by month of

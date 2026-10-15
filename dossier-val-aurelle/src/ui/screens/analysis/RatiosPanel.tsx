@@ -80,7 +80,7 @@ function ratioRows(set: RatioSet, texts: ReturnType<typeof ratioTexts>, refs: { 
       text: texts.arrears,
       unit: 'ratio',
       value: (year) => at(year, (y) => y.ratios.arrears.ratio),
-      detail: (y) => `Créances locatives brutes : ${wholeEuros(y.receivables)} ; loyers quittancés : ${wholeEuros(y.billedRents)}`,
+      detail: (y) => `Créances locatives brutes : ${wholeEuros(y.receivables)} ; loyers et charges quittancés, nets de RLS : ${wholeEuros(y.billedRentsAndCharges)}`,
     },
     {
       id: 'managementCost',
@@ -226,8 +226,8 @@ function ComponentsTable() {
     { label: 'Annuités (capital + intérêts)', get: (y) => y.ratios.debtService.annuities, strong: true },
     { label: `Frais financiers (comptes ${ruleText(a.financialCharges)})`, get: (y) => y.figures.financialCharges },
     { label: `Créances locatives brutes (comptes ${ruleText(conv.rentReceivables)})`, get: (y) => y.receivables },
-    { label: `Loyers quittancés (comptes ${ruleText(conv.billedRents)})`, get: (y) => y.billedRents },
-    { label: 'Coût de gestion', get: (y) => y.ratios.managementCost.cost },
+    { label: `Loyers et charges quittancés, nets de RLS (comptes ${ruleText(conv.billedRentsAndCharges)})`, get: (y) => y.billedRentsAndCharges },
+    { label: `Coût de gestion (comptes ${ruleText(conv.managementCost)})`, get: (y) => y.ratios.managementCost.cost },
   ];
   const counts: { label: string; get: (y: YearAnalysis) => number }[] = [
     { label: 'Logements familiaux en service au 31/12', get: (y) => y.vacancy.stock },

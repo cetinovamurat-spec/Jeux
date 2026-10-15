@@ -11,7 +11,9 @@ import {
   monthlyCredits,
   netSelfFinancingSeries,
   readThreshold,
+  rentAccountsLeftOut,
   rentArrears,
+  ruleCovers,
   safeRatio,
   statementOrder,
   statementVariations,
@@ -23,7 +25,8 @@ import {
 } from '../../src/game/analysis';
 import { loadParams } from '../../src/scenario/params';
 
-const REVIEW = loadParams().analysis.review;
+const ANALYSIS = loadParams().analysis;
+const REVIEW = ANALYSIS.review;
 const RATIO_CONVENTIONS = REVIEW.hlmRatios;
 const DEFAULT_VARIATION_THRESHOLDS = REVIEW.variationThresholds;
 
@@ -146,23 +149,31 @@ describe('HLM ratios', () => {
     ['4111', 150_000],
     ['4114', 20_000],
     ['4115', 25_000],
-    ['4116', 5_000],
-    ['4118', 7_777], // not in the convention
+    ['4116', 25_000],
+    ['4181', 7_777], // charge regularisation to bill: not in the convention
     ['491', -60_000], // impairment: gross receivables are used
     ['70411', -1_500_000],
     ['70412', -200_000],
     ['70413', -100_000],
     ['70414', -150_000],
     ['70415', -50_000],
-    ['70419', 300_000], // RLS (debit): not a billed rent
+    ['70491', 300_000], // RLS (debit): deducted from the billed rents
+    ['7031', -500_000], // charges billed: same basis as the receivables
+    ['7088', -77_777], // other products: not billed to tenants
     ['6411', 250_000],
     ['6451', 100_000],
+    ['6475', 5_000], // every staff account
     ['6226', 40_000],
     ['6281', 60_000],
+    ['6131', 15_000], // equipment rentals: non-recoverable, not maintenance
+    ['6156', 25_000], // IT maintenance: idem
+    ['616', 45_000], // insurance: idem
+    ['6111', 70_000], // cleaning of common areas: recoverable, left out
+    ['614', 30_000], // co-ownership charges: left out
+    ['61521', 500_000], // maintenance: not a management cost
     ['63512', 300_000], // property tax: excluded
     ['63513', 80_000], // household waste tax: excluded
     ['6358', 10_000],
-    ['615', 500_000], // maintenance: not a management cost
   ]);
 
   it('debt service = capital repayments + loan interest, over net rents', () => {
@@ -170,14 +181,16 @@ describe('HLM ratios', () => {
     expect(debtService(balances, 600_000, 0, RATIO_CONVENTIONS).ratio).toBeNull();
   });
 
-  it('rent arrears = gross rent receivables / billed rents', () => {
-    expect(rentArrears(balances, RATIO_CONVENTIONS)).toEqual({ receivables: 200_000, billedRents: 2_000_000, ratio: 0.1 });
+  it('rent arrears = gross rent receivables / rents and charges billed, net of the RLS', () => {
+    // 2 000 000 of rents − 300 000 of RLS + 500 000 of charges
+    expect(rentArrears(balances, RATIO_CONVENTIONS)).toEqual({ receivables: 220_000, billedRentsAndCharges: 2_200_000, ratio: 0.1 });
     expect(rentArrears(new Map(), RATIO_CONVENTIONS).ratio).toBeNull();
   });
 
-  it('management cost per dwelling excludes property and household waste taxes', () => {
-    expect(managementCost(balances, 4, RATIO_CONVENTIONS)).toEqual({ cost: 460_000, dwellings: 4, perDwelling: 115_000 });
-    expect(managementCost(balances, 3, RATIO_CONVENTIONS).perDwelling).toBe(153_333);
+  it('management cost per dwelling: staff, non-recoverable external services other than maintenance, taxes other than property and household waste taxes', () => {
+    // 250 000 + 100 000 + 5 000 (64) + 40 000 + 60 000 (62) + 15 000 + 25 000 + 45 000 (6131, 6156, 616) + 10 000 (6358)
+    expect(managementCost(balances, 4, RATIO_CONVENTIONS)).toEqual({ cost: 550_000, dwellings: 4, perDwelling: 137_500 });
+    expect(managementCost(balances, 3, RATIO_CONVENTIONS).perDwelling).toBe(183_333);
     expect(managementCost(balances, 0, RATIO_CONVENTIONS).perDwelling).toBeNull();
   });
 
@@ -190,12 +203,21 @@ describe('HLM ratios', () => {
     expect(r.financialChargesOnRents).toEqual({ charges: 425_000, rents: 1_700_000, ratio: 0.25 });
     expect(r.vacancy).toEqual({ rate: 0.25, dwellings: 4 });
     expect(r.arrears.ratio).toBe(0.1);
-    expect(r.managementCost.perDwelling).toBe(115_000);
+    expect(r.managementCost.perDwelling).toBe(137_500);
   });
 
   it('accepts other conventions', () => {
     const conv = { ...RATIO_CONVENTIONS, loanInterest: { include: ['661'] } };
     expect(debtService(balances, 0, 1, conv).interest).toBe(400_999);
+  });
+
+  it('ruleCovers applies the included and excluded prefixes', () => {
+    const rule = { include: ['635', '64'], exclude: ['63512'] };
+    expect(ruleCovers(rule, '6358')).toBe(true);
+    expect(ruleCovers(rule, '6411')).toBe(true);
+    expect(ruleCovers(rule, '63512')).toBe(false);
+    expect(ruleCovers(rule, '615')).toBe(false);
+    expect(ruleCovers({ include: ['704'] }, '70491')).toBe(true);
   });
 
   it('safeRatio returns null on a zero denominator', () => {
@@ -333,20 +355,57 @@ describe('monthly rents from FEC lines', () => {
     const m = monthlyCredits(lines, RATIO_CONVENTIONS.monthlyRents, ['AN', 'OD']);
     expect(m[11]).toBe(0);
   });
+
+  it('lists the rent accounts left out of the chart (credit accounts of the rents rule only)', () => {
+    const chart = [
+      { number: '70411', normalSide: 'credit' as const },
+      { number: '70413', normalSide: 'credit' as const },
+      { number: '70491', normalSide: 'debit' as const }, // RLS: not a rent
+      { number: '7031', normalSide: 'credit' as const }, // charges: not a rent
+      { number: '7088', normalSide: 'credit' as const },
+    ];
+    expect(rentAccountsLeftOut(chart, { include: ['704'] }, ['70411'])).toEqual(['70413']);
+    expect(rentAccountsLeftOut(chart, { include: ['704'] }, ['704'])).toEqual([]);
+  });
+
+  it('leaves the residences billed separately out of the monthly chart', () => {
+    expect(rentAccountsLeftOut(loadParams().chart.accounts, ANALYSIS.rents, RATIO_CONVENTIONS.monthlyRents)).toEqual(['70413']);
+  });
 });
 
 describe('conventions', () => {
   it('every account prefix of the conventions exists in the chart of accounts', () => {
     const accounts = loadParams().chart.accounts.map((a) => a.number);
-    const rules = [RATIO_CONVENTIONS.loanInterest, RATIO_CONVENTIONS.rentReceivables, RATIO_CONVENTIONS.billedRents, RATIO_CONVENTIONS.managementCost];
-    const prefixes = [...rules.flatMap((r) => [...r.include, ...(r.exclude ?? [])]), ...RATIO_CONVENTIONS.monthlyRents];
+    const rules = [RATIO_CONVENTIONS.loanInterest, RATIO_CONVENTIONS.rentReceivables, RATIO_CONVENTIONS.billedRentsAndCharges, RATIO_CONVENTIONS.managementCost];
+    const prefixes = [...rules.flatMap((r) => [...r.include, ...(r.exclude ?? [])]), ...RATIO_CONVENTIONS.monthlyRents, ...RATIO_CONVENTIONS.managementCost.leftOut.map((l) => l.prefix)];
     for (const p of prefixes)
       expect(
         accounts.some((a) => a.startsWith(p)),
         p,
       ).toBe(true);
   });
-  it('monthly rents are billed rents (residences billed separately are left out)', () => {
-    for (const a of RATIO_CONVENTIONS.monthlyRents) expect(RATIO_CONVENTIONS.billedRents.include).toContain(a);
+  it('monthly rents are rents, included in the rents and charges billed', () => {
+    for (const a of RATIO_CONVENTIONS.monthlyRents) {
+      expect(ruleCovers(ANALYSIS.rents, a), a).toBe(true);
+      expect(ruleCovers(RATIO_CONVENTIONS.billedRentsAndCharges, a), a).toBe(true);
+    }
+  });
+  it('rents and charges billed are net of the RLS and include the charges, like the receivables', () => {
+    const accounts = loadParams().chart.accounts.map((a) => a.number);
+    const rentAccounts = accounts.filter((a) => ruleCovers(ANALYSIS.rents, a));
+    expect(rentAccounts.length).toBeGreaterThan(0);
+    // every account of the net rents (RLS included) is in the denominator
+    for (const a of rentAccounts) expect(ruleCovers(RATIO_CONVENTIONS.billedRentsAndCharges, a), a).toBe(true);
+    expect(accounts.some((a) => ruleCovers(ANALYSIS.chargeRecoveries, a) && ruleCovers(RATIO_CONVENTIONS.billedRentsAndCharges, a))).toBe(true);
+  });
+  it('the accounts left out of the management cost are outside the rule, each with a reason', () => {
+    const accounts = loadParams().chart.accounts.map((a) => a.number);
+    const rule = RATIO_CONVENTIONS.managementCost;
+    expect(rule.leftOut.length).toBeGreaterThan(0);
+    for (const { prefix, reason } of rule.leftOut) {
+      expect(reason.trim(), prefix).not.toBe('');
+      expect(rule.include.some((p) => prefix.startsWith(p)), prefix).toBe(false);
+      expect(accounts.some((a) => a.startsWith(prefix) && !ruleCovers(rule, a)), prefix).toBe(true);
+    }
   });
 });

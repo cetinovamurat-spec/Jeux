@@ -97,13 +97,11 @@
      "4116"
     ]
    },
-   "billedRents": {
+   "billedRentsAndCharges": {
+    "_comment": "Loyers et charges quittancés, nets de RLS : soldes de 704 (RLS 70491 au débit comprise) et de 7031 (provisions de charges appelées et régularisation de l'exercice). Même base que les créances locatives, qui portent les loyers après RLS et les charges.",
     "include": [
-     "70411",
-     "70412",
-     "70413",
-     "70414",
-     "70415"
+     "704",
+     "7031"
     ]
    },
    "monthlyRents": [
@@ -113,15 +111,32 @@
     "70415"
    ],
    "managementCost": {
+    "_comment": "Charges non récupérables de gestion : personnel (64), autres services extérieurs (62), services extérieurs autres que l'entretien et non récupérables (6131, 6156, 616), impôts et taxes hors TFPB et TEOM. leftOut : comptes écartés à dessein, avec le motif affiché dans la définition.",
     "include": [
-     "641",
-     "645",
+     "64",
      "62",
+     "6131",
+     "6156",
+     "616",
      "635"
     ],
     "exclude": [
      "63512",
      "63513"
+    ],
+    "leftOut": [
+     {
+      "prefix": "6111",
+      "reason": "nettoyage et entretien des parties communes, charge récupérable sur les locataires"
+     },
+     {
+      "prefix": "614",
+      "reason": "charges de copropriété, récupérables en partie : la quote-part non récupérable n’est pas isolée dans les comptes"
+     },
+     {
+      "prefix": "615",
+      "reason": "entretien et réparations du patrimoine, hors maintenance informatique : ils relèvent du coût de maintenance, suivi à part du coût de gestion"
+     }
     ]
    }
   },

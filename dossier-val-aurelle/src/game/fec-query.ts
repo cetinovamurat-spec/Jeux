@@ -16,6 +16,7 @@ import { FEC_FIELDS } from '../engine/fec';
 import { formatEuro, formatFecAmount } from '../engine/format';
 import type { Cents } from '../engine/money';
 import type { FecLineInternal } from '../engine/types';
+import { fold } from './text';
 
 export interface FecQuery {
   journals: string[];
@@ -63,13 +64,12 @@ export const EMPTY_QUERY: FecQuery = {
   wholeEntries: false,
 };
 
-export function normalize(text: string): string {
-  return text
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/[’']/g, ' ')
-    .toLowerCase();
-}
+/**
+ * Folded text for the searches (case, accents and ligatures ignored, apostrophes
+ * as spaces): the same folding as the GED (`fold`, ./text), so that « oeuvre »
+ * finds « maîtrise d’œuvre ». Also used by the balance and the command palette.
+ */
+export const normalize: (text: string) => string = fold;
 
 export interface FecIndex {
   lines: readonly FecLineInternal[];
