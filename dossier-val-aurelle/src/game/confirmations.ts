@@ -4,6 +4,7 @@
  * the date. Section of the game state owned by J4c.
  */
 import { z } from 'zod';
+import type { HoursCharge } from './budget';
 import type { IsoDate } from '../engine/dates';
 import type { Params } from '../scenario/params';
 import type { UpcomingContext, UpcomingEvent } from './advance';
@@ -34,5 +35,10 @@ export function sentConfirmations(_s: ConfirmationsState, _params: Params, _date
 
 /** Upcoming events of the confirmations (sending, expected replies). J4c implements it. */
 export function upcomingConfirmations(_s: ConfirmationsState, _ctx: UpcomingContext): UpcomingEvent[] {
+  return [];
+}
+
+/** Hours charged to the budget by the preparation and follow-up of the confirmations. */
+export function hoursCharged(_s: ConfirmationsState, _params: Params): HoursCharge[] {
   return [];
 }

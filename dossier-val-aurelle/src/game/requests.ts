@@ -4,6 +4,7 @@
  * of the game state owned by J4c.
  */
 import { z } from 'zod';
+import type { HoursCharge } from './budget';
 import type { IsoDate } from '../engine/dates';
 import type { Params } from '../scenario/params';
 import type { UpcomingContext, UpcomingEvent } from './advance';
@@ -41,5 +42,10 @@ export function answeredRequests(_s: RequestsState, _params: Params, _date: IsoD
 
 /** Upcoming events of the requests (answers due). J4c implements it. */
 export function upcomingRequests(_s: RequestsState, _ctx: UpcomingContext): UpcomingEvent[] {
+  return [];
+}
+
+/** Hours charged to the budget by the document requests (time of the senior). */
+export function hoursCharged(_s: RequestsState, _params: Params): HoursCharge[] {
   return [];
 }

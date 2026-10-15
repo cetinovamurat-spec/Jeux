@@ -1,6 +1,7 @@
 /** Game shell: sidebar navigation, top bar (date, period, gauges, budget), command palette, theme. */
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router';
+import { hoursUsed } from '../../game/budget';
 import { setTheme, type ThemeChoice } from '../../game/state';
 import { Badge, cx, Gauge, Kbd, Select } from '../components/ui';
 import { useFullCase } from './context';
@@ -36,7 +37,11 @@ export function Shell() {
   const c = useFullCase();
   const settings = useGame((s) => s.game.settings);
   const difficulty = useGame((s) => s.game.difficulty);
-  const executions = useGame((s) => s.game.program.executions);
+  const program = useGame((s) => s.game.program);
+  const requests = useGame((s) => s.game.requests);
+  const confirmations = useGame((s) => s.game.confirmations);
+  const samples = useGame((s) => s.game.samples);
+  const recalcs = useGame((s) => s.game.recalcs);
   const act = useGame((s) => s.act);
   const [palette, setPalette] = useState(false);
   const location = useLocation();
@@ -63,7 +68,7 @@ export function Shell() {
   useEffect(() => setPalette(false), [location.pathname]);
 
   const budget = gp.budgetHours[difficulty];
-  const used = executions.filter((e) => e.assignee !== 'sofia').reduce((t, e) => t + e.hours, 0);
+  const used = useMemo(() => hoursUsed({ program, requests, confirmations, samples, recalcs }, c.params).team, [program, requests, confirmations, samples, recalcs, c]);
 
   return (
     <div className="grid min-h-screen grid-cols-[13.5rem_1fr]">

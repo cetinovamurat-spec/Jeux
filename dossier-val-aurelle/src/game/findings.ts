@@ -19,6 +19,17 @@ export interface ProposedLine {
   aux?: string;
 }
 
+/** What the context of a « Créer un constat » button pre-fills (object being looked at, evidence, amount). */
+export interface FindingSeed {
+  cycle?: string;
+  objects?: { kind: string; id: string }[];
+  evidence?: Evidence[];
+  /** Amount in cents (gap of a recalculation, exception of a sample…), positive. */
+  amount?: number;
+  /** Short description of the context, shown in the form (never read by the matching). */
+  label?: string;
+}
+
 export interface Finding {
   id: string;
   cycle: string;

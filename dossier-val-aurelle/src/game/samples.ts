@@ -4,7 +4,9 @@
  * J3 (keys 'sample:<id>:<item>'). Section of the game state owned by J4c.
  */
 import { z } from 'zod';
+import type { HoursCharge } from './budget';
 import type { IsoDate } from '../engine/dates';
+import type { Params } from '../scenario/params';
 
 export interface Sample {
   id: string;
@@ -39,3 +41,8 @@ export const samplesSchema = z.object({
     }),
   ),
 });
+
+/** Hours charged to the budget by the draws and redraws of samples. */
+export function hoursCharged(_s: SamplesState, _params: Params): HoursCharge[] {
+  return [];
+}

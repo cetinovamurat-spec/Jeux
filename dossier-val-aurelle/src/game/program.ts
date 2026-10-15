@@ -5,7 +5,9 @@
  * game state owned by J4b.
  */
 import { z } from 'zod';
+import type { HoursCharge } from './budget';
 import type { IsoDate } from '../engine/dates';
+import type { Params } from '../scenario/params';
 import type { UpcomingContext, UpcomingEvent } from './advance';
 import type { MemberId } from './calendar';
 
@@ -58,4 +60,9 @@ export const programSchema = z.object({
 /** Upcoming events of the programme (worksheets delivered at the end of their scheduling). J4b implements it. */
 export function upcomingProgram(_s: ProgramState, _ctx: UpcomingContext): UpcomingEvent[] {
   return [];
+}
+
+/** Hours charged to the budget by the executions of the procedures (cost of the procedure for the assignee). */
+export function hoursCharged(s: ProgramState, _params: Params): HoursCharge[] {
+  return s.executions.map((e) => ({ member: e.assignee, hours: e.hours, on: e.launchedOn }));
 }

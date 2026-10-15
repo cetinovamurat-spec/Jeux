@@ -4,7 +4,9 @@
  * Section of the game state owned by J4c.
  */
 import { z } from 'zod';
+import type { HoursCharge } from './budget';
 import type { IsoDate } from '../engine/dates';
+import type { Params } from '../scenario/params';
 
 export interface Recalc {
   id: string;
@@ -37,3 +39,8 @@ export const recalcsSchema = z.object({
     }),
   ),
 });
+
+/** Hours charged to the budget by the recalculations run outside a procedure. */
+export function hoursCharged(_s: RecalcsState, _params: Params): HoursCharge[] {
+  return [];
+}
