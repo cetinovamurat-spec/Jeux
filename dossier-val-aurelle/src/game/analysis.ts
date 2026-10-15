@@ -12,6 +12,9 @@ import { OPENING_JOURNAL, sumPrefixes } from '../engine/balance';
 import { addDays, daysBetween, isoDate, maxDate, minDate, type IsoDate } from '../engine/dates';
 import type { Cents } from '../engine/money';
 import type { FecLineInternal, StatementId, StatementLineDef, StatementLineValue } from '../engine/types';
+import { parseDecimal, variation, type Variation } from './ledger';
+
+export { variation, type Variation };
 
 // ---------------------------------------------------------------------------
 // Conventions (proposals to validate)
@@ -55,36 +58,35 @@ export function sumRule(balances: ReadonlyMap<string, Cents>, rule: PrefixRule):
   return sumPrefixes(balances, rule.include, rule.exclude ?? []);
 }
 
-/**
- * Parses a threshold typed by the player ('10', '7,5', '100 000'); returns
- * its absolute value, or null when the field is empty or not a number.
- */
-export function parseThreshold(text: string): number | null {
-  const s = text.replace(/[\s  ]/g, '').replace(',', '.');
-  if (s === '' || !/^[+-]?(\d+\.?\d*|\.\d+)$/.test(s)) return null;
-  const v = Math.abs(Number(s));
-  return Number.isFinite(v) ? v : null;
+/** A threshold field as typed by the player: its absolute value, or null when empty; `invalid` when it cannot be read. */
+export interface ThresholdInput {
+  value: number | null;
+  invalid: boolean;
+}
+
+/** Reads a threshold typed by the player ('10', '7,5', '100 000'). */
+export function readThreshold(text: string): ThresholdInput {
+  const v = parseDecimal(text);
+  if (v === null) return { value: null, invalid: false };
+  if (Number.isNaN(v)) return { value: null, invalid: true };
+  return { value: Math.abs(v), invalid: false };
 }
 
 // ---------------------------------------------------------------------------
 // Variations and thresholds
 // ---------------------------------------------------------------------------
 
-export interface Variation {
-  /** current − prior */
-  amount: Cents;
-  /** amount / |prior|; null when the prior value is zero. */
-  ratio: number | null;
-}
-
-export function variation(current: Cents, prior: Cents): Variation {
-  return { amount: current - prior, ratio: prior === 0 ? null : (current - prior) / Math.abs(prior) };
-}
+// `variation(prior, current)` (from the balance tools): amount = current − prior, ratio = amount / |prior| (null when prior is zero).
 
 /** Thresholds of the review: null = not applied. `amount` in cents, `pct` in percent. */
 export interface VariationThresholds {
   pct: number | null;
   amount: Cents | null;
+}
+
+/** Thresholds from the values typed by the player (percent, euros); euros are converted to cents. */
+export function toThresholds(pct: number | null, euros: number | null): VariationThresholds {
+  return { pct, amount: euros === null ? null : Math.round(euros * 100) };
 }
 
 /**
@@ -134,25 +136,31 @@ export function statementOrder(defs: readonly StatementLineDef[], statements: re
   return out;
 }
 
-export function statementVariations(
-  defs: readonly StatementLineDef[],
-  lines: Readonly<Record<string, StatementLineValue>>,
-  statements: readonly StatementId[],
-  thresholds: VariationThresholds,
-): StatementVariationRow[] {
+export function statementVariations(defs: readonly StatementLineDef[], lines: Readonly<Record<string, StatementLineValue>>, statements: readonly StatementId[], thresholds: VariationThresholds): StatementVariationRow[] {
   return statementOrder(defs, statements).map(({ def, depth }) => {
     const current = lines[def.id]?.current ?? 0;
     const prior = lines[def.id]?.prior ?? 0;
-    const v = variation(current, prior);
+    const v = variation(prior, current);
     return { id: def.id, label: def.label, statement: def.statement, kind: def.kind, depth, current, prior, variation: v, flagged: exceedsThresholds(v, thresholds) };
   });
 }
 
-/** Detail charge lines of the income statement (structure of charges). */
-export function chargeLines(defs: readonly StatementLineDef[], lines: Readonly<Record<string, StatementLineValue>>): { id: string; label: string; current: Cents; prior: Cents }[] {
-  return defs
-    .filter((d) => d.statement === 'income' && d.kind === 'detail' && d.nature === 'charge')
-    .map((d) => ({ id: d.id, label: d.label, current: lines[d.id]?.current ?? 0, prior: lines[d.id]?.prior ?? 0 }));
+export interface ChargeLine {
+  id: string;
+  label: string;
+  current: Cents;
+  prior: Cents;
+  /** Share of the total of the detail charge lines of the year; null when that total is zero. */
+  shareCurrent: number | null;
+  sharePrior: number | null;
+}
+
+/** Detail charge lines of the income statement (structure of charges), in statement order. */
+export function chargeLines(defs: readonly StatementLineDef[], lines: Readonly<Record<string, StatementLineValue>>): ChargeLine[] {
+  const rows = defs.filter((d) => d.statement === 'income' && d.kind === 'detail' && d.nature === 'charge').map((d) => ({ id: d.id, label: d.label, current: lines[d.id]?.current ?? 0, prior: lines[d.id]?.prior ?? 0 }));
+  const totalCurrent = rows.reduce((s, r) => s + r.current, 0);
+  const totalPrior = rows.reduce((s, r) => s + r.prior, 0);
+  return rows.map((r) => ({ ...r, shareCurrent: safeRatio(r.current, totalCurrent), sharePrior: safeRatio(r.prior, totalPrior) }));
 }
 
 // ---------------------------------------------------------------------------
@@ -263,6 +271,12 @@ export function trailingMean(series: readonly { year: number; ratio: number }[],
     sum += r.ratio;
   }
   return sum / n;
+}
+
+/** Whether a ratio reaches a reference rate expressed in percent (equality passes). */
+export function meetsReference(ratio: number, referencePct: number): boolean {
+  // Compared on integers (percent × 1e9) so that floating noise does not decide (0.03 * 100 = 3.0000000000000004).
+  return Math.round(ratio * 1e11) >= Math.round(referencePct * 1e9);
 }
 
 // ---------------------------------------------------------------------------

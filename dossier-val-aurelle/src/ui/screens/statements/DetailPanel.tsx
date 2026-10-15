@@ -13,7 +13,7 @@ import { Link } from 'react-router';
 import { formatDateFr } from '../../../engine/dates';
 import type { Cents } from '../../../engine/money';
 import type { StatementLineDef } from '../../../engine/types';
-import { accountsByPrefixes, componentLines, lineComposition, resultComposition, type CompositionItem } from '../../../game/ticking';
+import { accountsByPrefixes, componentLines, lineComposition, movementsByPrefixes, resultComposition, type CompositionItem } from '../../../game/ticking';
 import { useCase } from '../../app/context';
 import { Amount } from '../../components/Amount';
 import { Badge, Button, cx } from '../../components/ui';
@@ -250,13 +250,11 @@ function TotalDetail({ def, onSelectLine }: { def: StatementLineDef; onSelectLin
       {assets ? (
         <>
           <YearHeading>Exercice {cy}</YearHeading>
+          {/* label on its own line, the three amounts below: the panel is too narrow for four columns */}
           <table className="w-full border-collapse text-xs">
             <thead>
               <tr>
-                <th scope="col" className="py-1 pl-3 pr-2 text-left text-xs font-semibold text-muted">
-                  Rubrique
-                </th>
-                <th scope="col" className={head}>
+                <th scope="col" className={cx(head, 'pl-3')}>
                   Brut
                 </th>
                 <th scope="col" className={head}>
@@ -267,34 +265,40 @@ function TotalDetail({ def, onSelectLine }: { def: StatementLineDef; onSelectLin
                 </th>
               </tr>
             </thead>
-            <tbody>
-              {comps.map((x) => (
-                <tr key={x.def.id} className="border-t border-line">
-                  <th scope="row" className={cx(cellL, 'font-normal')}>
+            {comps.map((x) => (
+              <tbody key={x.def.id} className="border-t border-line">
+                <tr>
+                  <th scope="rowgroup" colSpan={3} className="px-3 pt-1 text-left font-normal">
                     {label(x)}
                   </th>
-                  <td className="px-2 py-1 text-right align-top">
+                </tr>
+                <tr>
+                  <td className="py-0.5 pl-3 pr-2 text-right">
                     <Amount cents={x.sign * (v(x.def.id)?.currentGross ?? 0)} />
                   </td>
-                  <td className="px-2 py-1 text-right align-top">
+                  <td className="px-2 py-0.5 text-right">
                     <Amount cents={x.sign * (v(x.def.id)?.currentDepreciation ?? 0)} />
                   </td>
-                  <td className={cellR}>
+                  <td className="py-0.5 pl-2 pr-3 text-right">
                     <Amount cents={x.sign * (v(x.def.id)?.current ?? 0)} />
                   </td>
                 </tr>
-              ))}
-              <tr className="border-t border-line bg-sunken font-semibold">
-                <th scope="row" className={cx(cellL, 'font-semibold')}>
+              </tbody>
+            ))}
+            <tbody className="border-t border-line bg-sunken font-semibold">
+              <tr>
+                <th scope="rowgroup" colSpan={3} className="px-3 pt-1 text-left font-semibold">
                   Somme des rubriques
                 </th>
-                <td className="px-2 py-1 text-right">
+              </tr>
+              <tr>
+                <td className="py-0.5 pl-3 pr-2 text-right">
                   <Amount cents={sum((id) => v(id)?.currentGross ?? 0)} />
                 </td>
-                <td className="px-2 py-1 text-right">
+                <td className="px-2 py-0.5 text-right">
                   <Amount cents={sum((id) => v(id)?.currentDepreciation ?? 0)} />
                 </td>
-                <td className={cellR}>
+                <td className="py-0.5 pl-2 pr-3 text-right">
                   <Amount cents={sum((id) => v(id)?.current ?? 0)} />
                 </td>
               </tr>
@@ -421,6 +425,7 @@ function AnnexRowDetail({ prefixes }: { prefixes: readonly string[] }) {
   const { current: cy, prior: py } = c.params.scenario.years;
   const bal = c.balances();
   const r = useMemo(() => accountsByPrefixes(prefixes, bal.prior, bal.current), [prefixes, bal]);
+  const mv = useMemo(() => movementsByPrefixes(prefixes, c.balanceRows()), [prefixes, c]);
   if (prefixes.length === 0)
     return (
       <Note>
@@ -433,44 +438,96 @@ function AnnexRowDetail({ prefixes }: { prefixes: readonly string[] }) {
       <p className="px-3 pt-3 text-xs text-muted">
         Comptes commençant par <span className="font-mono text-ink">{prefixes.join(', ')}</span>
       </p>
-      {r.accounts.length === 0 ? (
-        <p className="px-3 pt-2 text-sm text-muted">Aucun compte de la balance à solde non nul.</p>
-      ) : (
-        <table className="mt-1 w-full border-collapse text-xs">
-          <thead>
-            <tr>
-              <th scope="col" className="py-1 pl-3 pr-2 text-left text-xs font-semibold text-muted">
-                Compte
-              </th>
-              <th scope="col" className={head}>
-                Ouverture
-                <span className="block font-normal">{formatDateFr(`${py}-12-31`)}</span>
-              </th>
-              <th scope="col" className={cx(head, 'pr-3')}>
-                Clôture
-                <span className="block font-normal">{formatDateFr(`${cy}-12-31`)}</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {r.accounts.map((a) => (
-              <tr key={a.account} className="border-t border-line">
-                <AccountCell account={a.account} year={cy} />
-                <td className="num px-2 py-1 align-top">{sideAmount(a.opening)}</td>
-                <td className="num py-1 pl-2 pr-3 align-top">{sideAmount(a.closing)}</td>
+      <section aria-label="Soldes de la balance">
+        <YearHeading>Soldes de la balance</YearHeading>
+        {r.accounts.length === 0 ? (
+          <p className="px-3 text-sm text-muted">Aucun compte de la balance à solde non nul.</p>
+        ) : (
+          <table className="w-full border-collapse text-xs">
+            <thead>
+              <tr>
+                <th scope="col" className="py-1 pl-3 pr-2 text-left text-xs font-semibold text-muted">
+                  Compte
+                </th>
+                <th scope="col" className={head}>
+                  Ouverture
+                  <span className="block font-normal">{formatDateFr(`${py}-12-31`)}</span>
+                </th>
+                <th scope="col" className={cx(head, 'pr-3')}>
+                  Clôture
+                  <span className="block font-normal">{formatDateFr(`${cy}-12-31`)}</span>
+                </th>
               </tr>
-            ))}
-            <tr className="border-t border-line bg-sunken font-semibold">
-              <th scope="row" className={cx(cellL, 'font-semibold')}>
-                Total
-              </th>
-              <td className="num px-2 py-1">{sideAmount(r.opening)}</td>
-              <td className="num py-1 pl-2 pr-3">{sideAmount(r.closing)}</td>
-            </tr>
-          </tbody>
-        </table>
-      )}
-      <Note>Soldes de la balance (D : débiteur, C : créditeur). L’ouverture correspond au solde de clôture de l’exercice précédent. Les mouvements de l’exercice se consultent au grand livre.</Note>
+            </thead>
+            <tbody>
+              {r.accounts.map((a) => (
+                <tr key={a.account} className="border-t border-line">
+                  <AccountCell account={a.account} year={cy} />
+                  <td className="num px-2 py-1 align-top">{sideAmount(a.opening)}</td>
+                  <td className="num py-1 pl-2 pr-3 align-top">{sideAmount(a.closing)}</td>
+                </tr>
+              ))}
+              <tr className="border-t border-line bg-sunken font-semibold">
+                <th scope="row" className={cx(cellL, 'font-semibold')}>
+                  Total
+                </th>
+                <td className="num px-2 py-1">{sideAmount(r.opening)}</td>
+                <td className="num py-1 pl-2 pr-3">{sideAmount(r.closing)}</td>
+              </tr>
+            </tbody>
+          </table>
+        )}
+      </section>
+      <section aria-label={`Mouvements de l’exercice ${cy}`}>
+        <YearHeading>Mouvements de l’exercice {cy}</YearHeading>
+        {mv.accounts.length === 0 ? (
+          <p className="px-3 text-sm text-muted">Aucun mouvement sur ces comptes au cours de l’exercice.</p>
+        ) : (
+          <table className="w-full border-collapse text-xs">
+            <thead>
+              <tr>
+                <th scope="col" className="py-1 pl-3 pr-2 text-left text-xs font-semibold text-muted">
+                  Compte
+                </th>
+                <th scope="col" className={head}>
+                  Débit
+                </th>
+                <th scope="col" className={cx(head, 'pr-3')}>
+                  Crédit
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {mv.accounts.map((a) => (
+                <tr key={a.account} className="border-t border-line">
+                  <AccountCell account={a.account} year={cy} />
+                  <td className="px-2 py-1 text-right align-top">
+                    <Amount cents={a.debit} decimals={2} />
+                  </td>
+                  <td className="py-1 pl-2 pr-3 text-right align-top">
+                    <Amount cents={a.credit} decimals={2} />
+                  </td>
+                </tr>
+              ))}
+              <tr className="border-t border-line bg-sunken font-semibold">
+                <th scope="row" className={cx(cellL, 'font-semibold')}>
+                  Total
+                </th>
+                <td className="px-2 py-1 text-right">
+                  <Amount cents={mv.debit} decimals={2} />
+                </td>
+                <td className="py-1 pl-2 pr-3 text-right">
+                  <Amount cents={mv.credit} decimals={2} />
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        )}
+      </section>
+      <Note>
+        Soldes de la balance (D : débiteur, C : créditeur) ; l’ouverture correspond au solde de clôture de l’exercice précédent. Mouvements de l’exercice hors à-nouveaux, tels qu’ils figurent dans la balance. Cliquez sur un numéro de compte pour
+        consulter ses écritures au grand livre.
+      </Note>
     </>
   );
 }

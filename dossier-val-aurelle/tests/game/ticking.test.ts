@@ -1,6 +1,6 @@
 /** Ticking helpers (src/game/ticking.ts): keys, display order, progress, marks usage, composition of the statements. */
 import { describe, expect, it } from 'vitest';
-import { closingBalances } from '../../src/engine/balance';
+import { closingBalances, trialBalance } from '../../src/engine/balance';
 import { accountMap } from '../../src/engine/chart';
 import { buildStatements } from '../../src/engine/statements';
 import type { PresentationOverrides, StatementId } from '../../src/engine/types';
@@ -17,6 +17,7 @@ import {
   lineComposition,
   markForDigit,
   markUsage,
+  movementsByPrefixes,
   orderedLines,
   progressRatio,
   resultComposition,
@@ -220,5 +221,25 @@ describe('composition of the statements from the balance', () => {
     expect(accountsByPrefixes([], prior, current)).toEqual({ accounts: [], opening: 0, closing: 0 });
     const synthetic = accountsByPrefixes(['41'], new Map([['4111', 500], ['4011', 7], ['4115', 0]]), new Map([['4111', 300], ['4115', 0], ['4116', -20]]));
     expect(synthetic).toEqual({ accounts: [{ account: '4111', opening: 500, closing: 300 }, { account: '4116', opening: 0, closing: -20 }], opening: 500, closing: 280 });
+  });
+
+  it('lists the movements of the year behind an annex row (opening entries excluded)', () => {
+    const rows = [
+      { account: '4911', debit: 10, credit: 70 },
+      { account: '4011', debit: 5, credit: 5 },
+      { account: '4915', debit: 0, credit: 0 },
+      { account: '4916', debit: 3, credit: 0 },
+    ];
+    expect(movementsByPrefixes(['491'], rows)).toEqual({ accounts: [{ account: '4911', debit: 10, credit: 70 }, { account: '4916', debit: 3, credit: 0 }], debit: 13, credit: 70 });
+    expect(movementsByPrefixes([], rows)).toEqual({ accounts: [], debit: 0, credit: 0 });
+    // the closing balance of an annex row = opening + debit − credit of its accounts
+    const tables = buildAnnex(w, params, 'current');
+    const row = tables.find((t) => t.id === 'provisions')!.rows.find((r) => r.id === 'pge')!;
+    const tb = trialBalance(w.ledgers.current, w.chart).rows;
+    const m = movementsByPrefixes(row.accounts, tb);
+    const b = accountsByPrefixes(row.accounts, prior, current);
+    expect(b.opening + m.debit - m.credit).toBe(b.closing);
+    expect(m.credit).toBe(row.values['dotations']);
+    expect(m.debit).toBe(row.values['reprises']);
   });
 });

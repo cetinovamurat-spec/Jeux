@@ -309,3 +309,30 @@ export function accountsByPrefixes(
   }
   return { accounts, opening: o, closing: c };
 }
+
+export interface PrefixMovement {
+  account: string;
+  /** Debit movements of the year (opening entries excluded). */
+  debit: Cents;
+  credit: Cents;
+}
+
+/**
+ * Movements of the year of the accounts starting with one of the prefixes
+ * (accounts without any movement are left out), sorted, and the sums of each
+ * column. Rows come from the trial balance (opening entries excluded).
+ */
+export function movementsByPrefixes(prefixes: readonly string[], rows: readonly PrefixMovement[]): { accounts: PrefixMovement[]; debit: Cents; credit: Cents } {
+  if (prefixes.length === 0) return { accounts: [], debit: 0, credit: 0 };
+  const accounts = rows
+    .filter((r) => (r.debit !== 0 || r.credit !== 0) && prefixes.some((p) => r.account.startsWith(p)))
+    .map((r) => ({ account: r.account, debit: r.debit, credit: r.credit }))
+    .sort((a, b) => a.account.localeCompare(b.account));
+  let debit = 0;
+  let credit = 0;
+  for (const a of accounts) {
+    debit += a.debit;
+    credit += a.credit;
+  }
+  return { accounts, debit, credit };
+}

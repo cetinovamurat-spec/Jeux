@@ -29,7 +29,7 @@ export function TickToolbar({ tabLabel, progress, marks, clickMark, onClickMark,
   const orphan = Object.entries(progress.byMark).reduce((s, [m, n]) => (known.has(m) ? s : s + n), 0);
 
   return (
-    <section aria-label="Pointage de l’onglet et légende des marques" className="mb-3 rounded-lg border border-line bg-panel px-3 py-2">
+    <section aria-label="Pointage de l’onglet et légende des marques" className="border-b border-line px-3 py-2">
       <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted">Pointage de l’onglet</span>
@@ -103,8 +103,9 @@ export function TickToolbar({ tabLabel, progress, marks, clickMark, onClickMark,
                 <span className="sr-only">{m.symbol} : </span>
                 {m.label}
               </span>
-              <span className="font-mono text-muted" aria-label={plural(n, 'case', 'cases')}>
+              <span className="font-mono text-muted">
                 {formatCount(n)}
+                <span className="sr-only"> {n > 1 ? 'cases' : 'case'}</span>
               </span>
               {i < 9 && (
                 <span className="sr-only">

@@ -3,7 +3,7 @@
  * corrected ones (clean world), presentation reclassifications and annex
  * alterations. Never rendered for the player.
  */
-import { useMemo } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import type { Cents } from '../../../engine/money';
 import type { StatementId } from '../../../engine/types';
 import { orderedLines, statementColumns, type StatementColumn } from '../../../game/ticking';
@@ -65,7 +65,7 @@ function DiffTable({ rows, label }: { rows: DiffRow[]; label: string }) {
   );
 }
 
-function DesignerCard({ title, children }: { title: string; children: React.ReactNode }) {
+function DesignerCard({ title, children }: { title: string; children: ReactNode }) {
   return (
     <Card className="m-3 border-warn/50" title={<span className="text-warn">{title}</span>} actions={<Badge tone="warn">Concepteur</Badge>}>
       {children}

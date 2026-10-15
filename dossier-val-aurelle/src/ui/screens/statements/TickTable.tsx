@@ -20,6 +20,13 @@ export interface TickTableProps {
   surface?: 'panel' | 'paper';
   /** Width of the figure columns (CSS length). */
   figureWidth?: string;
+  /** Tooltip of the row labels (default: composition of the line or of the total). */
+  rowHint?: string;
+}
+
+/** Value of the data-row attribute of a row label button (focus return, scrolling). */
+export function rowAnchor(sectionId: string, rowId: string): string {
+  return `${sectionId}:${rowId}`;
 }
 
 function Figure({ value }: { value: number | undefined }) {
@@ -27,7 +34,7 @@ function Figure({ value }: { value: number | undefined }) {
   return <Amount cents={value} />;
 }
 
-export function TickTable({ section, labelHeader = 'Rubrique', selectedRow, onSelectRow, panelId, surface = 'panel', figureWidth = '9.5rem' }: TickTableProps) {
+export function TickTable({ section, labelHeader = 'Rubrique', selectedRow, onSelectRow, panelId, surface = 'panel', figureWidth = '9.5rem', rowHint }: TickTableProps) {
   const bg = surface === 'paper' ? 'bg-paper' : 'bg-panel';
   const head = cx('border-b border-line px-2 py-1.5 text-xs font-semibold text-muted', bg);
   return (
@@ -71,11 +78,12 @@ export function TickTable({ section, labelHeader = 'Rubrique', selectedRow, onSe
                 {onSelectRow ? (
                   <button
                     type="button"
+                    data-row={rowAnchor(section.id, row.id)}
                     onClick={() => onSelectRow(row.id)}
                     aria-expanded={selected}
-                    {...(panelId ? { 'aria-controls': panelId } : {})}
-                    title={row.kind === 'detail' ? 'Afficher les comptes qui composent la ligne' : 'Afficher les rubriques qui composent ce total'}
-                    className={cx('text-left underline-offset-2 hover:text-accent hover:underline', selected && 'text-accent')}
+                    {...(panelId && selected ? { 'aria-controls': panelId } : {})}
+                    title={rowHint ?? (row.kind === 'detail' ? 'Afficher les comptes qui composent la ligne' : 'Afficher les rubriques qui composent ce total')}
+                    className={cx('scroll-mt-20 scroll-mb-4 text-left underline-offset-2 hover:text-accent hover:underline', selected && 'text-accent')}
                   >
                     {row.label}
                   </button>

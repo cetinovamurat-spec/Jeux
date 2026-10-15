@@ -9,7 +9,7 @@ import { addTickMark, removeTickMark, updateTickMark, type TickMark, type Tone }
 import { countByPrefix, markUsage, MAX_SYMBOL_LENGTH, symbolLength, ANNEX_PREFIX, CERTIFIED_PREFIX, STATEMENT_PREFIX } from '../../../game/ticking';
 import { useGame } from '../../app/store';
 import { Button, cx, Kbd, Select, TextInput, toneText } from '../../components/ui';
-import { plural, TONE_LABELS, TONES } from './labels';
+import { formatCount, plural, TONE_LABELS, TONES } from './labels';
 
 interface Draft {
   symbol: string;
@@ -107,7 +107,7 @@ function MarksManager({ onClose }: { onClose: () => void }) {
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         <p className="px-4 pt-3 text-xs text-muted">
-          Cases pointées : {totals.map((t) => `${t.label.toLowerCase()} ${t.n}`).join(' · ')}
+          Cases pointées : {totals.map((t) => `${t.label.toLowerCase()} ${formatCount(t.n)}`).join(' · ')}
         </p>
         {marks.length === 0 ? (
           <p className="px-4 py-4 text-sm text-muted">Aucune marque : ajoutez-en une pour pointer les états.</p>
@@ -207,30 +207,37 @@ function MarksManager({ onClose }: { onClose: () => void }) {
             Nouvelle marque
           </h3>
           <div className="mt-2 flex flex-wrap items-end gap-2">
-            <label className="flex flex-col gap-0.5 text-xs text-muted" htmlFor={`${formId}-symbol`}>
-              Symbole
+            <div className="flex flex-col gap-0.5">
+              <label className="text-xs text-muted" htmlFor={`${formId}-symbol`}>
+                Symbole
+              </label>
               <TextInput
                 id={`${formId}-symbol`}
                 value={draft.symbol}
                 onChange={(e) => setDraft({ ...draft, symbol: e.target.value })}
-                className="w-16 text-center font-semibold text-ink"
+                className="w-16 text-center font-semibold"
                 placeholder="R"
                 autoComplete="off"
+                aria-describedby={`${formId}-error`}
               />
-            </label>
-            <label className="flex min-w-[12rem] flex-1 flex-col gap-0.5 text-xs text-muted" htmlFor={`${formId}-label`}>
-              Signification
-              <TextInput id={`${formId}-label`} value={draft.label} onChange={(e) => setDraft({ ...draft, label: e.target.value })} placeholder="Recalculé" autoComplete="off" className="text-ink" />
-            </label>
-            <label className="flex flex-col gap-0.5 text-xs text-muted" htmlFor={`${formId}-tone`}>
-              Couleur
+            </div>
+            <div className="flex min-w-[12rem] flex-1 flex-col gap-0.5">
+              <label className="text-xs text-muted" htmlFor={`${formId}-label`}>
+                Signification
+              </label>
+              <TextInput id={`${formId}-label`} value={draft.label} onChange={(e) => setDraft({ ...draft, label: e.target.value })} placeholder="Recalculé" autoComplete="off" aria-describedby={`${formId}-error`} />
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <label className="text-xs text-muted" htmlFor={`${formId}-tone`}>
+                Couleur
+              </label>
               <ToneSelect id={`${formId}-tone`} value={draft.tone} onChange={(tone) => setDraft({ ...draft, tone })} />
-            </label>
+            </div>
             <Button type="submit" variant="primary">
               Ajouter la marque
             </Button>
           </div>
-          <p aria-live="polite" className="mt-1.5 min-h-4 text-xs text-ko">
+          <p id={`${formId}-error`} aria-live="polite" className="mt-1.5 min-h-4 text-xs text-ko">
             {error ?? ''}
           </p>
           <p className="text-xs text-muted">
