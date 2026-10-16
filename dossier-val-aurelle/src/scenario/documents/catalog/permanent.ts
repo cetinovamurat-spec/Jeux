@@ -60,7 +60,7 @@ export function permanentDocuments(c: DocContext): DocumentModel[] {
 
   // --- composition des conseils (A12) -------------------------------------
   {
-    const b = new DocBuilder({ id: 'composition-ca', title: 'Composition des conseils d’administration – Val d’Aurelle Habitat et Coteaux du Serein Habitat', category: 'permanent', date: '2025-07-01', issuer: ENTITY_HEADER(c), availability: { kind: 'onRequest', request: 'Composition des conseils des sociétés du groupe', from: 'cfo' } });
+    const b = new DocBuilder({ id: 'composition-ca', title: 'Composition des conseils d’administration – Val d’Aurelle Habitat et Coteaux du Serein Habitat', category: 'permanent', date: '2025-07-01', issuer: ENTITY_HEADER(c), availability: { kind: 'onRequest', family: 'closing-file', object: 'governance-register', from: 'cfo' } });
     const k = b.clue('A12', 'governance', `${chair.name}, président du conseil, est aussi administrateur de ${tpName(c, 'COTEAUX_SEREIN')} : la convention de soutien relève des conventions réglementées.`, ['A12.ii']);
     b.table(['Administrateur', e.name, tpName(c, 'COTEAUX_SEREIN')], [
       { cells: [chair.name, 'Président', 'Administrateur'], clue: k },

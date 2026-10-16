@@ -1,7 +1,134 @@
 {
-  "_comment": "Planification (plan J4 §6) : bases et plages des seuils, facteurs de justification, types de produits (présomption de fraude), lois et règlements, matrice de référence des risques. Contenu fourni en J4b.",
-  "bases": [],
-  "factors": [],
-  "revenueTypes": [],
-  "lawsRegulations": []
+  "_comment": "Planification (plan J4 §6, cahier des charges §4.7 et §10.1) : bases et plages des seuils (pourcentages usuels, à vérifier), facteurs de justification génériques d'un organisme HLM (jamais la liste des facteurs du cas), types de produits de la présomption de fraude (formulation de la NEP 240 à vérifier), lois et règlements (NEP 250, références à vérifier), niveaux de risque, réponses obligatoires au risque de contournement des contrôles, et réponses de référence lues par J6 (jamais affichées avant le débrief).",
+  "bases": [
+    {
+      "id": "rents",
+      "label": "Loyers nets de la RLS",
+      "accounts": { "include": ["704"] },
+      "flow": true,
+      "pctRange": [1, 1.5],
+      "defaultPct": 1.25,
+      "suitability": "recommended",
+      "feedback": "Base usuelle d’un bailleur social : les loyers sont stables, récurrents et suivis par les utilisateurs des comptes."
+    },
+    {
+      "id": "activityIncome",
+      "label": "Produits des activités (hors récupération des charges)",
+      "accounts": { "include": ["70"], "exclude": ["703"] },
+      "flow": true,
+      "pctRange": [1, 1.5],
+      "defaultPct": 1.25,
+      "suitability": "acceptable",
+      "feedback": "Base défendable : proche des loyers, elle ajoute des produits annexes moins récurrents."
+    },
+    {
+      "id": "totalAssets",
+      "label": "Total du bilan",
+      "statementLine": "ACTIF_TOTAL",
+      "flow": false,
+      "pctRange": [0.5, 1],
+      "defaultPct": 0.75,
+      "suitability": "unsuitable",
+      "feedback": "Pour un bailleur social très immobilisé et endetté, le total du bilan conduit à un seuil de plusieurs millions d’euros, inadapté aux utilisateurs des comptes, qui lisent le résultat et l’autofinancement."
+    },
+    {
+      "id": "equity",
+      "label": "Capitaux propres",
+      "statementLine": "P_CP",
+      "flow": false,
+      "pctRange": [1, 2],
+      "defaultPct": 1.5,
+      "suitability": "unsuitable",
+      "feedback": "Les capitaux propres, gonflés par les subventions d’investissement, conduisent à un seuil de plusieurs millions d’euros, inadapté."
+    },
+    {
+      "id": "netResult",
+      "label": "Résultat net",
+      "statementLine": "CR_RESULTAT",
+      "flow": true,
+      "pctRange": [5, 10],
+      "defaultPct": 7.5,
+      "suitability": "unstable",
+      "feedback": "Le résultat d’un bailleur social est instable : plus-values de cession et quote-part des subventions le font varier d’une année sur l’autre. Sur une extraction en cours d’exercice, il ne comprend ni les amortissements ni les écritures d’inventaire."
+    }
+  ],
+  "vintages": {
+    "certified2024": { "label": "Comptes certifiés 2024" },
+    "interim": { "label": "Extraction comptable en cours d’exercice (annualisée)" },
+    "draft2025": { "label": "Projet de comptes 2025" }
+  },
+  "thresholds": {
+    "planningPctRange": [60, 75],
+    "trivialPctRange": [3, 5],
+    "specificPctRange": [10, 75],
+    "defaultPlanningPct": 65,
+    "defaultTrivialPct": 5,
+    "roundingEuros": [0, 1000, 5000, 10000]
+  },
+  "reference": {
+    "base": "rents",
+    "vintage": "draft2025",
+    "pct": 1.25,
+    "pctRange": [1, 1.5],
+    "planningPct": 65,
+    "trivialPct": 5
+  },
+  "factors": [
+    { "id": "users", "label": "Utilisateurs des comptes : conseil d’administration, actionnaires, financeurs, autorités de contrôle" },
+    { "id": "publicFunding", "label": "Organisme d’intérêt général financé par des fonds et des garanties publics" },
+    { "id": "stableActivity", "label": "Activité récurrente et peu volatile (loyers conventionnés)" },
+    { "id": "keyStaffChange", "label": "Changement de personnes clés de la fonction financière" },
+    { "id": "systemChange", "label": "Changement de système d’information ou d’interfaces en cours d’exercice" },
+    { "id": "regulatorObservations", "label": "Observations antérieures d’une autorité de contrôle" },
+    { "id": "priorMisstatements", "label": "Anomalies ou faiblesses relevées lors des exercices précédents" },
+    { "id": "incentives", "label": "Rémunération variable de la direction assise sur des indicateurs financiers" },
+    { "id": "regulatoryRatios", "label": "Indicateurs réglementaires proches de leur seuil (autofinancement net)" },
+    { "id": "groupTransactions", "label": "Opérations significatives avec les sociétés du groupe" },
+    { "id": "lastYearOfMandate", "label": "Dernier exercice du mandat du commissaire aux comptes" }
+  ],
+  "riskLevels": [
+    { "id": "low", "label": "Faible", "needsJustification": false },
+    { "id": "moderate", "label": "Modéré", "needsJustification": false },
+    { "id": "high", "label": "Élevé", "needsJustification": true },
+    { "id": "significant", "label": "Risque important", "needsJustification": true }
+  ],
+  "assertions": [
+    { "id": "occurrence", "label": "Réalité" },
+    { "id": "completeness", "label": "Exhaustivité" },
+    { "id": "cutoff", "label": "Séparation des exercices" },
+    { "id": "valuation", "label": "Évaluation" },
+    { "id": "classification", "label": "Classement" },
+    { "id": "presentation", "label": "Présentation et information" },
+    { "id": "compliance", "label": "Conformité aux textes" }
+  ],
+  "revenueTypes": [
+    { "id": "recurringRents", "label": "Quittancement récurrent des loyers et redevances", "description": "Produits générés automatiquement par le logiciel de gestion locative à partir des baux, sans intervention manuelle.", "reference": "rebuttable" },
+    { "id": "chargeRegularisation", "label": "Régularisation des charges récupérables", "description": "Produit ou charge de fin d’exercice estimé à partir des dépenses récupérables et des provisions appelées.", "reference": "retained" },
+    { "id": "accruedIncome", "label": "Produits à recevoir de fin d’exercice", "description": "Écritures d’inventaire, généralement saisies manuellement lors de la clôture des comptes.", "reference": "retained" },
+    { "id": "ancillaryIncome", "label": "Produits des activités annexes et refacturations", "description": "Produits non récurrents ou contractuels (refacturations, prestations, redevances diverses).", "reference": "retained" },
+    { "id": "propertySales", "label": "Ventes de logements", "description": "Cessions du patrimoine : date du transfert de propriété et séparation des exercices.", "reference": "retained" },
+    { "id": "provisionReversals", "label": "Reprises de provisions et de dépréciations", "description": "Produits issus d’estimations de la direction (provision pour gros entretien, dépréciations).", "reference": "retained" }
+  ],
+  "lawsRegulations": [
+    { "id": "rentRevision", "label": "Révision annuelle des loyers des logements conventionnés", "description": "Hausse limitée par un indice de référence publié, sauf dérogations prévues par les textes (références à vérifier)." },
+    { "id": "recoverableCharges", "label": "Charges récupérables auprès des locataires", "description": "Liste réglementaire des charges récupérables et quote-part de la rémunération des gardiens (références à vérifier)." },
+    { "id": "regulatedAgreements", "label": "Conventions réglementées", "description": "Autorisation préalable du conseil et rapport spécial du commissaire aux comptes (références à vérifier)." },
+    { "id": "netSelfFinancing", "label": "Autofinancement net HLM", "description": "Calcul, comparaison aux taux de référence fixés par arrêté et information du conseil (références à vérifier)." },
+    { "id": "groupFinancing", "label": "Opérations financières entre organismes d’un même groupe", "description": "Conditions et formalités des avances et prêts entre organismes de logement social (références à vérifier)." },
+    { "id": "paymentTerms", "label": "Délais de paiement des fournisseurs et des clients", "description": "Informations du rapport de gestion, vérifiées par le commissaire aux comptes (références à vérifier)." },
+    { "id": "rls", "label": "Réduction de loyer de solidarité", "description": "Application aux locataires bénéficiaires et compensation avec les aides au logement (références à vérifier)." },
+    { "id": "procurement", "label": "Règles de mise en concurrence des marchés", "description": "Procédures de la commande applicables à l’organisme (références à vérifier)." },
+    { "id": "energyDecency", "label": "Décence énergétique des logements", "description": "Critères de décence applicables aux nouveaux baux (références à vérifier)." }
+  ],
+  "overrideResponses": ["journal-entry-tests", "retrospective-estimates", "unusual-transactions"],
+  "referenceRisks": {
+    "crossCycle": "significant",
+    "rentReceivables": "high",
+    "fixedAssets": "high",
+    "provisions": "significant",
+    "debtTreasury": "moderate",
+    "purchases": "moderate",
+    "equitySubsidies": "moderate",
+    "disclosures": "high"
+  }
 }

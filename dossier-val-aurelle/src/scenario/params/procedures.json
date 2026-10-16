@@ -1,5 +1,3049 @@
 {
-  "_comment": "Bibliothèque de procédures (§10.3, plan J4 §7) et programme 2024 du cabinet. Contenu fourni en J4b.",
-  "procedures": [],
-  "firmProgramme2024": []
+ "_comment": "Bibliothèque de procédures (cahier des charges §10.3, plan J4 §7) et programme 2024 du cabinet. Heures par profil : senior (le joueur), assistant (Léa), intern (Hugo), itAuditor (Sofia, enveloppe à part) ; un profil absent ne peut pas exécuter la procédure. Phases : périodes du calendrier (game.json) où la procédure peut être lancée. effectiveFor : parties d’anomalies que la procédure peut révéler (débrief et tests seulement, jamais affiché hors mode concepteur). delegated : variante fautive scénarisée de J5 (T1 à T4) ; en J4, les travaux délégués sont corrects. Calibrage (tests/params/procedures.test.ts) : bibliothèque au profil le moins cher ≈ 450 h, programme du cabinet ≈ 380 h.",
+ "procedures": [
+  {
+   "id": "engagement-acceptance",
+   "cycle": "crossCycle",
+   "title": "Acceptation et maintien de la mission, indépendance",
+   "objective": "S’assurer que la mission peut être poursuivie et que l’équipe est indépendante de l’entité.",
+   "steps": [
+    "Mettre à jour la fiche d’acceptation et de maintien de la mission.",
+    "Recueillir les déclarations d’indépendance de l’équipe et vérifier l’absence de services interdits."
+   ],
+   "assertions": [
+    "compliance"
+   ],
+   "risksAddressed": [
+    "crossCycle"
+   ],
+   "hours": {
+    "senior": 4.5
+   },
+   "phases": [
+    "planning",
+    "interim"
+   ],
+   "requires": [],
+   "mandatory": "acceptance",
+   "output": {
+    "kind": "memo",
+    "memo": "independence"
+   },
+   "completion": [],
+   "effectiveFor": []
+  },
+  {
+   "id": "permanent-file",
+   "cycle": "crossCycle",
+   "title": "Lecture du dossier permanent et des comptes certifiés de l’exercice précédent",
+   "objective": "Reprendre connaissance de l’entité, de son organisation et de ses comptes antérieurs.",
+   "steps": [
+    "Lire les statuts, l’organigramme, la convention d’utilité sociale et le plan stratégique de patrimoine.",
+    "Lire les comptes certifiés et le rapport du commissaire aux comptes de l’exercice précédent.",
+    "Relever les évolutions de l’organisation et des systèmes depuis la précédente mission."
+   ],
+   "assertions": [
+    "presentation"
+   ],
+   "risksAddressed": [
+    "crossCycle"
+   ],
+   "hours": {
+    "senior": 7.5,
+    "assistant": 9.5
+   },
+   "phases": [
+    "planning",
+    "interim"
+   ],
+   "requires": [],
+   "output": {
+    "kind": "view",
+    "screen": "/ged"
+   },
+   "completion": [
+    {
+     "kind": "read",
+     "category": "permanent",
+     "minPct": 50
+    }
+   ],
+   "effectiveFor": []
+  },
+  {
+   "id": "board-minutes",
+   "cycle": "crossCycle",
+   "title": "Lecture des procès-verbaux du conseil d’administration et de l’assemblée",
+   "objective": "Identifier les décisions de gouvernance ayant une incidence sur les comptes ou sur les obligations de l’entité.",
+   "steps": [
+    "Lire les procès-verbaux des conseils de l’exercice et de la fin de l’exercice précédent.",
+    "Relever les décisions sur le patrimoine, les loyers, les financements et les conventions.",
+    "Rapprocher les décisions relevées des comptes et des autres travaux."
+   ],
+   "assertions": [
+    "completeness",
+    "valuation",
+    "compliance"
+   ],
+   "risksAddressed": [
+    "crossCycle",
+    "fixedAssets:valuation",
+    "rentReceivables:compliance",
+    "laws:regulatedAgreements",
+    "laws:rentRevision"
+   ],
+   "hours": {
+    "senior": 7.5,
+    "assistant": 9.5
+   },
+   "phases": [
+    "planning",
+    "interim",
+    "final"
+   ],
+   "requires": [],
+   "output": {
+    "kind": "view",
+    "screen": "/ged"
+   },
+   "completion": [
+    {
+     "kind": "read",
+     "category": "governance",
+     "minPct": 80
+    }
+   ],
+   "effectiveFor": [
+    "A04",
+    "A17",
+    "A12.ii"
+   ]
+  },
+  {
+   "id": "preliminary-analytical",
+   "cycle": "crossCycle",
+   "title": "Revue analytique préliminaire sur l’extraction comptable",
+   "objective": "Identifier les variations inattendues entre les dix premiers mois de l’exercice et la même période de l’exercice précédent.",
+   "steps": [
+    "Comparer la balance extraite à la balance de l’exercice précédent à la même date.",
+    "Expliquer les variations significatives par entretien ou par les pièces.",
+    "Reporter les zones de risque identifiées dans l’évaluation des risques."
+   ],
+   "assertions": [
+    "occurrence",
+    "completeness"
+   ],
+   "risksAddressed": [
+    "crossCycle"
+   ],
+   "hours": {
+    "senior": 7.5,
+    "assistant": 9.5
+   },
+   "phases": [
+    "planning",
+    "interim"
+   ],
+   "requires": [
+    {
+     "kind": "vintage",
+     "vintage": "interim"
+    }
+   ],
+   "output": {
+    "kind": "view",
+    "screen": "/balance"
+   },
+   "completion": [],
+   "effectiveFor": []
+  },
+  {
+   "id": "fraud-assessment",
+   "cycle": "crossCycle",
+   "title": "Évaluation du risque de fraude",
+   "objective": "Apprécier les facteurs de risque de fraude et documenter la présomption de fraude sur les produits.",
+   "steps": [
+    "S’entretenir avec la direction et la gouvernance de leur évaluation du risque de fraude.",
+    "Documenter la présomption de fraude sur chaque type de produits.",
+    "Documenter le risque de contournement des contrôles par la direction."
+   ],
+   "assertions": [
+    "occurrence"
+   ],
+   "risksAddressed": [
+    "crossCycle",
+    "override",
+    "fraud:recurringRents",
+    "fraud:chargeRegularisation",
+    "fraud:accruedIncome",
+    "fraud:ancillaryIncome",
+    "fraud:propertySales",
+    "fraud:provisionReversals"
+   ],
+   "hours": {
+    "senior": 5
+   },
+   "phases": [
+    "planning",
+    "interim"
+   ],
+   "requires": [],
+   "output": {
+    "kind": "memo",
+    "memo": "fraud-assessment"
+   },
+   "completion": [],
+   "effectiveFor": []
+  },
+  {
+   "id": "laws-regulations",
+   "cycle": "crossCycle",
+   "title": "Prise de connaissance du respect des textes légaux et réglementaires",
+   "objective": "Identifier les textes ayant une incidence directe sur les comptes et les procédures de l’entité pour s’y conformer.",
+   "steps": [
+    "Recenser les textes applicables à un bailleur social et leur incidence sur les comptes.",
+    "S’entretenir avec la direction des contrôles et des contentieux en cours."
+   ],
+   "assertions": [
+    "compliance"
+   ],
+   "risksAddressed": [
+    "crossCycle:compliance",
+    "laws:rentRevision",
+    "laws:recoverableCharges",
+    "laws:regulatedAgreements",
+    "laws:netSelfFinancing",
+    "laws:groupFinancing",
+    "laws:paymentTerms",
+    "laws:rls",
+    "laws:procurement",
+    "laws:energyDecency"
+   ],
+   "hours": {
+    "senior": 5,
+    "assistant": 6.5
+   },
+   "phases": [
+    "planning",
+    "interim",
+    "final"
+   ],
+   "requires": [],
+   "output": {
+    "kind": "memo",
+    "memo": "laws-regulations"
+   },
+   "completion": [],
+   "effectiveFor": []
+  },
+  {
+   "id": "journal-entry-tests",
+   "cycle": "crossCycle",
+   "title": "Tests d’écritures sur le fichier des écritures comptables",
+   "objective": "Répondre au risque de contournement des contrôles par la direction par l’analyse des écritures de l’exercice.",
+   "steps": [
+    "Définir et enregistrer des requêtes sur les critères usuels : validation après la clôture, utilisateurs, montants ronds, couples de comptes inhabituels, week-ends, absence de pièce.",
+    "Examiner les écritures retenues et obtenir leurs pièces justificatives.",
+    "Conclure sur les écritures inhabituelles relevées."
+   ],
+   "assertions": [
+    "occurrence",
+    "cutoff"
+   ],
+   "risksAddressed": [
+    "override",
+    "crossCycle:occurrence",
+    "fraud:accruedIncome",
+    "fraud:ancillaryIncome"
+   ],
+   "hours": {
+    "senior": 15.5,
+    "assistant": 19.5
+   },
+   "phases": [
+    "final",
+    "completion"
+   ],
+   "requires": [
+    {
+     "kind": "vintage",
+     "vintage": "draftLedger"
+    }
+   ],
+   "mandatory": "journalEntryTests",
+   "overrideResponse": true,
+   "output": {
+    "kind": "view",
+    "screen": "/fec"
+   },
+   "completion": [
+    {
+     "kind": "queries",
+     "criteria": [
+      "validatedAfterClosing",
+      "users",
+      "roundMultiple",
+      "rarePairsMax",
+      "weekend",
+      "missingPiece"
+     ],
+     "min": 4
+    }
+   ],
+   "effectiveFor": [
+    "A11"
+   ]
+  },
+  {
+   "id": "retrospective-estimates",
+   "cycle": "crossCycle",
+   "title": "Revue rétrospective des estimations de l’exercice précédent",
+   "objective": "Apprécier un éventuel biais de la direction dans ses estimations en comparant les estimations antérieures à leur dénouement.",
+   "steps": [
+    "Comparer la provision pour gros entretien de l’exercice précédent aux travaux réalisés et aux reprises de l’exercice.",
+    "Comparer la dépréciation des créances de l’exercice précédent aux pertes et recouvrements constatés.",
+    "Conclure sur l’existence d’un biais dans les estimations de l’exercice."
+   ],
+   "assertions": [
+    "valuation"
+   ],
+   "risksAddressed": [
+    "override",
+    "provisions:valuation",
+    "rentReceivables:valuation",
+    "fraud:provisionReversals"
+   ],
+   "hours": {
+    "senior": 7,
+    "assistant": 9
+   },
+   "phases": [
+    "final"
+   ],
+   "requires": [
+    {
+     "kind": "vintage",
+     "vintage": "draftLedger"
+    }
+   ],
+   "overrideResponse": true,
+   "output": {
+    "kind": "memo",
+    "memo": "retrospective"
+   },
+   "completion": [],
+   "effectiveFor": [
+    "A05",
+    "A07.a"
+   ]
+  },
+  {
+   "id": "unusual-transactions",
+   "cycle": "crossCycle",
+   "title": "Revue des opérations inhabituelles ou hors du cours normal des affaires",
+   "objective": "Identifier les opérations significatives inhabituelles et en comprendre la justification économique.",
+   "steps": [
+    "Rechercher dans le grand livre les opérations importantes, isolées ou imputées sur des comptes inhabituels.",
+    "Obtenir la justification et l’autorisation de chaque opération retenue."
+   ],
+   "assertions": [
+    "occurrence",
+    "classification"
+   ],
+   "risksAddressed": [
+    "override",
+    "crossCycle:occurrence",
+    "debtTreasury:classification"
+   ],
+   "hours": {
+    "senior": 7
+   },
+   "phases": [
+    "final"
+   ],
+   "requires": [
+    {
+     "kind": "vintage",
+     "vintage": "draftLedger"
+    }
+   ],
+   "overrideResponse": true,
+   "output": {
+    "kind": "view",
+    "screen": "/grand-livre"
+   },
+   "completion": [],
+   "effectiveFor": [
+    "A18",
+    "A12.i"
+   ]
+  },
+  {
+   "id": "subsequent-events",
+   "cycle": "crossCycle",
+   "title": "Revue des événements postérieurs à la clôture",
+   "objective": "Identifier les événements survenus entre la clôture et la signature du rapport qui appellent un ajustement ou une information.",
+   "steps": [
+    "Lire les procès-verbaux, le courrier et la presse postérieurs à la clôture.",
+    "S’entretenir avec la direction des litiges, des créances et des opérations postérieures.",
+    "Mettre à jour la revue jusqu’à la date de signature du rapport."
+   ],
+   "assertions": [
+    "completeness",
+    "valuation",
+    "cutoff"
+   ],
+   "risksAddressed": [
+    "crossCycle:completeness",
+    "rentReceivables:valuation",
+    "fixedAssets:cutoff"
+   ],
+   "hours": {
+    "senior": 7.5
+   },
+   "phases": [
+    "final",
+    "completion",
+    "reporting"
+   ],
+   "requires": [
+    {
+     "kind": "dateFrom",
+     "date": "2026-01-01"
+    }
+   ],
+   "mandatory": "subsequentEvents",
+   "output": {
+    "kind": "memo",
+    "memo": "subsequent-events"
+   },
+   "completion": [
+    {
+     "kind": "updated",
+     "fromPeriod": "completion"
+    }
+   ],
+   "effectiveFor": [
+    "A15",
+    "A03"
+   ]
+  },
+  {
+   "id": "representation-letter",
+   "cycle": "crossCycle",
+   "title": "Préparation de la lettre d’affirmation de la direction",
+   "objective": "Préparer les déclarations écrites demandées à la direction, dont les points spécifiques au dossier.",
+   "steps": [
+    "Préparer le modèle de lettre et les points spécifiques au dossier.",
+    "Recenser les estimations, litiges et événements postérieurs à faire confirmer."
+   ],
+   "assertions": [
+    "completeness"
+   ],
+   "risksAddressed": [
+    "crossCycle:completeness"
+   ],
+   "hours": {
+    "senior": 4.5
+   },
+   "phases": [
+    "final",
+    "completion",
+    "reporting"
+   ],
+   "requires": [
+    {
+     "kind": "dateFrom",
+     "date": "2026-01-01"
+    }
+   ],
+   "mandatory": "representationLetter",
+   "output": {
+    "kind": "memo",
+    "memo": "representation-letter"
+   },
+   "completion": [],
+   "effectiveFor": []
+  },
+  {
+   "id": "comparative-check",
+   "cycle": "crossCycle",
+   "title": "Contrôle du comparatif : pointage de la colonne de l’exercice précédent",
+   "objective": "Vérifier que les montants de l’exercice précédent présentés concordent avec les comptes certifiés.",
+   "steps": [
+    "Pointer chaque montant de la colonne de l’exercice précédent sur les comptes certifiés.",
+    "Analyser toute différence et l’information donnée en annexe."
+   ],
+   "assertions": [
+    "presentation",
+    "classification"
+   ],
+   "risksAddressed": [
+    "crossCycle:presentation",
+    "disclosures:presentation"
+   ],
+   "hours": {
+    "senior": 7,
+    "assistant": 9,
+    "intern": 10
+   },
+   "phases": [
+    "final",
+    "completion"
+   ],
+   "requires": [
+    {
+     "kind": "vintage",
+     "vintage": "draftStatements"
+    }
+   ],
+   "mandatory": "comparative",
+   "output": {
+    "kind": "view",
+    "screen": "/etats"
+   },
+   "completion": [
+    {
+     "kind": "ticks",
+     "scope": "comparative",
+     "minPct": 80
+    }
+   ],
+   "effectiveFor": [
+    "A22"
+   ]
+  },
+  {
+   "id": "statements-ticking",
+   "cycle": "crossCycle",
+   "title": "Pointage des états financiers et de l’annexe sur la balance",
+   "objective": "Vérifier la concordance des états financiers et des tableaux de l’annexe avec la balance générale.",
+   "steps": [
+    "Pointer les postes du bilan et du compte de résultat sur la balance.",
+    "Pointer les tableaux de l’annexe sur la balance et vérifier leurs totaux."
+   ],
+   "assertions": [
+    "presentation",
+    "classification"
+   ],
+   "risksAddressed": [
+    "crossCycle:presentation",
+    "disclosures:presentation"
+   ],
+   "hours": {
+    "senior": 13,
+    "assistant": 16.5,
+    "intern": 19
+   },
+   "phases": [
+    "final",
+    "completion"
+   ],
+   "requires": [
+    {
+     "kind": "vintage",
+     "vintage": "draftStatements"
+    }
+   ],
+   "output": {
+    "kind": "view",
+    "screen": "/etats"
+   },
+   "completion": [
+    {
+     "kind": "ticks",
+     "scope": "statements",
+     "minPct": 60
+    },
+    {
+     "kind": "ticks",
+     "scope": "annex",
+     "minPct": 40
+    }
+   ],
+   "effectiveFor": [
+    "A21",
+    "A22"
+   ]
+  },
+  {
+   "id": "regulated-agreements",
+   "cycle": "crossCycle",
+   "title": "Revue des conventions réglementées et des transactions avec les parties liées",
+   "objective": "Identifier les conventions soumises à autorisation et les transactions avec les parties liées.",
+   "steps": [
+    "Obtenir le registre des conventions et la liste des conventions conclues dans l’exercice.",
+    "Rapprocher les conventions des procès-verbaux du conseil et de la composition des conseils.",
+    "Identifier les conventions non autorisées et les informations à donner."
+   ],
+   "assertions": [
+    "compliance",
+    "completeness",
+    "presentation"
+   ],
+   "risksAddressed": [
+    "crossCycle:compliance",
+    "disclosures:completeness",
+    "laws:regulatedAgreements",
+    "laws:groupFinancing"
+   ],
+   "hours": {
+    "senior": 7.5,
+    "assistant": 9.5
+   },
+   "phases": [
+    "interim",
+    "final"
+   ],
+   "requires": [],
+   "output": {
+    "kind": "requests",
+    "requests": [
+     {
+      "family": "closing-file",
+      "object": "governance-register"
+     }
+    ]
+   },
+   "completion": [
+    {
+     "kind": "requests"
+    }
+   ],
+   "effectiveFor": [
+    "A12.i",
+    "A12.ii",
+    "A12.iii"
+   ]
+  },
+  {
+   "id": "migration-review",
+   "cycle": "crossCycle",
+   "title": "Revue de la migration du système d’information",
+   "objective": "S’assurer que la reprise des données et les interfaces du nouveau système sont complètes et exactes.",
+   "steps": [
+    "Obtenir le dossier de migration et le rapprochement de la reprise des soldes.",
+    "Tester les interfaces de quittancement et de règlements après la bascule.",
+    "Évaluer les contrôles de rapprochement mis en place après la migration."
+   ],
+   "assertions": [
+    "completeness",
+    "occurrence"
+   ],
+   "risksAddressed": [
+    "crossCycle",
+    "rentReceivables:completeness",
+    "rentReceivables:occurrence"
+   ],
+   "hours": {
+    "itAuditor": 6,
+    "senior": 10
+   },
+   "phases": [
+    "interim",
+    "final"
+   ],
+   "requires": [],
+   "output": {
+    "kind": "requests",
+    "requests": [
+     {
+      "family": "closing-file",
+      "object": "migration"
+     }
+    ]
+   },
+   "completion": [
+    {
+     "kind": "requests"
+    }
+   ],
+   "effectiveFor": [
+    "A19"
+   ]
+  },
+  {
+   "id": "it-general-controls",
+   "cycle": "crossCycle",
+   "title": "Contrôles généraux informatiques",
+   "objective": "Apprécier les contrôles d’accès, les habilitations et la séparation des tâches dans les applications financières.",
+   "steps": [
+    "Revoir les habilitations des utilisateurs du logiciel comptable et de la gestion locative.",
+    "Tester la séparation entre saisie et validation des écritures."
+   ],
+   "assertions": [
+    "occurrence"
+   ],
+   "risksAddressed": [
+    "crossCycle",
+    "override"
+   ],
+   "hours": {
+    "itAuditor": 4,
+    "senior": 6
+   },
+   "phases": [
+    "interim",
+    "final"
+   ],
+   "requires": [],
+   "output": {
+    "kind": "memo",
+    "memo": "it-controls"
+   },
+   "completion": [],
+   "effectiveFor": []
+  },
+  {
+   "id": "rent-walkthrough",
+   "cycle": "rentReceivables",
+   "title": "Prise de connaissance du cycle des loyers",
+   "objective": "Comprendre le quittancement, les encaissements, le recouvrement et les interfaces avec la comptabilité.",
+   "steps": [
+    "Décrire le processus de quittancement et d’encaissement.",
+    "Identifier les contrôles clés et l’incidence du changement de logiciel."
+   ],
+   "assertions": [
+    "occurrence",
+    "completeness"
+   ],
+   "risksAddressed": [
+    "rentReceivables"
+   ],
+   "hours": {
+    "senior": 6,
+    "assistant": 7.5
+   },
+   "phases": [
+    "planning",
+    "interim"
+   ],
+   "requires": [],
+   "output": {
+    "kind": "memo",
+    "memo": "walkthrough"
+   },
+   "completion": [],
+   "effectiveFor": []
+  },
+  {
+   "id": "rent-controls",
+   "cycle": "rentReceivables",
+   "title": "Tests des contrôles du quittancement et des encaissements",
+   "objective": "Vérifier le fonctionnement des contrôles clés du cycle sur l’exercice.",
+   "steps": [
+    "Tester les contrôles de mise à jour des baux et des loyers.",
+    "Tester les contrôles d’imputation des encaissements et de relance."
+   ],
+   "assertions": [
+    "occurrence",
+    "completeness"
+   ],
+   "risksAddressed": [
+    "rentReceivables:occurrence",
+    "rentReceivables:completeness"
+   ],
+   "hours": {
+    "senior": 7.5,
+    "assistant": 9.5,
+    "intern": 11
+   },
+   "phases": [
+    "interim",
+    "final"
+   ],
+   "requires": [],
+   "output": {
+    "kind": "memo",
+    "memo": "controls"
+   },
+   "completion": [],
+   "effectiveFor": []
+  },
+  {
+   "id": "rent-analytical",
+   "cycle": "rentReceivables",
+   "title": "Revue analytique des loyers par programme",
+   "objective": "Comparer les loyers quittancés au prévisionnel et à l’exercice précédent, programme par programme.",
+   "steps": [
+    "Comparer les loyers par programme et par mois à l’exercice précédent.",
+    "Expliquer les variations par les livraisons, les ventes, la vacance et la révision des loyers."
+   ],
+   "assertions": [
+    "occurrence",
+    "completeness"
+   ],
+   "risksAddressed": [
+    "rentReceivables:occurrence",
+    "rentReceivables:completeness",
+    "fraud:recurringRents"
+   ],
+   "hours": {
+    "senior": 7,
+    "assistant": 9,
+    "intern": 10
+   },
+   "phases": [
+    "interim",
+    "final"
+   ],
+   "requires": [
+    {
+     "kind": "vintage",
+     "vintage": "interim"
+    }
+   ],
+   "output": {
+    "kind": "view",
+    "screen": "/balance"
+   },
+   "completion": [],
+   "effectiveFor": []
+  },
+  {
+   "id": "rent-increase",
+   "cycle": "rentReceivables",
+   "title": "Test de la révision des loyers au 1er janvier",
+   "objective": "Vérifier que la hausse appliquée aux logements conventionnés respecte la décision du conseil et le plafond réglementaire.",
+   "steps": [
+    "Sélectionner un échantillon de logements conventionnés et comparer les quittances avant et après la révision.",
+    "Rapprocher le taux appliqué de la délibération du conseil et du plafond réglementaire."
+   ],
+   "assertions": [
+    "compliance",
+    "occurrence"
+   ],
+   "risksAddressed": [
+    "rentReceivables:compliance",
+    "laws:rentRevision",
+    "fraud:recurringRents"
+   ],
+   "hours": {
+    "senior": 8.5,
+    "assistant": 10.5,
+    "intern": 12.5
+   },
+   "phases": [
+    "interim",
+    "final"
+   ],
+   "requires": [],
+   "output": {
+    "kind": "sample",
+    "population": "rent-roll"
+   },
+   "completion": [
+    {
+     "kind": "sample"
+    }
+   ],
+   "effectiveFor": [
+    "A17"
+   ],
+   "delegated": {
+    "variant": "T4",
+    "member": "hugo"
+   }
+  },
+  {
+   "id": "subledger-reconciliation",
+   "cycle": "rentReceivables",
+   "title": "Rapprochement de l’auxiliaire des locataires avec la comptabilité générale",
+   "objective": "S’assurer que les comptes de locataires concordent avec l’auxiliaire de la gestion locative.",
+   "steps": [
+    "Rapprocher la balance de l’auxiliaire des comptes de locataires de la balance générale.",
+    "Analyser les écarts de rapprochement et leur origine."
+   ],
+   "assertions": [
+    "completeness",
+    "occurrence"
+   ],
+   "risksAddressed": [
+    "rentReceivables:completeness",
+    "rentReceivables:occurrence"
+   ],
+   "hours": {
+    "senior": 7.5,
+    "assistant": 9.5,
+    "intern": 11
+   },
+   "phases": [
+    "interim",
+    "final"
+   ],
+   "requires": [
+    {
+     "kind": "vintage",
+     "vintage": "interim"
+    }
+   ],
+   "output": {
+    "kind": "view",
+    "screen": "/balance"
+   },
+   "completion": [],
+   "effectiveFor": [
+    "A19"
+   ]
+  },
+  {
+   "id": "aged-balance",
+   "cycle": "rentReceivables",
+   "title": "Revue de la balance âgée des locataires et des gestionnaires de foyers",
+   "objective": "Identifier les créances anciennes, les soldes créditeurs et les débiteurs en difficulté.",
+   "steps": [
+    "Obtenir la balance âgée et la rapprocher de la comptabilité.",
+    "Analyser les créances anciennes et les soldes créditeurs.",
+    "Rapprocher les créances significatives des encaissements postérieurs."
+   ],
+   "assertions": [
+    "valuation",
+    "presentation"
+   ],
+   "risksAddressed": [
+    "rentReceivables:valuation",
+    "rentReceivables:presentation"
+   ],
+   "hours": {
+    "senior": 7.5,
+    "assistant": 9.5,
+    "intern": 11
+   },
+   "phases": [
+    "final"
+   ],
+   "requires": [
+    {
+     "kind": "vintage",
+     "vintage": "draftLedger"
+    }
+   ],
+   "output": {
+    "kind": "view",
+    "screen": "/ged"
+   },
+   "completion": [],
+   "effectiveFor": [
+    "A07.c",
+    "A15"
+   ]
+  },
+  {
+   "id": "impairment-recalc",
+   "cycle": "rentReceivables",
+   "title": "Recalcul de la dépréciation des créances locatives",
+   "objective": "Vérifier la dépréciation selon la méthode décrite en annexe et apprécier les hypothèses de la direction.",
+   "steps": [
+    "Obtenir le fichier de calcul de la direction et la note de méthode.",
+    "Recalculer la dépréciation par catégorie de créances.",
+    "Confronter les taux retenus aux statistiques de recouvrement."
+   ],
+   "assertions": [
+    "valuation"
+   ],
+   "risksAddressed": [
+    "rentReceivables:valuation",
+    "fraud:provisionReversals"
+   ],
+   "hours": {
+    "senior": 10.5,
+    "assistant": 13
+   },
+   "phases": [
+    "final"
+   ],
+   "requires": [
+    {
+     "kind": "vintage",
+     "vintage": "draftLedger"
+    }
+   ],
+   "output": {
+    "kind": "recalc",
+    "tool": "impairment"
+   },
+   "completion": [
+    {
+     "kind": "recalc"
+    }
+   ],
+   "effectiveFor": [
+    "A07.a",
+    "A07.b"
+   ],
+   "delegated": {
+    "variant": "T3",
+    "member": "lea"
+   }
+  },
+  {
+   "id": "rls-apl",
+   "cycle": "rentReceivables",
+   "title": "Test de la réduction de loyer de solidarité et des aides au logement",
+   "objective": "Vérifier l’application de la réduction de loyer de solidarité et son rapprochement avec les états de l’organisme payeur.",
+   "steps": [
+    "Rapprocher la réduction comptabilisée des états de l’organisme payeur.",
+    "Tester son application sur un échantillon de locataires."
+   ],
+   "assertions": [
+    "occurrence",
+    "compliance"
+   ],
+   "risksAddressed": [
+    "rentReceivables:compliance",
+    "laws:rls"
+   ],
+   "hours": {
+    "senior": 6,
+    "assistant": 7.5,
+    "intern": 8.5
+   },
+   "phases": [
+    "final"
+   ],
+   "requires": [],
+   "output": {
+    "kind": "view",
+    "screen": "/ged"
+   },
+   "completion": [],
+   "effectiveFor": []
+  },
+  {
+   "id": "charges-regularisation",
+   "cycle": "rentReceivables",
+   "title": "Revue de la régularisation des charges récupérables",
+   "objective": "Vérifier que les charges refacturées aux locataires sont récupérables et correctement réparties.",
+   "steps": [
+    "Obtenir l’état de régularisation par programme.",
+    "Rapprocher les dépenses refacturées de la liste réglementaire des charges récupérables.",
+    "Tester la quote-part récupérable des charges de personnel."
+   ],
+   "assertions": [
+    "valuation",
+    "compliance"
+   ],
+   "risksAddressed": [
+    "rentReceivables:valuation",
+    "rentReceivables:compliance",
+    "laws:recoverableCharges",
+    "fraud:chargeRegularisation"
+   ],
+   "hours": {
+    "senior": 10.5,
+    "assistant": 13
+   },
+   "phases": [
+    "final"
+   ],
+   "requires": [
+    {
+     "kind": "vintage",
+     "vintage": "draftLedger"
+    }
+   ],
+   "output": {
+    "kind": "view",
+    "screen": "/ged"
+   },
+   "completion": [],
+   "effectiveFor": [
+    "A10.a",
+    "A10.b"
+   ]
+  },
+  {
+   "id": "revenue-cutoff",
+   "cycle": "rentReceivables",
+   "title": "Séparation des exercices des produits",
+   "objective": "Vérifier que les produits à recevoir et constatés d’avance de fin d’exercice sont justifiés.",
+   "steps": [
+    "Obtenir l’état des produits à recevoir et le rapprocher des comptes.",
+    "Obtenir les justificatifs des produits significatifs."
+   ],
+   "assertions": [
+    "cutoff",
+    "occurrence"
+   ],
+   "risksAddressed": [
+    "rentReceivables:cutoff",
+    "fraud:accruedIncome",
+    "fraud:ancillaryIncome"
+   ],
+   "hours": {
+    "senior": 7,
+    "assistant": 9
+   },
+   "phases": [
+    "final"
+   ],
+   "requires": [
+    {
+     "kind": "vintage",
+     "vintage": "draftLedger"
+    }
+   ],
+   "output": {
+    "kind": "view",
+    "screen": "/grand-livre"
+   },
+   "completion": [],
+   "effectiveFor": [
+    "A11"
+   ]
+  },
+  {
+   "id": "hostel-managers",
+   "cycle": "rentReceivables",
+   "title": "Revue des redevances et des conventions des gestionnaires de foyers",
+   "objective": "Vérifier les redevances facturées aux gestionnaires des structures collectives et leur recouvrabilité.",
+   "steps": [
+    "Obtenir les conventions de location et de gestion.",
+    "Rapprocher les redevances facturées et les encaissements.",
+    "Apprécier la situation financière des gestionnaires débiteurs."
+   ],
+   "assertions": [
+    "occurrence",
+    "valuation"
+   ],
+   "risksAddressed": [
+    "rentReceivables:valuation",
+    "fraud:ancillaryIncome"
+   ],
+   "hours": {
+    "senior": 6,
+    "assistant": 7.5
+   },
+   "phases": [
+    "interim",
+    "final"
+   ],
+   "requires": [],
+   "output": {
+    "kind": "view",
+    "screen": "/ged"
+   },
+   "completion": [],
+   "effectiveFor": [
+    "A11",
+    "A15"
+   ]
+  },
+  {
+   "id": "debtor-confirmations",
+   "cycle": "rentReceivables",
+   "title": "Demandes de confirmation des débiteurs",
+   "objective": "Obtenir des tiers débiteurs la confirmation des soldes et des engagements.",
+   "steps": [
+    "Sélectionner les débiteurs à confirmer (gestionnaires de foyers, sociétés du groupe).",
+    "Préparer les demandes avant l’envoi."
+   ],
+   "assertions": [
+    "occurrence",
+    "valuation"
+   ],
+   "risksAddressed": [
+    "rentReceivables:occurrence",
+    "fraud:ancillaryIncome"
+   ],
+   "hours": {
+    "senior": 3.5,
+    "assistant": 4.5,
+    "intern": 5
+   },
+   "phases": [
+    "planning",
+    "interim"
+   ],
+   "requires": [],
+   "output": {
+    "kind": "confirmations"
+   },
+   "completion": [
+    {
+     "kind": "confirmations",
+     "min": 1
+    }
+   ],
+   "effectiveFor": [
+    "A11",
+    "A15",
+    "A12.i"
+   ]
+  },
+  {
+   "id": "fixed-assets-walkthrough",
+   "cycle": "fixedAssets",
+   "title": "Prise de connaissance du cycle des investissements",
+   "objective": "Comprendre le suivi des opérations, les réceptions, les mises en service et la politique de décomposition.",
+   "steps": [
+    "Décrire le suivi des opérations de construction et de réhabilitation.",
+    "Décrire la mise en service par composants et la politique d’immobilisation."
+   ],
+   "assertions": [
+    "classification",
+    "valuation"
+   ],
+   "risksAddressed": [
+    "fixedAssets"
+   ],
+   "hours": {
+    "senior": 6,
+    "assistant": 7.5
+   },
+   "phases": [
+    "planning",
+    "interim"
+   ],
+   "requires": [],
+   "output": {
+    "kind": "memo",
+    "memo": "walkthrough"
+   },
+   "completion": [],
+   "effectiveFor": []
+  },
+  {
+   "id": "wip-review",
+   "cycle": "fixedAssets",
+   "title": "Revue des immobilisations en cours et des mises en service",
+   "objective": "Vérifier que les opérations achevées sont mises en service à la date de réception.",
+   "steps": [
+    "Analyser les immobilisations en cours par opération.",
+    "Obtenir les procès-verbaux de réception des opérations achevées.",
+    "Vérifier la date de mise en service et le début des amortissements."
+   ],
+   "assertions": [
+    "classification",
+    "valuation"
+   ],
+   "risksAddressed": [
+    "fixedAssets:classification",
+    "fixedAssets:valuation"
+   ],
+   "hours": {
+    "senior": 7.5,
+    "assistant": 9.5
+   },
+   "phases": [
+    "final"
+   ],
+   "requires": [
+    {
+     "kind": "vintage",
+     "vintage": "draftLedger"
+    }
+   ],
+   "output": {
+    "kind": "view",
+    "screen": "/grand-livre"
+   },
+   "completion": [],
+   "effectiveFor": [
+    "A01"
+   ]
+  },
+  {
+   "id": "rent-vs-service",
+   "cycle": "fixedAssets",
+   "title": "Rapprochement des programmes quittancés et des programmes en service",
+   "objective": "Vérifier que tout programme produisant des loyers figure en service au registre des immobilisations.",
+   "steps": [
+    "Rapprocher l’état de quittancement par programme du tableau des immobilisations.",
+    "Analyser les programmes quittancés absents des immobilisations en service."
+   ],
+   "assertions": [
+    "classification"
+   ],
+   "risksAddressed": [
+    "fixedAssets:classification"
+   ],
+   "hours": {
+    "senior": 6,
+    "assistant": 7.5,
+    "intern": 8.5
+   },
+   "phases": [
+    "final"
+   ],
+   "requires": [
+    {
+     "kind": "vintage",
+     "vintage": "draftLedger"
+    }
+   ],
+   "output": {
+    "kind": "view",
+    "screen": "/ged"
+   },
+   "completion": [],
+   "effectiveFor": [
+    "A01"
+   ]
+  },
+  {
+   "id": "additions-test",
+   "cycle": "fixedAssets",
+   "title": "Test des acquisitions d’immobilisations",
+   "objective": "Vérifier sur un échantillon que les dépenses immobilisées sont des immobilisations et non des charges.",
+   "steps": [
+    "Tirer un échantillon des dépenses immobilisées de l’exercice.",
+    "Obtenir les factures et bons de commande et apprécier la nature des travaux.",
+    "Rapprocher les composants créés de la nomenclature de l’organisme."
+   ],
+   "assertions": [
+    "classification",
+    "occurrence"
+   ],
+   "risksAddressed": [
+    "fixedAssets:classification",
+    "fixedAssets:occurrence"
+   ],
+   "hours": {
+    "senior": 10.5,
+    "assistant": 13,
+    "intern": 15
+   },
+   "phases": [
+    "interim",
+    "final"
+   ],
+   "requires": [
+    {
+     "kind": "vintage",
+     "vintage": "interim"
+    }
+   ],
+   "output": {
+    "kind": "sample",
+    "population": "capitalised-works"
+   },
+   "completion": [
+    {
+     "kind": "sample"
+    }
+   ],
+   "effectiveFor": [
+    "A06"
+   ],
+   "delegated": {
+    "variant": "T2",
+    "member": "hugo"
+   }
+  },
+  {
+   "id": "components-review",
+   "cycle": "fixedAssets",
+   "title": "Revue du registre des composants et des remplacements",
+   "objective": "Vérifier que les composants remplacés sont sortis de l’actif et que les composants créés sont conformes à la nomenclature.",
+   "steps": [
+    "Obtenir le registre des composants des programmes ayant fait l’objet de travaux.",
+    "Rechercher les composants de même famille en double sur un même bâtiment.",
+    "Vérifier la sortie des composants remplacés."
+   ],
+   "assertions": [
+    "occurrence",
+    "valuation"
+   ],
+   "risksAddressed": [
+    "fixedAssets:occurrence",
+    "fixedAssets:valuation"
+   ],
+   "hours": {
+    "senior": 8.5,
+    "assistant": 10.5
+   },
+   "phases": [
+    "final"
+   ],
+   "requires": [
+    {
+     "kind": "vintage",
+     "vintage": "draftLedger"
+    }
+   ],
+   "output": {
+    "kind": "view",
+    "screen": "/ged"
+   },
+   "completion": [],
+   "effectiveFor": [
+    "A02",
+    "A06"
+   ]
+  },
+  {
+   "id": "depreciation-recalc",
+   "cycle": "fixedAssets",
+   "title": "Recalcul des amortissements par composant",
+   "objective": "Recalculer les dotations aux amortissements selon les durées et les dates de mise en service.",
+   "steps": [
+    "Obtenir le registre des composants des programmes retenus.",
+    "Recalculer les dotations au prorata temporis et selon le plan d’amortissement.",
+    "Analyser les écarts avec les dotations comptabilisées."
+   ],
+   "assertions": [
+    "valuation"
+   ],
+   "risksAddressed": [
+    "fixedAssets:valuation"
+   ],
+   "hours": {
+    "senior": 10.5,
+    "assistant": 13
+   },
+   "phases": [
+    "final"
+   ],
+   "requires": [
+    {
+     "kind": "vintage",
+     "vintage": "draftLedger"
+    }
+   ],
+   "output": {
+    "kind": "recalc",
+    "tool": "depreciation"
+   },
+   "completion": [
+    {
+     "kind": "recalc"
+    }
+   ],
+   "effectiveFor": [
+    "A01",
+    "A02",
+    "A04"
+   ]
+  },
+  {
+   "id": "sales-cutoff",
+   "cycle": "fixedAssets",
+   "title": "Revue des ventes de logements et de la séparation des exercices",
+   "objective": "Vérifier que les cessions comptabilisées sont réalisées à la clôture.",
+   "steps": [
+    "Obtenir l’état des ventes de l’exercice.",
+    "Rapprocher chaque vente des promesses, des actes et des encaissements.",
+    "Vérifier la date du transfert de propriété."
+   ],
+   "assertions": [
+    "cutoff",
+    "occurrence"
+   ],
+   "risksAddressed": [
+    "fixedAssets:cutoff",
+    "fraud:propertySales"
+   ],
+   "hours": {
+    "senior": 7.5,
+    "assistant": 9.5
+   },
+   "phases": [
+    "final"
+   ],
+   "requires": [
+    {
+     "kind": "vintage",
+     "vintage": "draftLedger"
+    }
+   ],
+   "output": {
+    "kind": "view",
+    "screen": "/ged"
+   },
+   "completion": [],
+   "effectiveFor": [
+    "A03"
+   ]
+  },
+  {
+   "id": "notary-confirmations",
+   "cycle": "fixedAssets",
+   "title": "Demande de confirmation au notaire des ventes",
+   "objective": "Obtenir du notaire l’état des ventes en cours et des fonds détenus.",
+   "steps": [
+    "Identifier le notaire chargé des ventes de l’exercice.",
+    "Préparer la demande avant l’envoi."
+   ],
+   "assertions": [
+    "cutoff",
+    "occurrence"
+   ],
+   "risksAddressed": [
+    "fixedAssets:cutoff",
+    "fraud:propertySales"
+   ],
+   "hours": {
+    "senior": 2.5,
+    "assistant": 3,
+    "intern": 3.5
+   },
+   "phases": [
+    "planning",
+    "interim"
+   ],
+   "requires": [],
+   "output": {
+    "kind": "confirmations"
+   },
+   "completion": [
+    {
+     "kind": "confirmations",
+     "min": 1
+    }
+   ],
+   "effectiveFor": [
+    "A03"
+   ]
+  },
+  {
+   "id": "impairment-indicators",
+   "cycle": "fixedAssets",
+   "title": "Recherche d’indices de perte de valeur et de démolitions décidées",
+   "objective": "Identifier les programmes dont la durée d’utilisation ou la valeur est remise en cause.",
+   "steps": [
+    "S’entretenir avec la direction du patrimoine des démolitions, ventes et vacances techniques.",
+    "Rapprocher les décisions du conseil et les conventions de renouvellement urbain du plan d’amortissement."
+   ],
+   "assertions": [
+    "valuation"
+   ],
+   "risksAddressed": [
+    "fixedAssets:valuation"
+   ],
+   "hours": {
+    "senior": 5,
+    "assistant": 6.5
+   },
+   "phases": [
+    "interim",
+    "final"
+   ],
+   "requires": [],
+   "output": {
+    "kind": "memo",
+    "memo": "impairment-indicators"
+   },
+   "completion": [],
+   "effectiveFor": [
+    "A04"
+   ]
+  },
+  {
+   "id": "construction-progress",
+   "cycle": "fixedAssets",
+   "title": "Rapprochement des marchés et des situations de travaux",
+   "objective": "Vérifier que les travaux exécutés et les avenants sont comptabilisés.",
+   "steps": [
+    "Tirer un échantillon d’opérations en cours ou livrées.",
+    "Rapprocher les marchés, avenants et ordres de service des situations comptabilisées."
+   ],
+   "assertions": [
+    "completeness",
+    "valuation"
+   ],
+   "risksAddressed": [
+    "fixedAssets:completeness"
+   ],
+   "hours": {
+    "senior": 8.5,
+    "assistant": 10.5,
+    "intern": 12.5
+   },
+   "phases": [
+    "final"
+   ],
+   "requires": [
+    {
+     "kind": "vintage",
+     "vintage": "draftLedger"
+    }
+   ],
+   "output": {
+    "kind": "sample",
+    "population": "construction-progress"
+   },
+   "completion": [
+    {
+     "kind": "sample"
+    }
+   ],
+   "effectiveFor": [
+    "A16.a"
+   ]
+  },
+  {
+   "id": "pge-review",
+   "cycle": "provisions",
+   "title": "Revue de la provision pour gros entretien",
+   "objective": "Vérifier la provision par rapprochement du calcul de la direction avec le plan pluriannuel d’entretien et le budget voté.",
+   "steps": [
+    "Obtenir le calcul de la provision et le plan pluriannuel d’entretien de la direction du patrimoine.",
+    "Rapprocher les opérations retenues du plan et du budget voté.",
+    "Recalculer la provision et analyser les reprises de l’exercice."
+   ],
+   "assertions": [
+    "valuation"
+   ],
+   "risksAddressed": [
+    "provisions:valuation",
+    "fraud:provisionReversals"
+   ],
+   "hours": {
+    "senior": 13,
+    "assistant": 16.5
+   },
+   "phases": [
+    "final"
+   ],
+   "requires": [
+    {
+     "kind": "vintage",
+     "vintage": "draftLedger"
+    }
+   ],
+   "output": {
+    "kind": "recalc",
+    "tool": "pge"
+   },
+   "completion": [
+    {
+     "kind": "recalc"
+    }
+   ],
+   "effectiveFor": [
+    "A05"
+   ]
+  },
+  {
+   "id": "pge-light",
+   "cycle": "provisions",
+   "title": "Revue analytique de la provision pour gros entretien",
+   "objective": "Apprécier la variation de la provision et sa cohérence avec le calcul de la direction.",
+   "steps": [
+    "Analyser la variation de la provision.",
+    "Rapprocher la provision comptabilisée du calcul de la direction."
+   ],
+   "assertions": [
+    "valuation"
+   ],
+   "risksAddressed": [
+    "provisions:valuation"
+   ],
+   "hours": {
+    "senior": 3.5,
+    "assistant": 4.5,
+    "intern": 5
+   },
+   "phases": [
+    "final"
+   ],
+   "requires": [],
+   "output": {
+    "kind": "view",
+    "screen": "/ged"
+   },
+   "completion": [],
+   "effectiveFor": []
+  },
+  {
+   "id": "litigation",
+   "cycle": "provisions",
+   "title": "Litiges : lettres aux avocats et registre des contentieux",
+   "objective": "Recenser les litiges et obtenir l’appréciation des conseils sur leur issue.",
+   "steps": [
+    "Obtenir le registre des contentieux.",
+    "Préparer les demandes d’information aux avocats."
+   ],
+   "assertions": [
+    "completeness",
+    "valuation",
+    "presentation"
+   ],
+   "risksAddressed": [
+    "provisions:completeness",
+    "provisions:valuation",
+    "disclosures:completeness"
+   ],
+   "hours": {
+    "senior": 6,
+    "assistant": 7.5
+   },
+   "phases": [
+    "planning",
+    "interim"
+   ],
+   "requires": [],
+   "output": {
+    "kind": "confirmations"
+   },
+   "completion": [
+    {
+     "kind": "confirmations",
+     "min": 1
+    }
+   ],
+   "effectiveFor": [
+    "A16.a",
+    "A16.b"
+   ]
+  },
+  {
+   "id": "retirement-benefits",
+   "cycle": "provisions",
+   "title": "Engagements de retraite",
+   "objective": "Vérifier le montant des engagements de fin de carrière et l’information donnée en annexe.",
+   "steps": [
+    "Obtenir l’évaluation actuarielle et apprécier ses hypothèses.",
+    "Rapprocher le montant de l’information donnée en annexe."
+   ],
+   "assertions": [
+    "completeness",
+    "presentation"
+   ],
+   "risksAddressed": [
+    "provisions:completeness",
+    "disclosures:completeness"
+   ],
+   "hours": {
+    "senior": 3.5,
+    "assistant": 4.5,
+    "intern": 5
+   },
+   "phases": [
+    "final"
+   ],
+   "requires": [],
+   "output": {
+    "kind": "view",
+    "screen": "/ged"
+   },
+   "completion": [],
+   "effectiveFor": [
+    "A13"
+   ]
+  },
+  {
+   "id": "provisions-table",
+   "cycle": "provisions",
+   "title": "Contrôle du tableau des provisions et dépréciations de l’annexe",
+   "objective": "Vérifier la concordance du tableau de l’annexe avec la balance.",
+   "steps": [
+    "Pointer le tableau des provisions et dépréciations sur la balance.",
+    "Vérifier les totaux et les mouvements de l’exercice."
+   ],
+   "assertions": [
+    "presentation"
+   ],
+   "risksAddressed": [
+    "provisions:presentation",
+    "disclosures:presentation"
+   ],
+   "hours": {
+    "senior": 3.5,
+    "assistant": 4.5,
+    "intern": 5
+   },
+   "phases": [
+    "final"
+   ],
+   "requires": [
+    {
+     "kind": "vintage",
+     "vintage": "draftStatements"
+    }
+   ],
+   "output": {
+    "kind": "view",
+    "screen": "/etats"
+   },
+   "completion": [
+    {
+     "kind": "ticks",
+     "scope": "annex",
+     "table": "provisions",
+     "minPct": 80
+    }
+   ],
+   "effectiveFor": [
+    "A21"
+   ]
+  },
+  {
+   "id": "debt-schedule",
+   "cycle": "debtTreasury",
+   "title": "Rapprochement de l’état de la dette avec la comptabilité",
+   "objective": "Vérifier les emprunts, les encaissements et les remboursements de l’exercice.",
+   "steps": [
+    "Rapprocher l’état de la dette de la balance.",
+    "Tester un échantillon de prêts : contrats, encaissements, échéances."
+   ],
+   "assertions": [
+    "completeness",
+    "valuation",
+    "classification"
+   ],
+   "risksAddressed": [
+    "debtTreasury:completeness",
+    "debtTreasury:valuation"
+   ],
+   "hours": {
+    "senior": 7.5,
+    "assistant": 9.5,
+    "intern": 11
+   },
+   "phases": [
+    "final"
+   ],
+   "requires": [
+    {
+     "kind": "vintage",
+     "vintage": "draftLedger"
+    }
+   ],
+   "output": {
+    "kind": "sample",
+    "population": "loans"
+   },
+   "completion": [
+    {
+     "kind": "sample"
+    }
+   ],
+   "effectiveFor": [
+    "A18"
+   ]
+  },
+  {
+   "id": "lender-confirmations",
+   "cycle": "debtTreasury",
+   "title": "Demandes de confirmation des prêteurs et des banques",
+   "objective": "Obtenir des prêteurs et des banques la confirmation des soldes, des emprunts et des engagements.",
+   "steps": [
+    "Sélectionner les prêteurs et les banques à confirmer.",
+    "Préparer les demandes avant l’envoi.",
+    "Rapprocher les réponses de la comptabilité."
+   ],
+   "assertions": [
+    "completeness",
+    "valuation"
+   ],
+   "risksAddressed": [
+    "debtTreasury:completeness",
+    "debtTreasury:valuation"
+   ],
+   "hours": {
+    "senior": 4.5,
+    "assistant": 5.5,
+    "intern": 6.5
+   },
+   "phases": [
+    "planning",
+    "interim"
+   ],
+   "requires": [],
+   "output": {
+    "kind": "confirmations"
+   },
+   "completion": [
+    {
+     "kind": "confirmations",
+     "min": 1
+    }
+   ],
+   "effectiveFor": [
+    "A18",
+    "A08"
+   ],
+   "delegated": {
+    "variant": "T1",
+    "member": "lea"
+   }
+  },
+  {
+   "id": "icne-recalc",
+   "cycle": "debtTreasury",
+   "title": "Recalcul des intérêts courus non échus",
+   "objective": "Recalculer les intérêts courus prêt par prêt avec le taux propre à chaque prêt.",
+   "steps": [
+    "Obtenir le fichier de calcul des intérêts courus.",
+    "Recalculer les intérêts courus depuis la dernière échéance de chaque prêt.",
+    "Analyser l’écart avec le montant comptabilisé."
+   ],
+   "assertions": [
+    "valuation",
+    "cutoff"
+   ],
+   "risksAddressed": [
+    "debtTreasury:valuation",
+    "debtTreasury:cutoff"
+   ],
+   "hours": {
+    "senior": 8.5,
+    "assistant": 10.5
+   },
+   "phases": [
+    "final"
+   ],
+   "requires": [
+    {
+     "kind": "vintage",
+     "vintage": "draftLedger"
+    }
+   ],
+   "output": {
+    "kind": "recalc",
+    "tool": "icne"
+   },
+   "completion": [
+    {
+     "kind": "recalc"
+    }
+   ],
+   "effectiveFor": [
+    "A08"
+   ]
+  },
+  {
+   "id": "financial-charges-analytical",
+   "cycle": "debtTreasury",
+   "title": "Revue analytique des frais financiers",
+   "objective": "Rapprocher l’évolution des frais financiers de celle de l’encours et des taux de référence.",
+   "steps": [
+    "Comparer les frais financiers à l’exercice précédent.",
+    "Expliquer la variation par l’encours moyen et l’évolution du taux du livret A."
+   ],
+   "assertions": [
+    "valuation"
+   ],
+   "risksAddressed": [
+    "debtTreasury:valuation"
+   ],
+   "hours": {
+    "senior": 3.5,
+    "assistant": 4.5,
+    "intern": 5
+   },
+   "phases": [
+    "final"
+   ],
+   "requires": [
+    {
+     "kind": "vintage",
+     "vintage": "draftStatements"
+    }
+   ],
+   "output": {
+    "kind": "view",
+    "screen": "/analyse"
+   },
+   "completion": [],
+   "effectiveFor": [
+    "A08"
+   ]
+  },
+  {
+   "id": "bank-reconciliation",
+   "cycle": "debtTreasury",
+   "title": "Revue des rapprochements bancaires et des relevés de fin d’exercice",
+   "objective": "Vérifier les rapprochements bancaires et les opérations de fin d’exercice.",
+   "steps": [
+    "Obtenir les relevés bancaires de décembre et l’état de rapprochement.",
+    "Vérifier le dénouement des suspens.",
+    "Analyser les opérations importantes de fin d’exercice."
+   ],
+   "assertions": [
+    "completeness",
+    "occurrence"
+   ],
+   "risksAddressed": [
+    "debtTreasury:completeness",
+    "debtTreasury:occurrence"
+   ],
+   "hours": {
+    "senior": 6,
+    "assistant": 7.5,
+    "intern": 8.5
+   },
+   "phases": [
+    "final"
+   ],
+   "requires": [],
+   "output": {
+    "kind": "requests",
+    "requests": [
+     {
+      "family": "bank-statements",
+      "object": "2025-12"
+     }
+    ]
+   },
+   "completion": [
+    {
+     "kind": "requests"
+    }
+   ],
+   "effectiveFor": [
+    "A18"
+   ]
+  },
+  {
+   "id": "suspense-accounts",
+   "cycle": "debtTreasury",
+   "title": "Revue des comptes d’attente",
+   "objective": "Vérifier que les comptes d’attente sont soldés ou justifiés à la clôture.",
+   "steps": [
+    "Analyser le solde des comptes d’attente et leur ancienneté.",
+    "Obtenir la justification des montants significatifs."
+   ],
+   "assertions": [
+    "classification"
+   ],
+   "risksAddressed": [
+    "debtTreasury:classification"
+   ],
+   "hours": {
+    "senior": 3.5,
+    "assistant": 4.5,
+    "intern": 5
+   },
+   "phases": [
+    "final"
+   ],
+   "requires": [
+    {
+     "kind": "vintage",
+     "vintage": "draftLedger"
+    }
+   ],
+   "output": {
+    "kind": "view",
+    "screen": "/grand-livre"
+   },
+   "completion": [],
+   "effectiveFor": [
+    "A18"
+   ]
+  },
+  {
+   "id": "guarantee-deposits",
+   "cycle": "debtTreasury",
+   "title": "Dépôts de garantie des locataires",
+   "objective": "Vérifier le montant et le classement des dépôts de garantie reçus.",
+   "steps": [
+    "Rapprocher les dépôts de l’auxiliaire de la comptabilité.",
+    "Vérifier leur classement dans les états et en annexe."
+   ],
+   "assertions": [
+    "classification",
+    "presentation"
+   ],
+   "risksAddressed": [
+    "debtTreasury:classification",
+    "disclosures:presentation"
+   ],
+   "hours": {
+    "senior": 3.5,
+    "assistant": 4.5,
+    "intern": 5
+   },
+   "phases": [
+    "final"
+   ],
+   "requires": [
+    {
+     "kind": "vintage",
+     "vintage": "draftLedger"
+    }
+   ],
+   "output": {
+    "kind": "view",
+    "screen": "/balance"
+   },
+   "completion": [],
+   "effectiveFor": [
+    "A22"
+   ]
+  },
+  {
+   "id": "treasury-controls",
+   "cycle": "debtTreasury",
+   "title": "Tests des contrôles de trésorerie",
+   "objective": "Vérifier les habilitations bancaires, la double signature et le rapprochement mensuel.",
+   "steps": [
+    "Obtenir la liste des habilitations bancaires.",
+    "Tester la double validation des paiements et les rapprochements mensuels."
+   ],
+   "assertions": [
+    "occurrence"
+   ],
+   "risksAddressed": [
+    "debtTreasury:occurrence"
+   ],
+   "hours": {
+    "senior": 4.5,
+    "assistant": 5.5,
+    "intern": 6.5
+   },
+   "phases": [
+    "interim",
+    "final"
+   ],
+   "requires": [],
+   "output": {
+    "kind": "memo",
+    "memo": "controls"
+   },
+   "completion": [],
+   "effectiveFor": []
+  },
+  {
+   "id": "purchases-walkthrough",
+   "cycle": "purchases",
+   "title": "Prise de connaissance du cycle des achats",
+   "objective": "Comprendre la commande, la réception, la facturation, le paiement et les règles de mise en concurrence.",
+   "steps": [
+    "Décrire le processus des achats et les seuils de mise en concurrence.",
+    "Identifier les contrôles clés."
+   ],
+   "assertions": [
+    "occurrence",
+    "completeness"
+   ],
+   "risksAddressed": [
+    "purchases"
+   ],
+   "hours": {
+    "senior": 5,
+    "assistant": 6.5
+   },
+   "phases": [
+    "planning",
+    "interim"
+   ],
+   "requires": [],
+   "output": {
+    "kind": "memo",
+    "memo": "walkthrough"
+   },
+   "completion": [],
+   "effectiveFor": []
+  },
+  {
+   "id": "purchases-controls",
+   "cycle": "purchases",
+   "title": "Tests des contrôles des achats",
+   "objective": "Vérifier sur un échantillon la commande, le service fait et la double validation des factures.",
+   "steps": [
+    "Tirer un échantillon de charges d’entretien.",
+    "Vérifier le bon de commande, le service fait et la validation."
+   ],
+   "assertions": [
+    "occurrence",
+    "classification"
+   ],
+   "risksAddressed": [
+    "purchases:occurrence",
+    "laws:procurement"
+   ],
+   "hours": {
+    "senior": 7.5,
+    "assistant": 9.5,
+    "intern": 11
+   },
+   "phases": [
+    "interim",
+    "final"
+   ],
+   "requires": [],
+   "output": {
+    "kind": "sample",
+    "population": "maintenance-charges"
+   },
+   "completion": [
+    {
+     "kind": "sample"
+    }
+   ],
+   "effectiveFor": []
+  },
+  {
+   "id": "unrecorded-liabilities",
+   "cycle": "purchases",
+   "title": "Recherche de passifs non comptabilisés",
+   "objective": "Vérifier que les charges de l’exercice facturées ou payées après la clôture sont comptabilisées.",
+   "steps": [
+    "Tirer un échantillon des factures reçues et des décaissements après la clôture.",
+    "Vérifier pour chacun l’exercice de rattachement et la comptabilisation."
+   ],
+   "assertions": [
+    "completeness",
+    "cutoff"
+   ],
+   "risksAddressed": [
+    "purchases:completeness",
+    "purchases:cutoff"
+   ],
+   "hours": {
+    "senior": 10.5,
+    "assistant": 13,
+    "intern": 15
+   },
+   "phases": [
+    "final"
+   ],
+   "requires": [
+    {
+     "kind": "vintage",
+     "vintage": "draftLedger"
+    }
+   ],
+   "output": {
+    "kind": "sample",
+    "population": "invoices-2026"
+   },
+   "completion": [
+    {
+     "kind": "sample"
+    }
+   ],
+   "effectiveFor": [
+    "A20"
+   ]
+  },
+  {
+   "id": "accruals-review",
+   "cycle": "purchases",
+   "title": "Revue des charges à payer et des factures non parvenues",
+   "objective": "Vérifier les charges à payer de fin d’exercice et leur justification.",
+   "steps": [
+    "Obtenir l’état des charges à payer.",
+    "Rapprocher les montants significatifs des engagements et des factures reçues."
+   ],
+   "assertions": [
+    "completeness",
+    "cutoff"
+   ],
+   "risksAddressed": [
+    "purchases:completeness",
+    "purchases:cutoff"
+   ],
+   "hours": {
+    "senior": 5,
+    "assistant": 6.5,
+    "intern": 7.5
+   },
+   "phases": [
+    "final"
+   ],
+   "requires": [
+    {
+     "kind": "vintage",
+     "vintage": "draftLedger"
+    }
+   ],
+   "output": {
+    "kind": "view",
+    "screen": "/grand-livre"
+   },
+   "completion": [],
+   "effectiveFor": [
+    "A20"
+   ]
+  },
+  {
+   "id": "group-agreements",
+   "cycle": "purchases",
+   "title": "Revue des conventions de groupe et des refacturations",
+   "objective": "Vérifier les charges refacturées par les entités du groupe et leurs modalités contractuelles.",
+   "steps": [
+    "Obtenir les conventions de groupe.",
+    "Rapprocher les refacturations comptabilisées des clés de répartition prévues."
+   ],
+   "assertions": [
+    "completeness",
+    "occurrence"
+   ],
+   "risksAddressed": [
+    "purchases:completeness",
+    "disclosures:completeness"
+   ],
+   "hours": {
+    "senior": 5,
+    "assistant": 6.5
+   },
+   "phases": [
+    "interim",
+    "final"
+   ],
+   "requires": [],
+   "output": {
+    "kind": "view",
+    "screen": "/ged"
+   },
+   "completion": [],
+   "effectiveFor": [
+    "A20"
+   ]
+  },
+  {
+   "id": "supplier-confirmations",
+   "cycle": "purchases",
+   "title": "Demandes de confirmation des fournisseurs",
+   "objective": "Obtenir des principaux fournisseurs la confirmation des soldes et des réclamations en cours.",
+   "steps": [
+    "Sélectionner les fournisseurs à confirmer par volume d’affaires et par risque.",
+    "Préparer les demandes avant l’envoi."
+   ],
+   "assertions": [
+    "completeness"
+   ],
+   "risksAddressed": [
+    "purchases:completeness",
+    "fixedAssets:completeness"
+   ],
+   "hours": {
+    "senior": 3.5,
+    "assistant": 4.5,
+    "intern": 5
+   },
+   "phases": [
+    "planning",
+    "interim"
+   ],
+   "requires": [],
+   "output": {
+    "kind": "confirmations"
+   },
+   "completion": [
+    {
+     "kind": "confirmations",
+     "min": 1
+    }
+   ],
+   "effectiveFor": [
+    "A20",
+    "A16.a"
+   ]
+  },
+  {
+   "id": "payroll",
+   "cycle": "purchases",
+   "title": "Revue analytique des charges de personnel et test de la paie",
+   "objective": "Expliquer l’évolution des charges de personnel et vérifier la paie sur un échantillon.",
+   "steps": [
+    "Comparer les charges de personnel à l’exercice précédent et aux effectifs.",
+    "Tester un échantillon de bulletins."
+   ],
+   "assertions": [
+    "occurrence",
+    "valuation"
+   ],
+   "risksAddressed": [
+    "purchases:occurrence"
+   ],
+   "hours": {
+    "senior": 7.5,
+    "assistant": 9.5,
+    "intern": 11
+   },
+   "phases": [
+    "final"
+   ],
+   "requires": [
+    {
+     "kind": "vintage",
+     "vintage": "draftStatements"
+    }
+   ],
+   "output": {
+    "kind": "view",
+    "screen": "/analyse"
+   },
+   "completion": [],
+   "effectiveFor": []
+  },
+  {
+   "id": "property-taxes",
+   "cycle": "purchases",
+   "title": "Revue de la taxe foncière et des dégrèvements",
+   "objective": "Vérifier la taxe foncière comptabilisée et les produits à recevoir sur dégrèvements.",
+   "steps": [
+    "Rapprocher les avis d’imposition de la charge comptabilisée.",
+    "Vérifier les dégrèvements demandés et les produits à recevoir."
+   ],
+   "assertions": [
+    "valuation",
+    "occurrence"
+   ],
+   "risksAddressed": [
+    "purchases:valuation"
+   ],
+   "hours": {
+    "senior": 3.5,
+    "assistant": 4.5,
+    "intern": 5
+   },
+   "phases": [
+    "final"
+   ],
+   "requires": [],
+   "output": {
+    "kind": "view",
+    "screen": "/ged"
+   },
+   "completion": [],
+   "effectiveFor": []
+  },
+  {
+   "id": "external-charges-analytical",
+   "cycle": "purchases",
+   "title": "Revue analytique des services extérieurs et des honoraires",
+   "objective": "Expliquer l’évolution des services extérieurs et des honoraires.",
+   "steps": [
+    "Comparer les services extérieurs à l’exercice précédent.",
+    "Obtenir les contrats et délibérations des variations significatives."
+   ],
+   "assertions": [
+    "occurrence",
+    "classification"
+   ],
+   "risksAddressed": [
+    "purchases:occurrence"
+   ],
+   "hours": {
+    "senior": 3.5,
+    "assistant": 4.5,
+    "intern": 5
+   },
+   "phases": [
+    "final"
+   ],
+   "requires": [
+    {
+     "kind": "vintage",
+     "vintage": "draftStatements"
+    }
+   ],
+   "output": {
+    "kind": "view",
+    "screen": "/analyse"
+   },
+   "completion": [],
+   "effectiveFor": []
+  },
+  {
+   "id": "suppliers-aged-balance",
+   "cycle": "purchases",
+   "title": "Revue de la balance âgée des fournisseurs",
+   "objective": "Analyser les factures échues non réglées et leur traitement.",
+   "steps": [
+    "Obtenir la balance âgée des fournisseurs et la rapprocher de la comptabilité.",
+    "Analyser les factures échues et litigieuses."
+   ],
+   "assertions": [
+    "completeness",
+    "presentation"
+   ],
+   "risksAddressed": [
+    "purchases:completeness",
+    "laws:paymentTerms"
+   ],
+   "hours": {
+    "senior": 3.5,
+    "assistant": 4.5,
+    "intern": 5
+   },
+   "phases": [
+    "final"
+   ],
+   "requires": [],
+   "output": {
+    "kind": "view",
+    "screen": "/ged"
+   },
+   "completion": [],
+   "effectiveFor": [
+    "A14.i"
+   ]
+  },
+  {
+   "id": "equity-movements",
+   "cycle": "equitySubsidies",
+   "title": "Variation des capitaux propres et affectation du résultat",
+   "objective": "Vérifier les mouvements des capitaux propres et l’affectation du résultat de l’exercice précédent.",
+   "steps": [
+    "Rapprocher l’affectation du résultat de la décision de l’assemblée.",
+    "Analyser les mouvements des capitaux propres."
+   ],
+   "assertions": [
+    "presentation"
+   ],
+   "risksAddressed": [
+    "equitySubsidies"
+   ],
+   "hours": {
+    "senior": 3.5,
+    "assistant": 4.5,
+    "intern": 5
+   },
+   "phases": [
+    "final"
+   ],
+   "requires": [
+    {
+     "kind": "vintage",
+     "vintage": "draftLedger"
+    }
+   ],
+   "output": {
+    "kind": "view",
+    "screen": "/balance"
+   },
+   "completion": [],
+   "effectiveFor": []
+  },
+  {
+   "id": "subsidies-receivable",
+   "cycle": "equitySubsidies",
+   "title": "Revue des subventions à recevoir",
+   "objective": "Vérifier l’existence et l’exigibilité des subventions à recevoir.",
+   "steps": [
+    "Obtenir le tableau des subventions et les arrêtés attributifs.",
+    "Analyser l’ancienneté des subventions à recevoir et les clauses de caducité.",
+    "Rapprocher les plans de financement des opérations."
+   ],
+   "assertions": [
+    "occurrence",
+    "valuation"
+   ],
+   "risksAddressed": [
+    "equitySubsidies:occurrence",
+    "equitySubsidies:valuation"
+   ],
+   "hours": {
+    "senior": 7,
+    "assistant": 9
+   },
+   "phases": [
+    "interim",
+    "final"
+   ],
+   "requires": [],
+   "output": {
+    "kind": "requests",
+    "requests": [
+     {
+      "family": "closing-file",
+      "object": "subsidies"
+     }
+    ]
+   },
+   "completion": [
+    {
+     "kind": "requests"
+    }
+   ],
+   "effectiveFor": [
+    "A09"
+   ]
+  },
+  {
+   "id": "subsidies-release",
+   "cycle": "equitySubsidies",
+   "title": "Recalcul de la quote-part des subventions virée au résultat",
+   "objective": "Vérifier la reprise des subventions au rythme des amortissements des biens financés.",
+   "steps": [
+    "Rapprocher les subventions des programmes financés.",
+    "Recalculer la reprise sur les programmes significatifs."
+   ],
+   "assertions": [
+    "valuation"
+   ],
+   "risksAddressed": [
+    "equitySubsidies:valuation"
+   ],
+   "hours": {
+    "senior": 5,
+    "assistant": 6.5
+   },
+   "phases": [
+    "final"
+   ],
+   "requires": [
+    {
+     "kind": "vintage",
+     "vintage": "draftLedger"
+    }
+   ],
+   "output": {
+    "kind": "view",
+    "screen": "/grand-livre"
+   },
+   "completion": [],
+   "effectiveFor": []
+  },
+  {
+   "id": "funder-confirmations",
+   "cycle": "equitySubsidies",
+   "title": "Demandes de confirmation des financeurs",
+   "objective": "Obtenir des financeurs la confirmation des subventions notifiées, versées et restant à recevoir.",
+   "steps": [
+    "Sélectionner les financeurs à confirmer.",
+    "Préparer les demandes avant l’envoi."
+   ],
+   "assertions": [
+    "occurrence",
+    "valuation"
+   ],
+   "risksAddressed": [
+    "equitySubsidies:occurrence"
+   ],
+   "hours": {
+    "senior": 2.5,
+    "assistant": 3,
+    "intern": 3.5
+   },
+   "phases": [
+    "planning",
+    "interim"
+   ],
+   "requires": [],
+   "output": {
+    "kind": "confirmations"
+   },
+   "completion": [
+    {
+     "kind": "confirmations",
+     "min": 1
+    }
+   ],
+   "effectiveFor": [
+    "A09"
+   ]
+  },
+  {
+   "id": "incoming-mail",
+   "cycle": "equitySubsidies",
+   "title": "Lecture du courrier arrivé et de la correspondance des financeurs",
+   "objective": "Identifier les courriers ayant une incidence sur les créances, les subventions ou les litiges.",
+   "steps": [
+    "Obtenir le registre du courrier arrivé.",
+    "Lire la correspondance des financeurs et des tiers."
+   ],
+   "assertions": [
+    "occurrence",
+    "valuation"
+   ],
+   "risksAddressed": [
+    "equitySubsidies:valuation",
+    "crossCycle:completeness"
+   ],
+   "hours": {
+    "senior": 3.5,
+    "assistant": 4.5,
+    "intern": 5
+   },
+   "phases": [
+    "interim",
+    "final"
+   ],
+   "requires": [],
+   "output": {
+    "kind": "requests",
+    "requests": [
+     {
+      "family": "closing-file",
+      "object": "mail-register"
+     }
+    ]
+   },
+   "completion": [
+    {
+     "kind": "requests"
+    }
+   ],
+   "effectiveFor": [
+    "A09"
+   ]
+  },
+  {
+   "id": "annex-comparison",
+   "cycle": "disclosures",
+   "title": "Revue comparative de l’annexe et de l’exhaustivité des informations",
+   "objective": "Vérifier que l’annexe contient les informations requises, comparées à celles de l’exercice précédent.",
+   "steps": [
+    "Comparer l’annexe de l’exercice à celle de l’exercice précédent.",
+    "Vérifier les informations sur les engagements, les litiges, les parties liées et les retraites."
+   ],
+   "assertions": [
+    "completeness",
+    "presentation"
+   ],
+   "risksAddressed": [
+    "disclosures:completeness",
+    "disclosures:presentation"
+   ],
+   "hours": {
+    "senior": 7.5,
+    "assistant": 9.5
+   },
+   "phases": [
+    "final",
+    "completion"
+   ],
+   "requires": [
+    {
+     "kind": "vintage",
+     "vintage": "draftStatements"
+    }
+   ],
+   "output": {
+    "kind": "view",
+    "screen": "/etats"
+   },
+   "completion": [],
+   "effectiveFor": [
+    "A13",
+    "A12.i",
+    "A16.b"
+   ]
+  },
+  {
+   "id": "off-balance-related",
+   "cycle": "disclosures",
+   "title": "Engagements hors bilan et parties liées",
+   "objective": "Recenser les engagements donnés et reçus et les transactions avec les parties liées.",
+   "steps": [
+    "Obtenir la liste des engagements et des garanties.",
+    "Rapprocher les conventions et les opérations du groupe des informations de l’annexe."
+   ],
+   "assertions": [
+    "completeness",
+    "presentation"
+   ],
+   "risksAddressed": [
+    "disclosures:completeness",
+    "laws:groupFinancing"
+   ],
+   "hours": {
+    "senior": 5,
+    "assistant": 6.5
+   },
+   "phases": [
+    "final"
+   ],
+   "requires": [
+    {
+     "kind": "vintage",
+     "vintage": "draftStatements"
+    }
+   ],
+   "output": {
+    "kind": "view",
+    "screen": "/etats"
+   },
+   "completion": [],
+   "effectiveFor": [
+    "A12.i"
+   ]
+  },
+  {
+   "id": "management-report",
+   "cycle": "disclosures",
+   "title": "Vérifications spécifiques du rapport de gestion",
+   "objective": "Vérifier la sincérité des informations du rapport de gestion et leur concordance avec les comptes.",
+   "steps": [
+    "Rapprocher les délais de paiement de la balance âgée.",
+    "Rapprocher les indicateurs de gestion des données sources et de l’exercice précédent.",
+    "Vérifier l’autofinancement net présenté."
+   ],
+   "assertions": [
+    "presentation",
+    "compliance"
+   ],
+   "risksAddressed": [
+    "disclosures:presentation",
+    "laws:paymentTerms",
+    "laws:netSelfFinancing"
+   ],
+   "hours": {
+    "senior": 7.5,
+    "assistant": 9.5
+   },
+   "phases": [
+    "final",
+    "completion"
+   ],
+   "requires": [
+    {
+     "kind": "document",
+     "docId": "rapport-gestion-2025"
+    }
+   ],
+   "output": {
+    "kind": "view",
+    "screen": "/ged"
+   },
+   "completion": [],
+   "effectiveFor": [
+    "A14.i",
+    "A14.ii",
+    "A14.iii"
+   ]
+  },
+  {
+   "id": "net-self-financing",
+   "cycle": "disclosures",
+   "title": "Contrôle de l’autofinancement net HLM",
+   "objective": "Recalculer l’autofinancement net et son ratio, et apprécier l’information donnée.",
+   "steps": [
+    "Recalculer l’autofinancement net à partir des comptes.",
+    "Comparer le ratio aux taux de référence et vérifier l’information du conseil."
+   ],
+   "assertions": [
+    "presentation",
+    "compliance"
+   ],
+   "risksAddressed": [
+    "disclosures:presentation",
+    "laws:netSelfFinancing"
+   ],
+   "hours": {
+    "senior": 5,
+    "assistant": 6.5
+   },
+   "phases": [
+    "final"
+   ],
+   "requires": [
+    {
+     "kind": "vintage",
+     "vintage": "draftStatements"
+    }
+   ],
+   "output": {
+    "kind": "view",
+    "screen": "/analyse"
+   },
+   "completion": [],
+   "effectiveFor": [
+    "A14.iii"
+   ]
+  }
+ ],
+ "conclusions": [
+  {
+   "id": "satisfactory",
+   "label": "Satisfaisant : aucune anomalie relevée",
+   "tone": "ok"
+  },
+  {
+   "id": "exceptions",
+   "label": "Anomalies ou exceptions relevées (constats ouverts)",
+   "tone": "ko"
+  },
+  {
+   "id": "insufficient",
+   "label": "Non concluant : éléments probants insuffisants",
+   "tone": "warn"
+  },
+  {
+   "id": "notApplicable",
+   "label": "Sans objet",
+   "tone": "muted"
+  }
+ ],
+ "profiles": {
+  "senior": "senior",
+  "lea": "assistant",
+  "hugo": "intern",
+  "sofia": "itAuditor"
+ },
+ "firmProgramme2024": [
+  {
+   "procedureId": "engagement-acceptance",
+   "assignee": "senior"
+  },
+  {
+   "procedureId": "permanent-file",
+   "assignee": "senior"
+  },
+  {
+   "procedureId": "board-minutes",
+   "assignee": "senior"
+  },
+  {
+   "procedureId": "preliminary-analytical",
+   "assignee": "senior"
+  },
+  {
+   "procedureId": "fraud-assessment",
+   "assignee": "senior"
+  },
+  {
+   "procedureId": "laws-regulations",
+   "assignee": "senior"
+  },
+  {
+   "procedureId": "journal-entry-tests",
+   "assignee": "lea"
+  },
+  {
+   "procedureId": "retrospective-estimates",
+   "assignee": "senior"
+  },
+  {
+   "procedureId": "unusual-transactions",
+   "assignee": "senior"
+  },
+  {
+   "procedureId": "subsequent-events",
+   "assignee": "senior"
+  },
+  {
+   "procedureId": "representation-letter",
+   "assignee": "senior"
+  },
+  {
+   "procedureId": "comparative-check",
+   "assignee": "hugo"
+  },
+  {
+   "procedureId": "statements-ticking",
+   "assignee": "hugo"
+  },
+  {
+   "procedureId": "regulated-agreements",
+   "assignee": "senior"
+  },
+  {
+   "procedureId": "it-general-controls",
+   "assignee": "sofia"
+  },
+  {
+   "procedureId": "rent-walkthrough",
+   "assignee": "lea"
+  },
+  {
+   "procedureId": "rent-controls",
+   "assignee": "hugo"
+  },
+  {
+   "procedureId": "rent-analytical",
+   "assignee": "lea"
+  },
+  {
+   "procedureId": "rent-increase",
+   "assignee": "hugo"
+  },
+  {
+   "procedureId": "aged-balance",
+   "assignee": "lea"
+  },
+  {
+   "procedureId": "impairment-recalc",
+   "assignee": "lea"
+  },
+  {
+   "procedureId": "charges-regularisation",
+   "assignee": "lea"
+  },
+  {
+   "procedureId": "revenue-cutoff",
+   "assignee": "senior"
+  },
+  {
+   "procedureId": "debtor-confirmations",
+   "assignee": "hugo"
+  },
+  {
+   "procedureId": "fixed-assets-walkthrough",
+   "assignee": "senior"
+  },
+  {
+   "procedureId": "wip-review",
+   "assignee": "lea"
+  },
+  {
+   "procedureId": "additions-test",
+   "assignee": "hugo"
+  },
+  {
+   "procedureId": "depreciation-recalc",
+   "assignee": "lea"
+  },
+  {
+   "procedureId": "sales-cutoff",
+   "assignee": "senior"
+  },
+  {
+   "procedureId": "pge-light",
+   "assignee": "hugo"
+  },
+  {
+   "procedureId": "litigation",
+   "assignee": "senior"
+  },
+  {
+   "procedureId": "retirement-benefits",
+   "assignee": "hugo"
+  },
+  {
+   "procedureId": "debt-schedule",
+   "assignee": "senior"
+  },
+  {
+   "procedureId": "lender-confirmations",
+   "assignee": "lea"
+  },
+  {
+   "procedureId": "icne-recalc",
+   "assignee": "lea"
+  },
+  {
+   "procedureId": "bank-reconciliation",
+   "assignee": "senior"
+  },
+  {
+   "procedureId": "purchases-walkthrough",
+   "assignee": "lea"
+  },
+  {
+   "procedureId": "purchases-controls",
+   "assignee": "hugo"
+  },
+  {
+   "procedureId": "unrecorded-liabilities",
+   "assignee": "hugo"
+  },
+  {
+   "procedureId": "payroll",
+   "assignee": "senior"
+  },
+  {
+   "procedureId": "property-taxes",
+   "assignee": "hugo"
+  },
+  {
+   "procedureId": "equity-movements",
+   "assignee": "senior"
+  },
+  {
+   "procedureId": "subsidies-receivable",
+   "assignee": "lea"
+  },
+  {
+   "procedureId": "funder-confirmations",
+   "assignee": "hugo"
+  },
+  {
+   "procedureId": "annex-comparison",
+   "assignee": "senior"
+  },
+  {
+   "procedureId": "management-report",
+   "assignee": "senior"
+  }
+ ]
 }

@@ -1,4 +1,114 @@
 {
-  "_comment": "Cycles d'audit : préfixes de comptes et lignes d'états (feuilles maîtresses, comptes significatifs). Contenu fourni en J4b.",
-  "cycles": []
+  "_comment": "Cycles d'audit (plan J4 §12) : regroupements de comptes de la feuille maîtresse (préfixes du plan de comptes OLS 2025, propositions à valider) et lignes d'états couvertes. Un compte relève du cycle dont le préfixe est le plus long ; les comptes non rattachés relèvent du cycle transverse. Les montants sont dérivés des balances du millésime disponible.",
+  "cycles": [
+    {
+      "id": "crossCycle",
+      "label": "Transverse",
+      "description": "Prise de connaissance, gouvernance, fraude, tests d’écritures, pointage des états, événements postérieurs, lettre d’affirmation.",
+      "lines": [
+        { "id": "exceptional-other", "label": "Autres produits et charges exceptionnels", "include": ["6718", "7718"], "sign": "credit" }
+      ],
+      "statementLines": ["CR_RESULTAT", "ACTIF_TOTAL"]
+    },
+    {
+      "id": "rentReceivables",
+      "label": "Loyers et créances locatives",
+      "description": "Quittancement, réduction de loyer de solidarité, récupération des charges, produits annexes, créances locatives et leur dépréciation.",
+      "lines": [
+        { "id": "rents", "label": "Loyers (nets de la RLS)", "include": ["704"], "sign": "credit" },
+        { "id": "recoveries", "label": "Récupération des charges locatives", "include": ["703"], "sign": "credit" },
+        { "id": "ancillary", "label": "Produits des activités annexes et divers", "include": ["708", "758"], "sign": "credit" },
+        { "id": "receivables", "label": "Créances sur locataires et gestionnaires (brut)", "include": ["411", "4181"], "sign": "debit" },
+        { "id": "credit-balances", "label": "Locataires créditeurs et sommes à restituer", "include": ["419"], "sign": "credit" },
+        { "id": "impairment", "label": "Dépréciation des créances locatives", "include": ["491"], "sign": "credit" },
+        { "id": "impairment-pl", "label": "Dotations, reprises et pertes sur créances", "include": ["68174", "78174", "6541"], "sign": "debit" },
+        { "id": "accrued-income", "label": "Produits à recevoir et produits constatés d’avance", "include": ["4687", "487"], "sign": "debit" },
+        { "id": "apl", "label": "Organismes payeurs (APL)", "include": ["443"], "sign": "debit" }
+      ],
+      "statementLines": ["CR_LOYERS", "CR_RECUP", "CR_ANNEXES", "A_LOCATAIRES"]
+    },
+    {
+      "id": "fixedAssets",
+      "label": "Immobilisations et investissements",
+      "description": "Opérations en cours, mises en service par composants, acquisitions, sorties et remplacements, amortissements, cessions.",
+      "lines": [
+        { "id": "gross", "label": "Immobilisations brutes en service", "include": ["20", "21"], "sign": "debit" },
+        { "id": "wip", "label": "Immobilisations en cours", "include": ["23"], "sign": "debit" },
+        { "id": "depreciation", "label": "Amortissements cumulés", "include": ["28"], "sign": "credit" },
+        { "id": "depreciation-charge", "label": "Dotations aux amortissements", "include": ["6811"], "sign": "debit" },
+        { "id": "disposals", "label": "Cessions : produits et valeurs comptables", "include": ["7752", "675"], "sign": "credit" },
+        { "id": "suppliers", "label": "Dettes et créances sur immobilisations", "include": ["404", "4084", "462"], "sign": "credit" }
+      ],
+      "statementLines": ["A_IMMO_INC", "A_TERRAINS", "A_CONSTRUCTIONS", "A_AUTRES_CORP", "A_IMMO_COURS", "CR_DOT_AMORT", "CR_PROD_CESSIONS", "CR_VNC_CEDES", "P_DETTES_IMMO"]
+    },
+    {
+      "id": "provisions",
+      "label": "Provisions",
+      "description": "Provision pour gros entretien, provisions pour litiges, engagements de retraite et passifs éventuels.",
+      "lines": [
+        { "id": "pge", "label": "Provision pour gros entretien", "include": ["1572"], "sign": "credit" },
+        { "id": "risks", "label": "Provisions pour risques", "include": ["151"], "sign": "credit" },
+        { "id": "charges", "label": "Dotations aux provisions", "include": ["6815"], "sign": "debit" },
+        { "id": "reversals", "label": "Reprises sur provisions", "include": ["7815"], "sign": "credit" }
+      ],
+      "statementLines": ["P_PROV_RISQUES", "P_PGE", "CR_DOT_PROV"]
+    },
+    {
+      "id": "debtTreasury",
+      "label": "Dettes financières et trésorerie",
+      "description": "Emprunts et intérêts courus, dépôts de garantie, trésorerie, comptes d’attente, immobilisations financières.",
+      "lines": [
+        { "id": "loans", "label": "Emprunts", "include": ["163", "164", "167"], "sign": "credit" },
+        { "id": "deposits", "label": "Dépôts de garantie des locataires", "include": ["165"], "sign": "credit" },
+        { "id": "icne", "label": "Intérêts courus sur emprunts", "include": ["1688"], "sign": "credit" },
+        { "id": "interest", "label": "Charges financières", "include": ["66"], "sign": "debit" },
+        { "id": "financial-income", "label": "Produits financiers", "include": ["76"], "sign": "credit" },
+        { "id": "cash", "label": "Trésorerie", "include": ["5"], "sign": "debit" },
+        { "id": "suspense", "label": "Comptes d’attente", "include": ["471"], "sign": "credit" },
+        { "id": "financial-assets", "label": "Immobilisations financières", "include": ["27"], "sign": "debit" }
+      ],
+      "statementLines": ["P_EMPRUNTS_CDC", "P_EMPRUNTS_EC", "P_EMPRUNTS_AUTRES", "P_DEPOTS", "P_ICNE", "P_CONCOURS", "A_DISPO", "A_IMMO_FIN", "CR_CHARGES_FIN", "CR_PRODUITS_FIN"]
+    },
+    {
+      "id": "purchases",
+      "label": "Achats et charges",
+      "description": "Achats et services extérieurs, entretien, charges de personnel, impôts et taxes, fournisseurs et charges à payer.",
+      "lines": [
+        { "id": "purchases", "label": "Achats non stockés", "include": ["60"], "sign": "debit" },
+        { "id": "maintenance", "label": "Entretien et réparations", "include": ["615"], "sign": "debit" },
+        { "id": "external", "label": "Autres services extérieurs", "include": ["61", "62"], "exclude": ["615"], "sign": "debit" },
+        { "id": "taxes", "label": "Impôts et taxes", "include": ["63"], "sign": "debit" },
+        { "id": "payroll", "label": "Charges de personnel", "include": ["64"], "sign": "debit" },
+        { "id": "other-charges", "label": "Autres charges de gestion et pénalités", "include": ["658", "6712"], "sign": "debit" },
+        { "id": "suppliers", "label": "Fournisseurs et factures non parvenues", "include": ["401", "4081"], "sign": "credit" },
+        { "id": "accruals", "label": "Dettes fiscales et sociales, charges à payer", "include": ["42", "43", "447", "4487", "4686", "4671", "4678", "486"], "sign": "credit" }
+      ],
+      "statementLines": ["CR_ACHATS", "CR_ENTRETIEN", "CR_SERV_EXT", "CR_IMPOTS", "CR_PERSONNEL_SAL", "CR_PERSONNEL_CHG", "P_FOURNISSEURS", "P_FISC_SOC"]
+    },
+    {
+      "id": "equitySubsidies",
+      "label": "Capitaux propres et subventions",
+      "description": "Capital, réserves, report à nouveau, subventions d’investissement et leur reprise, subventions à recevoir.",
+      "lines": [
+        { "id": "equity", "label": "Capital, réserves et report à nouveau", "include": ["10", "11", "12"], "sign": "credit" },
+        { "id": "subsidies", "label": "Subventions d’investissement (nettes des reprises)", "include": ["13"], "sign": "credit" },
+        { "id": "receivable", "label": "Subventions à recevoir", "include": ["441"], "sign": "debit" },
+        { "id": "release", "label": "Quote-part des subventions virée au résultat", "include": ["777"], "sign": "credit" },
+        { "id": "operating", "label": "Subventions d’exploitation", "include": ["74"], "sign": "credit" }
+      ],
+      "statementLines": ["P_CAPITAL", "P_RESERVES", "P_RAN", "P_SUBV", "A_SUBV_RECEVOIR", "CR_QP_SUBV", "CR_SUBV_EXPL"]
+    },
+    {
+      "id": "disclosures",
+      "label": "Annexe et rapport de gestion",
+      "description": "Exhaustivité et exactitude de l’annexe, engagements hors bilan, parties liées, informations du rapport de gestion.",
+      "lines": [],
+      "statementLines": []
+    }
+  ],
+  "conclusions": [
+    { "id": "satisfactory", "label": "Satisfaisant : assurance raisonnable obtenue sur le cycle", "tone": "ok" },
+    { "id": "withFindings", "label": "Satisfaisant sous réserve des constats relevés", "tone": "warn" },
+    { "id": "insufficient", "label": "Éléments probants insuffisants : travaux complémentaires nécessaires", "tone": "ko" }
+  ]
 }

@@ -6,26 +6,37 @@ import { managerReceivable } from '../../impairment';
 import { anomalyImpact } from '../../anomalies/presented';
 import { DocBuilder, ENTITY_HEADER, date, ofProg, euro, euro0, fromEuros, keuro, meuro, person, progName, pts, tpName, type DocContext } from '../context';
 import type { DocumentModel } from '../model';
+import { confirmationReplyDate, entryByNumber, fecNumbers, fillBankStatement, fillConfirmationReply, bankStatementTitle } from '../replies';
 
 export function correspondenceDocuments(c: DocContext): DocumentModel[] {
   const docs: DocumentModel[] = [];
   const sp = c.params.scenario.specific;
   const cfo = person(c, 'cfo');
   const chief = person(c, 'chiefAccountant');
-  const cal = c.d.calendar;
-  const sent = cal['confirmationsSent']!;
-  const reply = (days: number) => addBusinessDays(sent, days);
+  /** Date of the reply of a third party to the confirmation request (params/requests.json → confirmations). */
+  const reply = (thirdParty: string) => confirmationReplyDate(c, thirdParty);
+  const confirmation = (thirdParty: string) => ({ kind: 'confirmation' as const, request: thirdParty, label: tpName(c, thirdParty), arrives: reply(thirdParty) });
   const auditor = c.params.game.firmName;
 
   // ============================== courrier ==============================
   {
     const ch = sp.charmes;
-    const b = new DocBuilder({ id: 'courrier-caducite-charmes', title: 'Courrier du Département – caducité de la subvention des Charmes', category: 'mail', date: ch.lapseNoticeDate, issuer: 'Département – direction de l’habitat', recipient: `${person(c, 'ceo').name}, ${person(c, 'ceo').role}`, availability: { kind: 'onRequest', request: 'Registre du courrier arrivé et correspondance des financeurs', from: 'chiefAccountant' } });
+    const b = new DocBuilder({ id: 'courrier-caducite-charmes', title: 'Courrier du Département – caducité de la subvention des Charmes', category: 'mail', date: ch.lapseNoticeDate, issuer: 'Département – direction de l’habitat', recipient: `${person(c, 'ceo').name}, ${person(c, 'ceo').role}`, availability: { kind: 'onRequest', family: 'closing-file', object: 'mail-register', from: 'chiefAccountant' } });
     const k = b.clue('A09', 'thirdParty', `Le Département notifie le ${date(ch.lapseNoticeDate)} la caducité de la subvention des Charmes ; le courrier est classé sans suite.`);
     b.p(`Par arrêté du ${date(ch.decisionDate)}, le Département vous a attribué une subvention de ${euro0(fromEuros(ch.subsidyEuros))} pour la réhabilitation thermique ${ofProg(c, 'CHA')}. Les travaux n’ayant pas commencé dans le délai de ${ch.lapseYears} ans prévu par l’article 5 de cet arrêté, et votre demande de prorogation du ${date(ch.prorogationRequest)} n’ayant pas été accordée, je vous informe que cette subvention est caduque. Aucun versement ne pourra intervenir.`, k);
     b.sign(person(c, 'departmentOfficer').name, person(c, 'departmentOfficer').role, ch.lapseNoticeDate);
     b.stamp('Reçu le – classé sans suite', addBusinessDays(ch.lapseNoticeDate, 1), k);
     docs.push(b.build());
+    // register of the incoming mail of 2025 (reply to the same request): subsidy payment notices, tax notices, letters
+    const reg = new DocBuilder({ id: 'registre-courrier-arrive', title: 'Registre du courrier arrivé 2025 – financeurs, administrations et associations (extrait)', category: 'mail', date: '2025-12-31', issuer: `${ENTITY_HEADER(c)} – secrétariat général`, availability: { kind: 'onRequest', family: 'closing-file', object: 'mail-register', from: 'chiefAccountant' } });
+    const kr = reg.clue('A09', 'management', 'Le registre du courrier arrivé enregistre le courrier de caducité du Département, classé sans suite.');
+    const rows: { at: string; cells: string[]; clue?: string }[] = [];
+    for (const s of c.pd.subsidies) for (const r of s.receipts) if (r.date.startsWith('2025')) rows.push({ at: r.date, cells: [date(r.date), c.d.grantors[s.grantorId] ?? s.grantorId, `Avis de versement de subvention – ${progName(c, s.programmeId)} (${euro0(r.amount)})`, 'Direction financière', 'Transmis à la comptabilité'] });
+    rows.push({ at: '2025-07-10', cells: [date('2025-07-10'), person(c, 'tenantAssociation').name, 'Contestation de la régularisation des charges 2024', 'Direction générale', 'Transmis à la gestion locative'] });
+    rows.push({ at: '2025-09-12', cells: [date('2025-09-12'), 'Direction générale des finances publiques', 'Avis de taxe foncière 2025', 'Direction financière', 'Transmis à la comptabilité'] });
+    rows.push({ at: addBusinessDays(ch.lapseNoticeDate, 1), cells: [date(addBusinessDays(ch.lapseNoticeDate, 1)), 'Département – direction de l’habitat', `Subvention de la réhabilitation ${ofProg(c, 'CHA')}`, 'Direction générale', 'Classé sans suite'], clue: kr });
+    reg.table(['Reçu le', 'Expéditeur', 'Objet', 'Destinataire', 'Suite donnée'], rows.sort((x, y) => (x.at < y.at ? -1 : x.at > y.at ? 1 : 0)).map((x) => ({ cells: x.cells, ...(x.clue ? { clue: x.clue } : {}) })), { align: ['left', 'left', 'left', 'left', 'left'] });
+    docs.push(reg.build());
   }
   {
     const a = c.d.A15;
@@ -43,7 +54,7 @@ export function correspondenceDocuments(c: DocContext): DocumentModel[] {
     docs.push(pr.build());
   }
   {
-    const b = new DocBuilder({ id: 'courrier-association-locataires', title: 'Courrier de l’association des locataires – contestation de la régularisation des charges 2024', category: 'mail', date: '2025-07-08', issuer: person(c, 'tenantAssociation').name, recipient: `${person(c, 'ceo').name}, ${person(c, 'ceo').role}`, availability: { kind: 'onRequest', request: 'Réclamations des locataires sur les charges', from: 'rentManager' } });
+    const b = new DocBuilder({ id: 'courrier-association-locataires', title: 'Courrier de l’association des locataires – contestation de la régularisation des charges 2024', category: 'mail', date: '2025-07-08', issuer: person(c, 'tenantAssociation').name, recipient: `${person(c, 'ceo').name}, ${person(c, 'ceo').role}`, availability: { kind: 'onRequest', family: 'closing-file', object: 'recoverable-charges', from: 'rentManager' } });
     const k = b.clue('A10', 'thirdParty', 'L’association des locataires conteste la récupération des honoraires de syndic et de la totalité du salaire des gardiens.');
     b.p('Nous contestons la régularisation des charges 2024 : les honoraires du syndic des Marronniers ne sont pas des charges récupérables, et la totalité du salaire des gardiens ne peut pas être récupérée. Nous vous demandons de rectifier les décomptes et, à défaut, nous saisirons la commission départementale de conciliation.', k);
     b.sign(person(c, 'tenantAssociation').name, person(c, 'tenantAssociation').role, '2025-07-08');
@@ -90,7 +101,11 @@ export function correspondenceDocuments(c: DocContext): DocumentModel[] {
   {
     const a11 = c.params.anomalies.A11;
     const places = c.params.programmes.filter((p) => p.kind === 'collective').reduce((s, p) => s + p.units, 0);
-    const b = new DocBuilder({ id: 'note-calcul-par-daf', title: 'Note de calcul – refacturation des frais de gestion des foyers 2025', category: 'internal', date: c.d.A11.calculationNoteDate, issuer: cfo.name, recipient: auditor, availability: { kind: 'onRequest', request: 'Justificatif du produit à recevoir sur les foyers', from: 'cfo' } });
+    // reply to the request for the supporting document of the entry (the chief accountant forwards the note of the CFO)
+    const entry = c.presented.ledgers.current.entries.find((e) => e.origin === 'anomaly:A11');
+    const num = entry ? fecNumbers(c.presented.ledgers.current).get(entry.id) : undefined;
+    if (!entry || !num || entryByNumber(c, 2025, num) !== entry) throw new Error('A11 : écriture introuvable dans le FEC');
+    const b = new DocBuilder({ id: 'note-calcul-par-daf', title: 'Note de calcul – refacturation des frais de gestion des foyers 2025', category: 'internal', date: c.d.A11.calculationNoteDate, issuer: cfo.name, recipient: auditor, availability: { kind: 'onRequest', family: 'entry-voucher', object: `2025:${num}`, from: 'chiefAccountant' } });
     const k = b.clue('A11', 'internal', 'La note de calcul est établie a posteriori (février 2026) et ne s’appuie sur aucune clause contractuelle ni facture.');
     b.p(`Frais de gestion supportés pour le compte des gestionnaires en 2025 (suivi technique, gestion des attributions, assurance) : ${places} places × forfait annuel, arrondi à ${euro0(fromEuros(a11.euros))}. La refacturation sera proposée aux gestionnaires en 2026.`, k);
     b.sign(cfo.name, cfo.role, c.d.A11.calculationNoteDate);
@@ -117,6 +132,7 @@ export function correspondenceDocuments(c: DocContext): DocumentModel[] {
   );
 
   // ============================== tiers ==============================
+  // one reply per third party (plan J4 §9); a third party without a scenario reply gets a generic one (replies.ts)
   const allSchedules = new Map<string, LoanScheduleLine[]>();
   for (const l of c.cd.loanSchedules) allSchedules.set(l.loanId, [...(allSchedules.get(l.loanId) ?? []), l]);
   {
@@ -125,7 +141,7 @@ export function correspondenceDocuments(c: DocContext): DocumentModel[] {
     const crd = bdt.reduce((s, l) => s + outstandingAt(l, allSchedules.get(l.id)!, at), 0);
     const icne = bdt.reduce((s, l) => s + accruedInterest(l, allSchedules.get(l.id)!, at), 0);
     const phb = c.cd.loans.find((l) => l.product === 'PHB')!;
-    const b = new DocBuilder({ id: 'confirmation-bdt', title: 'Réponse de la Banque des Territoires à la demande de confirmation', category: 'thirdParty', date: reply(14), issuer: 'Caisse des dépôts – Banque des Territoires', recipient: auditor, availability: { kind: 'confirmation', request: 'Banque des Territoires', arrives: reply(14) } });
+    const b = new DocBuilder({ id: 'confirmation-bdt', title: 'Réponse de la Banque des Territoires à la demande de confirmation', category: 'thirdParty', date: reply('BDT'), issuer: 'Caisse des dépôts – Banque des Territoires', recipient: auditor, availability: confirmation('BDT') });
     const k18 = b.clue('A18', 'thirdParty', `La Banque des Territoires confirme un capital restant dû de ${meuro(crd, 1)} au 31/12/2025, dont un prêt de haut de bilan versé le ${date(phb.refDate)}.`);
     const k8 = b.clue('A08', 'thirdParty', `Les intérêts courus au 31/12/2025 calculés par la Banque des Territoires, prêt par prêt, s’élèvent à ${euro0(icne)}.`);
     b.fields([
@@ -136,28 +152,30 @@ export function correspondenceDocuments(c: DocContext): DocumentModel[] {
       ['Garanties', 'Garanties des collectivités territoriales sur l’ensemble des prêts'],
     ]);
     b.note('Le détail par contrat (capital restant dû, taux en vigueur, date de la prochaine échéance) est joint en annexe.');
-    b.sign(person(c, 'bdtOfficer').name, person(c, 'bdtOfficer').role, reply(14));
+    b.sign(person(c, 'bdtOfficer').name, person(c, 'bdtOfficer').role, reply('BDT'));
     docs.push(b.build());
   }
-  docs.push(
-    new DocBuilder({ id: 'confirmations-banques', title: 'Réponses des banques commerciales et d’Action Logement aux demandes de confirmation', category: 'thirdParty', date: reply(10), issuer: 'Établissements de crédit', recipient: auditor, noise: true, availability: { kind: 'confirmation', request: 'Banques commerciales et Action Logement', arrives: reply(10) } })
-      .table(['Établissement', 'Capital restant dû confirmé'], [...new Set(c.cd.loans.filter((l) => l.lenderId !== 'BDT').map((l) => l.lenderId))].map((id) => [tpName(c, id), euro0(c.cd.loans.filter((l) => l.lenderId === id).reduce((s, l) => s + outstandingAt(l, allSchedules.get(l.id)!, '2025-12-31'), 0))]))
-      .p('Soldes des comptes courants et des comptes à terme confirmés sans écart ; aucun autre engagement.')
-      .build(),
-  );
+  // commercial banks and Action Logement: replies without difference (noise)
+  for (const id of ['BANK1', 'BANK2', 'BANK3', 'AL']) {
+    const name = tpName(c, id);
+    const b = new DocBuilder({ id: `confirmation-${id.toLowerCase()}`, title: `Réponse de ${name} à la demande de confirmation`, category: 'thirdParty', date: reply(id), issuer: name, recipient: auditor, noise: true, availability: confirmation(id) });
+    fillConfirmationReply(b, c, id);
+    b.sign(name, 'Service des engagements', reply(id));
+    docs.push(b.build());
+  }
   {
     const cf = sp.closFleuri2026;
     const total = c.cd.sales.filter((s) => s.deedDate === cf.deedDate).reduce((s, x) => s + x.price, 0);
-    const b = new DocBuilder({ id: 'confirmation-notaire', title: 'Réponse du notaire à la demande de confirmation', category: 'thirdParty', date: reply(8), issuer: person(c, 'notary').name, recipient: auditor, availability: { kind: 'confirmation', request: 'Notaire (Cabinet Girard)', arrives: reply(8) } });
+    const b = new DocBuilder({ id: 'confirmation-notaire', title: 'Réponse du notaire à la demande de confirmation', category: 'thirdParty', date: reply('NOTAIRE_GIRARD'), issuer: person(c, 'notary').name, recipient: auditor, availability: confirmation('NOTAIRE_GIRARD') });
     const k = b.clue('A03', 'thirdParty', `Le notaire confirme que les actes des sept pavillons ont été signés le ${date(cf.deedDate)} et qu’aucune somme n’était due à l’organisme au 31/12/2025 à ce titre.`);
     b.p(`Au 31/12/2025, aucune somme n’était détenue ni due pour le compte de ${c.params.scenario.entity.name} au titre des ventes ${ofProg(c, 'CLF')}. Les actes authentiques des sept pavillons ont été signés le ${date(cf.deedDate)} ; le prix (${euro0(total)}) a été versé le ${date(cf.notaryPaymentDate)}.`, k);
-    b.sign(person(c, 'notary').name, person(c, 'notary').role, reply(8));
+    b.sign(person(c, 'notary').name, person(c, 'notary').role, reply('NOTAIRE_GIRARD'));
     docs.push(b.build());
   }
   {
     const t = sp.tilleuls;
     const a = c.d.A16;
-    const b = new DocBuilder({ id: 'reponse-avocate', title: 'Réponse de l’avocate à la demande d’informations sur les litiges', category: 'thirdParty', date: a.lawyerReplyDate, issuer: person(c, 'lawyer').name, recipient: auditor, availability: { kind: 'confirmation', request: 'Avocats (Me Aubert)', arrives: a.lawyerReplyDate } });
+    const b = new DocBuilder({ id: 'reponse-avocate', title: 'Réponse de l’avocate à la demande d’informations sur les litiges', category: 'thirdParty', date: a.lawyerReplyDate, issuer: person(c, 'lawyer').name, recipient: auditor, availability: { kind: 'confirmation', request: 'F0033', label: tpName(c, 'F0033'), arrives: a.lawyerReplyDate } });
     const ka = b.clue('A16', 'thirdParty', `Selon l’avocate, les travaux supplémentaires de l’ordre de service n° 7 (${euro0(fromEuros(t.os7Euros))}) sont dus.`, ['A16.a']);
     const kb = b.clue('A16', 'thirdParty', `Les pénalités de retard retenues (${euro0(fromEuros(t.penaltiesEuros))}) sont « sérieusement contestables », issue incertaine.`, ['A16.b']);
     b.p(`Par assignation du ${date(a.summonsDate)}, ${tpName(c, 'F0022')} réclame le paiement des travaux supplémentaires de l’ordre de service n° 7 et conteste les pénalités de retard retenues sur le décompte général.`);
@@ -169,67 +187,86 @@ export function correspondenceDocuments(c: DocContext): DocumentModel[] {
     docs.push(b.build());
   }
   {
-    const ch = sp.charmes;
-    const b = new DocBuilder({ id: 'confirmation-departement', title: 'Réponse du Département à la demande de confirmation', category: 'thirdParty', date: reply(20), issuer: 'Département – direction de l’habitat', recipient: auditor, availability: { kind: 'confirmation', request: 'Département (subventions)', arrives: reply(20) } });
-    const k = b.clue('A09', 'thirdParty', 'Le Département confirme qu’aucune somme n’est due au titre de la subvention des Charmes, caduque depuis octobre 2025.');
-    b.p(`Au 31/12/2025, aucune somme n’est due à ${c.params.scenario.entity.name} au titre de la subvention attribuée le ${date(ch.decisionDate)} pour la réhabilitation ${ofProg(c, 'CHA')}, devenue caduque (notre courrier du ${date(ch.lapseNoticeDate)}).`, k);
-    b.sign(person(c, 'departmentOfficer').name, person(c, 'departmentOfficer').role, reply(20));
+    // the general contractor of the Tilleuls confirms its balance, claims the additional works and disputes the penalties (consistent with the lawyer)
+    const t = sp.tilleuls;
+    const name = tpName(c, 'F0022');
+    const b = new DocBuilder({ id: 'confirmation-bertin-lagarde', title: `Réponse de ${name} à la demande de confirmation`, category: 'thirdParty', date: reply('F0022'), issuer: name, recipient: auditor, availability: confirmation('F0022') });
+    fillConfirmationReply(b, c, 'F0022');
+    const ka = b.clue('A16', 'thirdParty', `L’entreprise générale réclame en outre ${euro0(fromEuros(t.os7Euros))} au titre de l’ordre de service n° 7, non réglés et non repris dans le solde.`, ['A16.a']);
+    const kb = b.clue('A16', 'thirdParty', `L’entreprise conteste les pénalités de retard (${euro0(fromEuros(t.penaltiesEuros))}) retenues sur le décompte général et a saisi le tribunal.`, ['A16.b']);
+    b.list([
+      { text: `Réserve : nous réclamons en outre le paiement des travaux supplémentaires exécutés sur ordre de service n° 7 (${euro0(fromEuros(t.os7Euros))}), non réglés à ce jour.`, clue: ka },
+      { text: `Réserve : nous contestons les pénalités de retard (${euro0(fromEuros(t.penaltiesEuros))}) retenues sur le décompte général ; l’instance est pendante (assignation du ${date(c.d.A16.summonsDate)}).`, clue: kb },
+    ]);
+    b.sign(name, 'Direction administrative et financière', reply('F0022'));
     docs.push(b.build());
   }
   {
-    const b = new DocBuilder({ id: 'confirmations-gestionnaires', title: 'Réponses des gestionnaires de foyers aux demandes de confirmation', category: 'thirdParty', date: reply(12), issuer: 'Gestionnaires de structures collectives', recipient: auditor, availability: { kind: 'confirmation', request: 'Gestionnaires de foyers', arrives: reply(12) } });
-    const k11 = b.clue('A11', 'thirdParty', 'Les gestionnaires qui répondent déclarent ne rien devoir au titre de frais de gestion.');
-    const k15 = b.clue('A15', 'thirdParty', `${tpName(c, 'ACCUEIL_HORIZONS')} ne répond pas à la demande de confirmation.`);
-    b.table(['Gestionnaire', 'Réponse'], [
-      { cells: [tpName(c, 'HABITAT_INSERTION'), 'Redevances 2025 réglées ; aucune somme due à ce titre ni au titre de frais de gestion.'], clue: k11 },
-      { cells: [tpName(c, 'CCAS_AURELLE'), 'Aucune somme due au 31/12/2025.'], clue: k11 },
-      { cells: [tpName(c, 'ACCUEIL_HORIZONS'), 'pas de réponse (relance du ' + date(reply(25)) + ' sans effet)'], clue: k15 },
-    ], { align: ['left', 'left'] });
+    const ch = sp.charmes;
+    const b = new DocBuilder({ id: 'confirmation-departement', title: 'Réponse du Département à la demande de confirmation', category: 'thirdParty', date: reply('DEPARTEMENT'), issuer: 'Département – direction de l’habitat', recipient: auditor, availability: confirmation('DEPARTEMENT') });
+    const k = b.clue('A09', 'thirdParty', 'Le Département confirme qu’aucune somme n’est due au titre de la subvention des Charmes, caduque depuis octobre 2025.');
+    b.p(`Au 31/12/2025, aucune somme n’est due à ${c.params.scenario.entity.name} au titre de la subvention attribuée le ${date(ch.decisionDate)} pour la réhabilitation ${ofProg(c, 'CHA')}, devenue caduque (notre courrier du ${date(ch.lapseNoticeDate)}).`, k);
+    b.sign(person(c, 'departmentOfficer').name, person(c, 'departmentOfficer').role, reply('DEPARTEMENT'));
     docs.push(b.build());
+  }
+  {
+    // residence managers: one reply each; Accueil Horizons never replies (status visible in the confirmations tracker)
+    const managers: [string, string, string][] = [
+      ['confirmations-gestionnaires', 'HABITAT_INSERTION', 'Redevances 2025 réglées ; aucune somme due à ce titre ni au titre de frais de gestion.'],
+      ['confirmation-ccas-aurelle', 'CCAS_AURELLE', 'Aucune somme due au 31/12/2025, ni au titre des redevances ni au titre de frais de gestion.'],
+    ];
+    for (const [id, tp, text] of managers) {
+      const name = tpName(c, tp);
+      const b = new DocBuilder({ id, title: `Réponse de ${name} à la demande de confirmation`, category: 'thirdParty', date: reply(tp), issuer: name, recipient: auditor, availability: confirmation(tp) });
+      const k11 = b.clue('A11', 'thirdParty', 'Le gestionnaire déclare ne rien devoir à l’organisme au titre de frais de gestion.');
+      b.p(text, k11);
+      b.sign(name, 'Le président', reply(tp));
+      docs.push(b.build());
+    }
   }
   {
     const adv = sp.sisterAdvance;
-    const b = new DocBuilder({ id: 'confirmation-csh', title: `Réponse de ${tpName(c, 'COTEAUX_SEREIN')} à la demande de confirmation`, category: 'thirdParty', date: reply(11), issuer: tpName(c, 'COTEAUX_SEREIN'), recipient: auditor, availability: { kind: 'confirmation', request: 'Coteaux du Serein Habitat', arrives: reply(11) } });
+    const b = new DocBuilder({ id: 'confirmation-csh', title: `Réponse de ${tpName(c, 'COTEAUX_SEREIN')} à la demande de confirmation`, category: 'thirdParty', date: reply('COTEAUX_SEREIN'), issuer: tpName(c, 'COTEAUX_SEREIN'), recipient: auditor, availability: confirmation('COTEAUX_SEREIN') });
     const k = b.clue('A12', 'thirdParty', `L’ESH sœur confirme une avance de ${meuro(fromEuros(adv.euros), 1)} sans intérêt, mobilisable jusqu’à ${meuro(fromEuros(adv.ceilingEuros), 1)}.`, ['A12.i', 'A12.ii']);
     b.p(`Nous confirmons devoir à ${c.params.scenario.entity.name}, au 31/12/2025, une avance en compte courant de ${euro0(fromEuros(adv.euros))}, sans intérêt, consentie en application de la convention du ${date(adv.conventionDate)}, qui prévoit des tirages jusqu’à ${euro0(fromEuros(adv.ceilingEuros))}.`, k);
-    b.sign(person(c, 'sisterCeo').name, person(c, 'sisterCeo').role, reply(11));
+    b.sign(person(c, 'sisterCeo').name, person(c, 'sisterCeo').role, reply('COTEAUX_SEREIN'));
     docs.push(b.build());
   }
   {
     const gie = c.cd.invoices.find((i) => i.supplierId === 'F0027' && i.serviceYear === 2025 && i.invoiceDate > '2025-12-31')!;
-    const b = new DocBuilder({ id: 'confirmation-gie', title: `Réponse du ${tpName(c, 'F0027')} à la demande de confirmation`, category: 'thirdParty', date: reply(9), issuer: tpName(c, 'F0027'), recipient: auditor, availability: { kind: 'confirmation', request: 'GIE Altaïr Services', arrives: reply(9) } });
+    const b = new DocBuilder({ id: 'confirmation-gie', title: `Réponse du ${tpName(c, 'F0027')} à la demande de confirmation`, category: 'thirdParty', date: reply('F0027'), issuer: tpName(c, 'F0027'), recipient: auditor, availability: confirmation('F0027') });
     const k = b.clue('A20', 'thirdParty', `Le GIE indique avoir facturé le ${date(gie.invoiceDate)} un complément de frais de structure 2025 de ${euro0(gie.total)}.`);
     b.p(`Au 31/12/2025, aucune facture n’était échue et impayée. Nous vous précisons qu’un complément de frais de structure au titre de l’exercice 2025, calculé selon la clé de répartition, a été facturé le ${date(gie.invoiceDate)} pour ${euro0(gie.total)} (facture ${gie.number}).`, k);
-    b.sign(person(c, 'gieDirector').name, person(c, 'gieDirector').role, reply(9));
+    b.sign(person(c, 'gieDirector').name, person(c, 'gieDirector').role, reply('F0027'));
     docs.push(b.build());
   }
 
-  // --- relevés bancaires (A03, A12, A18, F6) ---------------------------------
+  // --- relevés bancaires (A03, A12, A18, F6), servis par mois ---------------------
   {
     const adv = sp.sisterAdvance;
-    const b = new DocBuilder({ id: 'releve-bancaire-2025-09', title: 'Relevé bancaire de septembre 2025 – compte principal (extrait)', category: 'thirdParty', date: '2025-09-30', issuer: 'Banque commerciale – compte principal', availability: { kind: 'onRequest', request: 'Relevés bancaires 2025', from: 'chiefAccountant' } });
+    const b = new DocBuilder({ id: 'releve-bancaire-2025-09', title: bankStatementTitle('2025-09'), category: 'thirdParty', date: '2025-09-30', issuer: 'Banque commerciale – compte principal', availability: { kind: 'onRequest', family: 'bank-statements', object: '2025-09', from: 'chiefAccountant' } });
     const k = b.clue('A12', 'thirdParty', `Virement de ${euro0(fromEuros(adv.euros))} à ${tpName(c, 'COTEAUX_SEREIN')} le ${date(adv.date)}.`, ['A12.i']);
-    b.table(['Date', 'Libellé', 'Débit', 'Crédit'], [{ cells: [date(adv.date), `VIR ${tpName(c, 'COTEAUX_SEREIN').toUpperCase()} AVANCE CCT`, euro(fromEuros(adv.euros)), ''], clue: k }], { align: ['left', 'left', 'right', 'right'] });
+    fillBankStatement(b, c, '2025-09', { rewrite: (r) => (r.entry?.lines.some((l) => l.aux === 'CSH') ? { label: `VIR ${tpName(c, 'COTEAUX_SEREIN').toUpperCase()} AVANCE CCT`, clue: k } : undefined) });
     docs.push(b.build());
   }
   {
     const phb = c.cd.loans.find((l) => l.product === 'PHB')!;
-    const b = new DocBuilder({ id: 'releve-bancaire-2025-12', title: 'Relevé bancaire de décembre 2025 – compte principal (extrait)', category: 'thirdParty', date: '2025-12-31', issuer: 'Banque commerciale – compte principal', availability: { kind: 'onRequest', request: 'Relevés bancaires 2025', from: 'chiefAccountant' } });
+    const b = new DocBuilder({ id: 'releve-bancaire-2025-12', title: bankStatementTitle('2025-12'), category: 'thirdParty', date: '2025-12-31', issuer: 'Banque commerciale – compte principal', availability: { kind: 'onRequest', family: 'bank-statements', object: '2025-12', from: 'chiefAccountant' } });
     const k = b.clue('A18', 'thirdParty', `Virement rond de ${euro0(phb.refOutstanding)} reçu de la Banque des Territoires le ${date(phb.refDate)} (référence de contrat ${phb.contractNumber}).`);
-    b.table(['Date', 'Libellé', 'Débit', 'Crédit'], [{ cells: [date(phb.refDate), `VIR CDC BANQUE DES TERRITOIRES CTR ${phb.contractNumber}`, '', euro(phb.refOutstanding)], clue: k }], { align: ['left', 'left', 'right', 'right'] });
+    fillBankStatement(b, c, '2025-12', { rewrite: (r) => (r.date === phb.refDate && r.credit === phb.refOutstanding ? { label: `VIR CDC BANQUE DES TERRITOIRES CTR ${phb.contractNumber}`, clue: k } : undefined) });
     docs.push(b.build());
   }
   {
     const cf = sp.closFleuri2026;
     const total = c.cd.sales.filter((s) => s.deedDate === cf.deedDate).reduce((s, x) => s + x.price, 0);
     const f6 = c.d.F6;
-    const b = new DocBuilder({ id: 'releve-bancaire-2026-01', title: 'Relevé bancaire de janvier 2026 – compte principal (extrait)', category: 'thirdParty', date: '2026-01-31', issuer: 'Banque commerciale – compte principal', availability: { kind: 'onRequest', request: 'Relevés bancaires de janvier et février 2026', from: 'chiefAccountant' } });
+    const b = new DocBuilder({ id: 'releve-bancaire-2026-01', title: bankStatementTitle('2026-01'), category: 'thirdParty', date: '2026-01-31', issuer: 'Banque commerciale – compte principal', availability: { kind: 'onRequest', family: 'bank-statements', object: '2026-01', from: 'chiefAccountant' } });
     const k3 = b.clue('A03', 'thirdParty', `Le notaire verse le prix des sept pavillons le ${date(cf.notaryPaymentDate)}.`);
     const k6 = b.clue('F6', 'thirdParty', `Les ${f6.count} chèques en suspens au 31/12/2025 sont débités en janvier, au plus tard le ${date(f6.clearedBy)}.`);
-    b.table(['Date', 'Libellé', 'Débit', 'Crédit'], [
-      { cells: [`du 02/01 au ${date(f6.clearedBy)}`, `${f6.count} chèques émis en décembre 2025`, euro(fromEuros(f6.outstandingChequesEuros)), ''], clue: k6 },
-      { cells: [date(cf.notaryPaymentDate), 'VIR OFFICE NOTARIAL GIRARD VENTES CLOS FLEURI', '', euro(total)], clue: k3 },
-    ], { align: ['left', 'left', 'right', 'right'] });
+    fillBankStatement(b, c, '2026-01', {
+      rewrite: (r) => (r.date === cf.notaryPaymentDate && r.credit === total && r.label.endsWith(' VENTES') ? { label: 'VIR OFFICE NOTARIAL GIRARD VENTES CLOS FLEURI', clue: k3 } : undefined),
+      extra: [{ date: '2026-01-02', dateText: `du 02/01 au ${date(f6.clearedBy)}`, label: `${f6.count} CHEQUES EMIS EN DECEMBRE 2025`, debit: fromEuros(f6.outstandingChequesEuros), credit: 0, clue: k6 }],
+    });
     docs.push(b.build());
   }
   return docs;

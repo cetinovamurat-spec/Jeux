@@ -1,4 +1,169 @@
 {
-  "_comment": "Familles de demandes de documents (type × objet), interlocuteur et constructeur de la réponse générique (plan J4 §8). Contenu fourni en J4c.",
-  "families": []
+  "_comment": "Demandes de documents (plan J4 §8) : familles type × objet, interlocuteur (clés de documents.json → people), coût en heures du senior ; demandes de confirmation (§9) : période d'envoi automatique, coûts, fournisseurs proposés, tiers qui ne répondent pas, délais de réponse des pièces du scénario (jours ouvrés après l'envoi). Valeurs révisables.",
+  "costHours": { "request": 0.25, "reminder": 0.1 },
+  "families": [
+    {
+      "id": "interim-extraction",
+      "label": "Extraction comptable au 31/10/2025",
+      "description": "Balance et FEC des écritures validées au 31/10/2025, avec le cumul au 31/10/2024, l’auxiliaire des locataires et le journal d’interface.",
+      "interlocutor": "chiefAccountant",
+      "parameter": "none",
+      "cycle": "crossCycle"
+    },
+    {
+      "id": "entry-voucher",
+      "label": "Pièce justificative d’une écriture",
+      "description": "Facture, contrat, avis d’échéance, relevé ou note de calcul à l’appui d’une écriture du FEC.",
+      "interlocutor": "chiefAccountant",
+      "parameter": "fecEntry",
+      "objectLabel": "Écriture (exercice et numéro du FEC)",
+      "cycle": "crossCycle"
+    },
+    {
+      "id": "programme-invoices",
+      "label": "Factures et bons de commande d’un programme (2025)",
+      "description": "Factures de travaux, de gros entretien et d’entretien de l’exercice et bons de commande correspondants.",
+      "interlocutor": "chiefAccountant",
+      "parameter": "programme",
+      "objectLabel": "Programme",
+      "cycle": "fixedAssets",
+      "programmeFilter": "invoices"
+    },
+    {
+      "id": "programme-rent-roll",
+      "label": "Quittancement d’un programme pour un mois",
+      "description": "Extrait du logiciel de gestion locative : logements, locataires, loyers, provisions de charges et RLS du mois.",
+      "interlocutor": "rentManager",
+      "parameter": "programmeMonth",
+      "objectLabel": "Programme et mois",
+      "cycle": "rentReceivables",
+      "programmeFilter": "rentRoll",
+      "months": { "from": "2024-12", "to": "2025-12" }
+    },
+    {
+      "id": "operation-orders",
+      "label": "Ordres de service et avenants d’une opération",
+      "description": "Ordres de service, avenants et situations de travaux d’une opération de construction, de réhabilitation ou de remplacement récente.",
+      "interlocutor": "assetDirector",
+      "parameter": "programme",
+      "objectLabel": "Opération",
+      "cycle": "fixedAssets",
+      "programmeFilter": "operations"
+    },
+    {
+      "id": "operation-acceptance",
+      "label": "Procès-verbal de réception d’une opération",
+      "description": "PV de réception des travaux (ou état d’avancement si la réception n’est pas prononcée).",
+      "interlocutor": "assetDirector",
+      "parameter": "programme",
+      "objectLabel": "Opération",
+      "cycle": "fixedAssets",
+      "programmeFilter": "operations"
+    },
+    {
+      "id": "supplier-tender",
+      "label": "Dossier de marché d’un fournisseur",
+      "description": "Rapport d’analyse des offres, décision d’attribution et déclarations de la commission d’appel d’offres.",
+      "interlocutor": "assetDirector",
+      "parameter": "thirdParty",
+      "objectLabel": "Fournisseur",
+      "cycle": "purchases",
+      "thirdPartyKinds": ["supplier"]
+    },
+    {
+      "id": "sale-notary",
+      "label": "Ventes HLM d’un programme : promesses, actes et correspondance du notaire",
+      "description": "Promesses de vente, actes authentiques et courriers du notaire sur les ventes de l’exercice et de l’exercice suivant.",
+      "interlocutor": "cfo",
+      "parameter": "programme",
+      "objectLabel": "Programme",
+      "cycle": "fixedAssets",
+      "programmeFilter": "sales"
+    },
+    {
+      "id": "third-party-agreements",
+      "label": "Conventions et contrats conclus avec un tiers",
+      "description": "Conventions, contrats et avenants en vigueur avec le tiers.",
+      "interlocutor": "cfo",
+      "parameter": "thirdParty",
+      "objectLabel": "Tiers",
+      "cycle": "crossCycle",
+      "thirdPartyKinds": ["supplier", "groupEntity", "residenceManager", "lender", "publicBody", "notary", "lawyer"]
+    },
+    {
+      "id": "programme-components",
+      "label": "Registre des composants d’un programme",
+      "description": "Composants immobilisés au 31/12/2025 : bâtiment, famille, date de mise en service, durée, valeur brute et valeur nette.",
+      "interlocutor": "chiefAccountant",
+      "parameter": "programme",
+      "objectLabel": "Programme",
+      "cycle": "fixedAssets",
+      "programmeFilter": "components"
+    },
+    {
+      "id": "bank-statements",
+      "label": "Relevé bancaire du compte principal pour un mois",
+      "description": "Relevé de la banque teneur du compte principal (mouvements du mois).",
+      "interlocutor": "chiefAccountant",
+      "parameter": "month",
+      "objectLabel": "Mois",
+      "cycle": "debtTreasury",
+      "months": { "from": "2025-01", "to": "2026-02" }
+    },
+    {
+      "id": "rent-interface",
+      "label": "Journal de l’interface de quittancement pour un mois",
+      "description": "Lots de quittancement transmis par le logiciel de gestion locative et intégrés en comptabilité.",
+      "interlocutor": "chiefAccountant",
+      "parameter": "month",
+      "objectLabel": "Mois",
+      "cycle": "rentReceivables",
+      "months": { "from": "2025-01", "to": "2025-12" }
+    },
+    {
+      "id": "closing-file",
+      "label": "Pièce du dossier de clôture",
+      "description": "Fichiers de calcul et dossiers justificatifs préparés pour la clôture.",
+      "interlocutor": "chiefAccountant",
+      "parameter": "closingDoc",
+      "objectLabel": "Pièce",
+      "cycle": "crossCycle",
+      "objects": [
+        { "id": "icne", "label": "Fichier de calcul des intérêts courus non échus" },
+        { "id": "debt-schedule", "label": "Tableaux d’amortissement des emprunts (échéances 2026)" },
+        { "id": "pge", "label": "Plan pluriannuel d’entretien de la direction du patrimoine", "interlocutor": "assetDirector" },
+        { "id": "impairment", "label": "Dossier de recouvrement des créances locatives (statistiques, prestataire, surendettement)", "interlocutor": "rentManager" },
+        { "id": "rent-revision", "label": "Révision des loyers 2025 : quittances de décembre 2024 et de janvier 2025 (échantillon)", "interlocutor": "rentManager" },
+        { "id": "recoverable-charges", "label": "Dossier de la régularisation des charges (fiches de poste des gardiens, réclamations)", "interlocutor": "rentManager" },
+        { "id": "subsidies", "label": "Arrêtés attributifs des subventions à recevoir", "interlocutor": "cfo" },
+        { "id": "urban-renewal", "label": "Convention de renouvellement urbain et avenants (ANRU)", "interlocutor": "assetDirector" },
+        { "id": "governance-register", "label": "Registre des conventions et composition des conseils du groupe", "interlocutor": "cfo" },
+        { "id": "mail-register", "label": "Registre du courrier arrivé et correspondance des financeurs" },
+        { "id": "migration", "label": "Dossier de migration du système d’information" },
+        { "id": "subsequent-invoices", "label": "Factures reçues et décaissements de janvier-février 2026" }
+      ]
+    }
+  ],
+  "confirmations": {
+    "sendingPeriod": "confirmations",
+    "preparationHours": 0.5,
+    "reminderHours": 0.1,
+    "supplierMinVolumeEuros": 600000,
+    "suppliersAlways": ["F0027", "F0022", "F0015"],
+    "nonResponders": ["ACCUEIL_HORIZONS"],
+    "replyBusinessDays": {
+      "BDT": 14,
+      "BANK1": 10,
+      "BANK2": 9,
+      "BANK3": 11,
+      "AL": 12,
+      "NOTAIRE_GIRARD": 8,
+      "DEPARTEMENT": 20,
+      "HABITAT_INSERTION": 12,
+      "CCAS_AURELLE": 13,
+      "COTEAUX_SEREIN": 11,
+      "F0027": 9,
+      "F0022": 13
+    }
+  }
 }

@@ -15,7 +15,7 @@ import type { FinancialStatements } from '../../engine/types';
 import type { ScenarioDatasets } from '../datasets';
 import type { Params } from '../params';
 import type { DocumentsParams } from '../schema';
-import type { Availability, Block, Clue, ClueSource, ClueTarget, DocumentCategory, DocumentModel } from './model';
+import { requestKey, type Availability, type Block, type Clue, type ClueSource, type ClueTarget, type DocumentCategory, type DocumentModel, type Interlocutor } from './model';
 import type { PartKey } from '../anomalies/types';
 
 export interface DocContext {
@@ -81,7 +81,7 @@ export function person(c: DocContext, role: string): { name: string; role: strin
 }
 
 export function progName(c: DocContext, id: string): string {
-  return c.params.programmes.find((p) => p.id === id)?.name ?? (id === 'SIE' ? 'Siège et moyens généraux' : id);
+  return c.params.programmes.find((p) => p.id === id)?.name ?? c.params.scenario.operationsInProgress.find((o) => o.id === id)?.name ?? (id === 'SIE' ? 'Siège et moyens généraux' : id);
 }
 
 /** « de » + programme name with the French contraction: des Tilleuls, du Belvédère, de La Roseraie, du FJT Le Phare. */
@@ -114,6 +114,12 @@ export const ENTITY_HEADER = (c: DocContext) => `${c.params.scenario.entity.name
 // builder
 // ---------------------------------------------------------------------------
 
+/**
+ * Availability given by a template: a request reply names its family and
+ * object (params/requests.json); buildDocuments fills the label of the request.
+ */
+export type AvailabilityInput = Availability | { kind: 'onRequest'; family: string; object: string; also?: readonly string[]; from: Interlocutor; request?: string };
+
 export interface DocMeta {
   id: string;
   title: string;
@@ -123,7 +129,7 @@ export interface DocMeta {
   recipient?: string;
   reference?: string;
   noise?: boolean;
-  availability?: Availability;
+  availability?: AvailabilityInput;
 }
 
 export class DocBuilder {
@@ -190,6 +196,11 @@ export class DocBuilder {
 
   build(): DocumentModel {
     const { availability, ...rest } = this.meta;
-    return { ...rest, availability: availability ?? { kind: 'initial' }, blocks: this.blocks, clues: this.clues };
+    const a: Availability = !availability
+      ? { kind: 'initial' }
+      : availability.kind === 'onRequest' && 'family' in availability && availability.family !== undefined
+        ? { ...availability, request: availability.request ?? requestKey(availability.family, availability.object ?? '') }
+        : (availability as Availability);
+    return { ...rest, availability: a, blocks: this.blocks, clues: this.clues };
   }
 }

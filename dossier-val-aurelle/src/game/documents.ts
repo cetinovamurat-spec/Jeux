@@ -5,10 +5,10 @@
  */
 import type { IsoDate } from '../engine/dates';
 import type { Block, DocumentModel } from '../scenario/documents';
-import type { DocumentCategory } from '../scenario/documents/model';
+import { onRequestKeys, type DocumentCategory } from '../scenario/documents/model';
 import type { Params } from '../scenario/params';
 import { sentConfirmations } from './confirmations';
-import { answeredRequests } from './requests';
+import { answeredRequests, requestArrivals } from './requests';
 import type { DocumentState, GameState } from './state';
 import { foldText, type FoldedText } from './text';
 
@@ -22,6 +22,14 @@ export interface AvailabilityContext {
   conditions: ReadonlySet<string>;
   /** Designer mode unlocks every document. */
   designer: boolean;
+  /**
+   * Date the reply to a request key reaches the auditor for a document dated
+   * `docDate` (the interlocutor's delay from the request, or from the date of
+   * the document when it did not exist yet), or null when it was never asked
+   * (J4c). Without it, a document given on request is available once its key
+   * is answered and its date reached.
+   */
+  requestArrival?: (key: string, docDate: IsoDate) => IsoDate | null;
 }
 
 /**
@@ -35,7 +43,19 @@ export function availabilityContext(s: Pick<GameState, 'clock' | 'settings' | 'r
     answeredRequests: answeredRequests(s.requests, params, date),
     sentConfirmations: sentConfirmations(s.confirmations, params, date),
     conditions: new Set<string>(),
+    requestArrival: requestArrivals(s.requests, params),
   };
+}
+
+/** Date a document given on request reaches the auditor (earliest over the keys it answers), or null when it was never asked. */
+function onRequestArrival(doc: DocumentModel, ctx: AvailabilityContext): IsoDate | null {
+  const keys = onRequestKeys(doc.availability);
+  let best: IsoDate | null = null;
+  for (const k of keys) {
+    const d = ctx.requestArrival ? ctx.requestArrival(k, doc.date) : ctx.answeredRequests.has(k) ? (doc.date > ctx.date ? null : doc.date) : null;
+    if (d !== null && (best === null || d < best)) best = d;
+  }
+  return best;
 }
 
 export function isAvailable(doc: DocumentModel, ctx: AvailabilityContext): boolean {
@@ -46,13 +66,44 @@ export function isAvailable(doc: DocumentModel, ctx: AvailabilityContext): boole
       return doc.date <= ctx.date;
     case 'afterDate':
       return a.from <= ctx.date;
-    case 'onRequest':
-      return ctx.answeredRequests.has(a.request);
+    case 'onRequest': {
+      if (a.family === undefined) return ctx.answeredRequests.has(a.request); // legacy label
+      const at = onRequestArrival(doc, ctx);
+      return at !== null && at <= ctx.date;
+    }
     case 'confirmation':
       return ctx.sentConfirmations.has(a.request) && a.arrives <= ctx.date;
     case 'conditional':
       return ctx.conditions.has(a.condition);
   }
+}
+
+/**
+ * Date the document reached the auditor (« Reçu le », order of the mail
+ * received): its date for the data room (the start of the engagement for the
+ * documents that predate it), the date of receipt of a reply or of the mail.
+ * Null when it is not available (designer mode excepted: then its own date).
+ */
+export function receivedOn(doc: DocumentModel, ctx: AvailabilityContext, startDate: IsoDate): IsoDate | null {
+  const a = doc.availability;
+  const real = (() => {
+    switch (a.kind) {
+      case 'initial':
+        return doc.date <= ctx.date ? (doc.date > startDate ? doc.date : startDate) : null;
+      case 'afterDate':
+        return a.from <= ctx.date ? a.from : null;
+      case 'onRequest': {
+        if (a.family === undefined) return ctx.answeredRequests.has(a.request) ? doc.date : null;
+        const at = onRequestArrival(doc, ctx);
+        return at !== null && at <= ctx.date ? at : null;
+      }
+      case 'confirmation':
+        return ctx.sentConfirmations.has(a.request) && a.arrives <= ctx.date ? a.arrives : null;
+      case 'conditional':
+        return ctx.conditions.has(a.condition) ? doc.date : null;
+    }
+  })();
+  return real ?? (ctx.designer ? doc.date : null);
 }
 
 /** Plain text of a block (search, snippets). */

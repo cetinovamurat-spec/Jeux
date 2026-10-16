@@ -141,7 +141,7 @@ export function governanceDocuments(c: DocContext): DocumentModel[] {
 
   // --- registre des conventions (A12) --------------------------------------
   {
-    const b = new DocBuilder({ id: 'registre-conventions', title: 'Registre des conventions réglementées et des conventions courantes', category: 'governance', date: '2025-12-31', issuer: ENTITY_HEADER(c), availability: { kind: 'onRequest', request: 'Registre des conventions et liste des conventions conclues en 2025', from: 'cfo' } });
+    const b = new DocBuilder({ id: 'registre-conventions', title: 'Registre des conventions réglementées et des conventions courantes', category: 'governance', date: '2025-12-31', issuer: ENTITY_HEADER(c), availability: { kind: 'onRequest', family: 'closing-file', object: 'governance-register', from: 'cfo' } });
     const k = b.clue('A12', 'governance', `La convention de soutien avec ${tpName(c, 'COTEAUX_SEREIN')} ne figure pas au registre.`, ['A12.ii']);
     b.table(
       ['Convention', 'Cocontractant', 'Date', 'Qualification'],

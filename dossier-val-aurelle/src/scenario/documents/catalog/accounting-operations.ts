@@ -4,6 +4,7 @@ import { postingDate } from '../../generator/posting';
 import { supplierPaymentTerms, vacancy } from '../../report';
 import { DocBuilder, ENTITY_HEADER, ofProg, creditOf, date, debitOf, euro, euro0, fromEuros, keuro, meuro, pct, person, progName, pts, tpName, type DocContext } from '../context';
 import { entryAmount, rentRollByProgramme } from '../data';
+import { fillInterfaceJournal, fillRentRoll, interfaceJournalTitle, rentRollTitle } from '../replies';
 import type { DocumentModel } from '../model';
 
 export function operationDocuments(c: DocContext): DocumentModel[] {
@@ -150,16 +151,15 @@ export function operationDocuments(c: DocContext): DocumentModel[] {
   }
   {
     const promised = new Set(c.cd.sales.filter((s) => s.deedDate > '2025-12-31').flatMap((s) => s.dwellingIds));
-    const leases = c.cd.leases.filter((l) => l.programmeId === 'CLF' && l.start <= '2025-12-01' && (!l.end || l.end >= '2025-12-31'));
-    const b = new DocBuilder({ id: 'quittancement-clf-2025-12', title: `Quittancement de décembre 2025 – ${progName(c, 'CLF')} (extrait LOGIGES 2)`, category: 'accounting', date: '2025-12-01', issuer: `${ENTITY_HEADER(c)} – gestion locative`, availability: { kind: 'onRequest', request: 'Quittancement de décembre 2025 du Clos Fleuri', from: 'rentManager' } });
+    const b = new DocBuilder({ id: 'quittancement-clf-2025-12', title: rentRollTitle(c, 'CLF', '2025-12'), category: 'accounting', date: '2025-12-01', issuer: `${ENTITY_HEADER(c)} – gestion locative`, availability: { kind: 'onRequest', family: 'programme-rent-roll', object: 'CLF:2025-12', from: 'rentManager' } });
     const k = b.clue('A03', 'management', 'Les sept pavillons sous promesse sont encore quittancés en décembre 2025.');
-    b.table(['Logement', 'Locataire', 'Loyer de décembre'], leases.map((l) => ({ cells: [l.dwellingId, l.tenantName, euro(l.rent.y2025)], ...(promised.has(l.dwellingId) ? { clue: k } : {}) })), { align: ['left', 'left', 'right'] });
+    fillRentRoll(b, c, 'CLF', '2025-12', (l) => (promised.has(l.dwellingId) ? k : undefined));
     docs.push(b.build());
   }
   {
     const rev = c.params.regulatory.rentRevision.byYear['2025']!;
     const sample = c.cd.leases.filter((l) => l.regulated && l.start < '2024-01-01' && (!l.end || l.end > '2025-02-28')).filter((_, i) => i % 997 === 0).slice(0, 10);
-    const b = new DocBuilder({ id: 'quittances-echantillon', title: 'Quittances de décembre 2024 et de janvier 2025 – échantillon de logements conventionnés', category: 'accounting', date: '2025-01-31', issuer: `${ENTITY_HEADER(c)} – gestion locative`, availability: { kind: 'onRequest', request: 'Quittances de décembre 2024 et janvier 2025 (échantillon)', from: 'rentManager' } });
+    const b = new DocBuilder({ id: 'quittances-echantillon', title: 'Quittances de décembre 2024 et de janvier 2025 – échantillon de logements conventionnés', category: 'accounting', date: '2025-01-31', issuer: `${ENTITY_HEADER(c)} – gestion locative`, availability: { kind: 'onRequest', family: 'closing-file', object: 'rent-revision', from: 'rentManager' } });
     const k = b.clue('A17', 'management', `Les loyers des logements conventionnés augmentent de ${pts(rev.votedByBoardPct ?? 0)} au 1er janvier 2025.`);
     b.table(['Bail', 'Programme', 'Loyer décembre 2024', 'Loyer janvier 2025', 'Variation'], sample.map((l) => ({ cells: [l.id, progName(c, l.programmeId), euro(l.rent.y2024), euro(l.rent.y2025), pct(l.rent.y2025 / l.rent.y2024 - 1, 2)], clue: k })), { align: ['left', 'left', 'right', 'right', 'right'] });
     docs.push(b.build());
@@ -229,7 +229,7 @@ export function operationDocuments(c: DocContext): DocumentModel[] {
   // --- migration et interface de quittancement (A19, F7) ----------------------
   {
     const odm = c.presented.ledgers.current.entries.filter((e) => e.enteredBy === c.params.scenario.users.migration);
-    const b = new DocBuilder({ id: 'note-migration', title: 'Note de migration – bascule vers le nouveau progiciel et LOGIGES 2', category: 'accounting', date: c.d.F7.signOffDate, issuer: `${ENTITY_HEADER(c)} – direction financière`, availability: { kind: 'onRequest', request: 'Dossier de migration du système d’information', from: 'chiefAccountant' } });
+    const b = new DocBuilder({ id: 'note-migration', title: 'Note de migration – bascule vers le nouveau progiciel et LOGIGES 2', category: 'accounting', date: c.d.F7.signOffDate, issuer: `${ENTITY_HEADER(c)} – direction financière`, availability: { kind: 'onRequest', family: 'closing-file', object: 'migration', from: 'chiefAccountant' } });
     const k7 = b.clue('F7', 'accounting', `Les ${odm.length} écritures de reprise des soldes saisies par l’utilisateur MIGRATION les ${c.params.scenario.users.migrationWeekend.map(date).join(' et ')} ont été rapprochées et signées.`);
     b.p(`Bascule le ${date(c.params.scenario.users.migrationDate)}. Les soldes des comptes de locataires ont été repris par ${odm.length} écritures d’opérations diverses (utilisateur MIGRATION) les ${c.params.scenario.users.migrationWeekend.map(date).join(' et ')}, rapprochées programme par programme avec l’ancien auxiliaire : écart nul. Rapprochement signé le ${date(c.d.F7.signOffDate)}.`, k7);
     const k19 = b.clue('A19', 'accounting', `Le lot de quittancement d’octobre des Saules a été « rejoué » le ${date(c.d.A19.replayDate)} après une erreur de transmission.`);
@@ -239,12 +239,9 @@ export function operationDocuments(c: DocContext): DocumentModel[] {
     docs.push(b.build());
   }
   {
-    const lots = c.presented.ledgers.current.entries.filter((e) => e.journal === 'QT' && e.pieceRef?.startsWith('QT202510-'));
-    const b = new DocBuilder({ id: 'journal-interface-octobre', title: 'Journal de l’interface de quittancement – octobre 2025 (lots intégrés)', category: 'accounting', date: '2025-10-31', issuer: ENTITY_HEADER(c), availability: { kind: 'onRequest', request: 'Journal d’interface de quittancement (octobre 2025)', from: 'chiefAccountant' } });
-    const counts = new Map<string, number>();
-    for (const e of lots) counts.set(e.pieceRef!, (counts.get(e.pieceRef!) ?? 0) + 1);
+    const b = new DocBuilder({ id: 'journal-interface-octobre', title: interfaceJournalTitle('2025-10'), category: 'accounting', date: '2025-10-31', issuer: ENTITY_HEADER(c), availability: { kind: 'onRequest', family: 'rent-interface', object: '2025-10', from: 'chiefAccountant' } });
     const k = b.clue('A19', 'accounting', 'Le lot d’octobre des Saules figure deux fois dans le journal d’interface.');
-    b.table(['Lot', 'Programme', 'Date', 'Utilisateur', 'Montant (débit 4111)'], lots.map((e) => ({ cells: [e.pieceRef!, progName(c, e.pieceRef!.slice(9)), date(e.date), e.enteredBy, euro(e.lines.find((l) => l.account === '4111')?.debit ?? 0)], ...((counts.get(e.pieceRef!) ?? 0) > 1 ? { clue: k } : {}) })), { align: ['left', 'left', 'left', 'left', 'right'] });
+    fillInterfaceJournal(b, c, '2025-10', (_e, duplicated) => (duplicated ? k : undefined));
     docs.push(b.build());
   }
   {
@@ -270,7 +267,7 @@ export function operationDocuments(c: DocContext): DocumentModel[] {
       const rec = c.cd.tenants.reduce((s, t) => s + (t.recoveries?.filter((r) => r.year === y).reduce((a, r) => a + r.amount, 0) ?? 0), 0);
       return { y, base, rec };
     });
-    const b = new DocBuilder({ id: 'stats-recouvrement', title: 'Statistiques de recouvrement des créances des locataires partis', category: 'accounting', date: '2026-01-15', issuer: `${ENTITY_HEADER(c)} – recouvrement`, availability: { kind: 'onRequest', request: 'Statistiques de recouvrement des locataires partis', from: 'rentManager' } });
+    const b = new DocBuilder({ id: 'stats-recouvrement', title: 'Statistiques de recouvrement des créances des locataires partis', category: 'accounting', date: '2026-01-15', issuer: `${ENTITY_HEADER(c)} – recouvrement`, availability: { kind: 'onRequest', family: 'closing-file', object: 'impairment', from: 'rentManager' } });
     const k = b.clue('A07', 'management', `Le recouvrement des créances des locataires partis reste d’environ ${pct(rows[1]!.rec / rows[1]!.base, 0)} par an.`, ['A07.a']);
     b.table(['Année', 'Créances nettes à l’ouverture', 'Sommes recouvrées', 'Taux de recouvrement'], rows.map((r) => ({ cells: [String(r.y), euro0(r.base), euro0(r.rec), pct(r.rec / r.base)], clue: k })));
     b.sign(rent.name, rent.role);
@@ -281,7 +278,7 @@ export function operationDocuments(c: DocContext): DocumentModel[] {
     const formers = c.cd.tenants.filter((t) => t.byYear.y2025?.category === 'former');
     const entrusted = formers.reduce((s, t) => s + t.byYear.y2025!.balance - t.byYear.y2025!.depositHeld, 0);
     const recovered = Math.round((entrusted * a7.providerRecoveredPct) / 100);
-    const b = new DocBuilder({ id: 'rapport-prestataire-recouvrement', title: `Premier rapport d’activité – ${person(c, 'provider').name}`, category: 'contracts', date: a7.providerReportDate, issuer: person(c, 'provider').name, recipient: `${rent.name}, ${rent.role}`, availability: { kind: 'onRequest', request: 'Rapports du prestataire de recouvrement amiable', from: 'rentManager' } });
+    const b = new DocBuilder({ id: 'rapport-prestataire-recouvrement', title: `Premier rapport d’activité – ${person(c, 'provider').name}`, category: 'contracts', date: a7.providerReportDate, issuer: person(c, 'provider').name, recipient: `${rent.name}, ${rent.role}`, availability: { kind: 'onRequest', family: 'closing-file', object: 'impairment', from: 'rentManager' } });
     const k = b.clue('A07', 'thirdParty', `Le prestataire n’a recouvré que ${pts(a7.providerRecoveredPct, 1)} des créances confiées depuis le ${date(a7.providerStart)}.`, ['A07.a']);
     b.fields([
       ['Début de la mission', date(a7.providerStart)],
@@ -294,7 +291,7 @@ export function operationDocuments(c: DocContext): DocumentModel[] {
   }
   {
     const prp = c.cd.tenants.filter((t) => t.writeOff?.reason === 'debtDischarge');
-    const b = new DocBuilder({ id: 'decisions-surendettement', title: 'Décisions de rétablissement personnel avec effacement des dettes notifiées en 2025', category: 'accounting', date: c.d.A07.commissionDate, issuer: `${ENTITY_HEADER(c)} – recouvrement`, availability: { kind: 'onRequest', request: 'Dossiers de surendettement 2025', from: 'rentManager' } });
+    const b = new DocBuilder({ id: 'decisions-surendettement', title: 'Décisions de rétablissement personnel avec effacement des dettes notifiées en 2025', category: 'accounting', date: c.d.A07.commissionDate, issuer: `${ENTITY_HEADER(c)} – recouvrement`, availability: { kind: 'onRequest', family: 'closing-file', object: 'impairment', from: 'rentManager' } });
     const k = b.clue('A07', 'management', `${prp.length} décisions de rétablissement personnel effacent ${keuro(prp.reduce((s, t) => s + t.writeOff!.amount, 0))} de dettes locatives.`, ['A07.b']);
     b.table(['Locataire', 'Programme', 'Dette effacée'], prp.map((t) => ({ cells: [t.name, progName(c, t.programmeId), euro(t.writeOff!.amount)], clue: k })), { align: ['left', 'left', 'right'], footer: ['Total', '', euro(prp.reduce((s, t) => s + t.writeOff!.amount, 0))] });
     docs.push(b.build());
@@ -312,7 +309,7 @@ export function operationDocuments(c: DocContext): DocumentModel[] {
   {
     const inv = c.pd.invoices.filter((i) => i.serviceYear === 2025 && postingDate(i) > '2025-12-31').sort((a, b) => (a.receivedDate < b.receivedDate ? -1 : 1));
     const accrued = (i: (typeof inv)[number]) => fnp.lines.some((l) => l.account === i.lines[0]!.account && l.debit === i.lines[0]!.amount);
-    const b = new DocBuilder({ id: 'factures-2026', title: 'Factures reçues en janvier et février 2026 se rapportant à 2025', category: 'contracts', date: '2026-02-27', issuer: ENTITY_HEADER(c), availability: { kind: 'onRequest', request: 'Factures reçues et décaissements de janvier-février 2026', from: 'chiefAccountant' } });
+    const b = new DocBuilder({ id: 'factures-2026', title: 'Factures reçues en janvier et février 2026 se rapportant à 2025', category: 'contracts', date: '2026-02-27', issuer: ENTITY_HEADER(c), availability: { kind: 'onRequest', family: 'closing-file', object: 'subsequent-invoices', from: 'chiefAccountant' } });
     const k = b.clue('A20', 'accounting', `La facture du GIE Altaïr Services du 20/01/2026 (complément de frais de structure 2025) n’a pas été provisionnée.`);
     b.table(['Fournisseur', 'Facture', 'Date', 'Objet', 'Montant', 'Provisionnée au 31/12/2025'], inv.slice(0, 40).map((i) => ({ cells: [tpName(c, i.supplierId), i.number, date(i.invoiceDate), i.description, euro(i.total), accrued(i) ? 'oui' : 'non'], ...(i.supplierId === 'F0027' && !accrued(i) ? { clue: k } : {}) })), { align: ['left', 'left', 'left', 'left', 'right', 'left'] });
     docs.push(b.build());

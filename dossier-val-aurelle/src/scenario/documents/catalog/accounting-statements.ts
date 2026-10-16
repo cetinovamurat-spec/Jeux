@@ -2,13 +2,14 @@
 import { addDays, daysBetween } from '../../../engine/dates';
 import { accumulatedDepreciation, accumulatedSubsidyRelease } from '../../../engine/subledgers/depreciation';
 import { outstandingAt } from '../../../engine/subledgers/loans';
-import type { LoanScheduleLine } from '../../../engine/types';
+import type { AssetComponent, LoanScheduleLine } from '../../../engine/types';
 import { buildAnnex, type AnnexTable } from '../../annex';
 import { managerReceivable } from '../../impairment';
 import { managementReport } from '../../report';
 import { DocBuilder, ENTITY_HEADER, amount0, creditOf, date, euro, euro0, keuro, meuro, pct, person, progName, pts, tpName, type DocContext } from '../context';
 import { creditsOn, wipByProgramme } from '../data';
 import type { DocumentModel } from '../model';
+import { fillComponentRegister, REGISTER_DATE } from '../replies';
 
 function annexTableBlock(b: DocBuilder, t: AnnexTable, clueByRow: Record<string, string> = {}): void {
   b.table(
@@ -114,25 +115,29 @@ export function statementDocuments(c: DocContext): DocumentModel[] {
     docs.push(b.build());
   }
 
-  // --- registre des composants (A01, A02, A04, A06) --------------------------
+  // --- registre des composants, servi par programme (A01, A02, A04, A06) --------
   {
-    const b = new DocBuilder({ id: 'registre-composants', title: 'Registre des composants – extraits (Les Érables, Les Peupliers, Les Glycines B, Les Tilleuls)', category: 'accounting', date: '2026-02-06', issuer: ENTITY_HEADER(c), availability: { kind: 'onRequest', request: 'Registre des immobilisations par composant', from: 'chiefAccountant' } });
-    const active = (pid: string) => c.pd.components.filter((x) => x.programmeId === pid && x.inServiceDate <= '2025-12-31' && !(x.disposal && x.disposal.date <= '2025-12-31'));
-    const row = (x: (typeof c.pd.components)[number]) => [x.building, x.label, date(x.inServiceDate), x.usefulLifeYears ? `${x.usefulLifeYears} ans` : '—', euro0(x.cost), euro0(x.cost - accumulatedDepreciation(x, '2025-12-31'))];
-    const cols = ['Bâtiment', 'Composant', 'Mise en service', 'Durée', 'Valeur brute', 'Valeur nette au 31/12/2025'];
-    const era = active('ERA').filter((x) => x.family === 'heating');
-    const k2 = b.clue('A02', 'accounting', 'Deux composants « chauffage » sont actifs sur le même bâtiment des Érables : la chaufferie de 2008 et la pompe à chaleur de 2025.');
-    b.table(cols, era.map((x) => ({ cells: row(x), clue: k2 })), { title: `${progName(c, 'ERA')} – famille chauffage` });
-    const peu = active('PEU').filter((x) => x.inServiceDate.startsWith('2025'));
-    const k6 = b.clue('A06', 'accounting', 'Un composant « travaux d’amélioration (agencements divers) » de 15 ans est créé aux Peupliers en 2025.');
-    b.table(cols, peu.map((x) => ({ cells: row(x), clue: k6 })), { title: `${progName(c, 'PEU')} – composants mis en service en 2025` });
-    const glb = active('GLB').filter((x) => x.operationId === 'OP-GLB-H2015');
-    const k4 = b.clue('A04', 'accounting', 'Les composants de la réhabilitation des Glycines B restent amortis sur leur durée initiale malgré la démolition décidée.');
-    b.table(cols, glb.slice(0, 6).map((x) => ({ cells: row(x), clue: k4 })), { title: `${progName(c, 'GLB')} – réhabilitation 2015 (extrait)` });
-    const til = active('TIL');
-    const k1 = b.clue('A01', 'accounting', 'Le registre ne comporte aucun composant pour Les Tilleuls.');
-    b.p(til.length ? `${progName(c, 'TIL')} : ${til.length} composants.` : `${progName(c, 'TIL')} : aucun composant enregistré.`, k1);
-    docs.push(b.build());
+    const register = (id: string, pid: string, clueOf: (b: DocBuilder) => (rows: readonly AssetComponent[]) => string | undefined) => {
+      const b = new DocBuilder({ id, title: `Registre des composants au 31/12/2025 – ${progName(c, pid)}`, category: 'accounting', date: REGISTER_DATE, issuer: ENTITY_HEADER(c), availability: { kind: 'onRequest', family: 'programme-components', object: pid, from: 'chiefAccountant' } });
+      fillComponentRegister(b, c, pid, clueOf(b));
+      docs.push(b.build());
+    };
+    register('registre-composants', 'ERA', (b) => {
+      const k = b.clue('A02', 'accounting', 'Deux composants « chauffage » sont actifs sur le même bâtiment des Érables : la chaufferie de 2008 et la pompe à chaleur de 2025.');
+      return (rows) => (rows.some((x) => x.family === 'heating') ? k : undefined);
+    });
+    register('registre-composants-peupliers', 'PEU', (b) => {
+      const k = b.clue('A06', 'accounting', 'Un composant « travaux d’amélioration (agencements divers) » de 15 ans est créé aux Peupliers en 2025.');
+      return (rows) => (rows.some((x) => x.inServiceDate.startsWith('2025') && x.usefulLifeYears === 15) ? k : undefined);
+    });
+    register('registre-composants-glycines-b', 'GLB', (b) => {
+      const k = b.clue('A04', 'accounting', 'Les composants de la réhabilitation des Glycines B restent amortis sur leur durée initiale malgré la démolition décidée.');
+      return (rows) => (rows.some((x) => x.operationId === 'OP-GLB-H2015') ? k : undefined);
+    });
+    register('registre-composants-tilleuls', 'TIL', (b) => {
+      const k = b.clue('A01', 'accounting', 'Le registre ne comporte aucun composant pour Les Tilleuls.');
+      return (rows) => (rows.length === 0 ? k : undefined);
+    });
   }
 
   // --- tableau des subventions (A09, A01) -----------------------------------
@@ -178,7 +183,7 @@ export function statementDocuments(c: DocContext): DocumentModel[] {
   {
     const icne = c.presented.ledgers.current.entries.find((e) => e.pieceRef === 'INV2025-ICNE')!;
     const loans = new Map(c.pd.loans.map((l) => [l.id, l]));
-    const b = new DocBuilder({ id: 'calcul-icne', title: 'Calcul des intérêts courus non échus au 31/12/2025 (fichier ICNE_2025.xlsx)', category: 'accounting', date: '2026-01-14', issuer: ENTITY_HEADER(c), availability: { kind: 'onRequest', request: 'Fichier de calcul des intérêts courus', from: 'chiefAccountant' } });
+    const b = new DocBuilder({ id: 'calcul-icne', title: 'Calcul des intérêts courus non échus au 31/12/2025 (fichier ICNE_2025.xlsx)', category: 'accounting', date: '2026-01-14', issuer: ENTITY_HEADER(c), availability: { kind: 'onRequest', family: 'closing-file', object: 'icne', from: 'chiefAccountant' } });
     const flat = c.params.anomalies.A08.flatRatePct;
     const k = b.clue('A08', 'accounting', `Les intérêts courus des prêts indexés sont calculés au taux unique de ${pts(flat)}, quel que soit le taux de chaque prêt.`);
     b.p(`Méthode : capital restant dû × taux × nombre de jours depuis la dernière échéance / 365. Prêts indexés sur le Livret A : taux forfaitaire de ${pts(flat)} (« taux du Livret A + marge moyenne »).`, k);
@@ -222,7 +227,7 @@ export function statementDocuments(c: DocContext): DocumentModel[] {
   const daf = c.facts.documents['pge.dafVersion'] as { file: string; postponedItemIds: string[] } | undefined;
   {
     const items = c.cd.maintenancePlan.filter((it) => it.plannedYear >= 2026);
-    const b = new DocBuilder({ id: 'ppe-officiel', title: `Plan pluriannuel d’entretien 2026-2030 – direction du patrimoine (version du ${date(c.params.anomalies.A05.officialPlanDate)})`, category: 'accounting', date: c.params.anomalies.A05.officialPlanDate, issuer: `${ENTITY_HEADER(c)} – direction du patrimoine`, availability: { kind: 'onRequest', request: 'Plan pluriannuel d’entretien de la direction du patrimoine', from: 'assetDirector' } });
+    const b = new DocBuilder({ id: 'ppe-officiel', title: `Plan pluriannuel d’entretien 2026-2030 – direction du patrimoine (version du ${date(c.params.anomalies.A05.officialPlanDate)})`, category: 'accounting', date: c.params.anomalies.A05.officialPlanDate, issuer: `${ENTITY_HEADER(c)} – direction du patrimoine`, availability: { kind: 'onRequest', family: 'closing-file', object: 'pge', from: 'assetDirector' } });
     const k = b.clue('A05', 'management', 'Le PPE officiel maintient le ravalement des Acacias en 2026 et l’étanchéité du Belvédère en 2027.');
     b.table(['Opération', 'Programme', 'Nature', 'Année prévue', 'Montant estimé'], items.map((it) => ({ cells: [it.id, progName(c, it.programmeId), it.nature, String(it.plannedYear), euro0(it.amount)], ...(it.programmeId === 'ACA' || it.programmeId === 'BEL' ? { clue: k } : {}) })), { align: ['left', 'left', 'left', 'right', 'right'] });
     b.sign(person(c, 'assetDirector').name, person(c, 'assetDirector').role, c.params.anomalies.A05.officialPlanDate);
