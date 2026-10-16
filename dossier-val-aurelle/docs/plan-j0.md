@@ -27,7 +27,7 @@
 
 | # | Sujet | Proposition retenue | Alternative |
 |---|---|---|---|
-| **D1** | Emplacement du projet | Sous-dossier autonome `dossier-val-aurelle/` du dépôt `Jeux` (son propre `package.json`). Les Olympiades restent intactes à la racine, déploiement Render inchangé. | Dépôt séparé. |
+| **D1** | Emplacement du projet | Sous-dossier autonome `dossier-val-aurelle/` du dépôt `Jeux` (son propre `package.json`). Les Olympiades restent intactes à la racine, déploiement Render inchangé (Olympiades retirées du dépôt le 16/10/2026). | Dépôt séparé. |
 | **D2** | **Calibrage frais financiers / ICNE (A08) / structure de la dette** — incompatibles en l'état (§2.2) | **Option 1** : dette de 365 M€ dont 84 % indexés sur le Livret A, marge moyenne ≈ LA + 0,50 (portefeuille dominé par des PLUS) ; A08 ≈ −236 k€ conservée ; frais financiers ≈ 11,3 M€ en 2024 et ≈ 10,4 M€ en 2025 (présentés). | **Option 2** : conserver les frais financiers à ≈ 9,5 / 8,8 M€ en ramenant la part indexée sur le Livret A à ≈ 64 % (≈ 129 M€ de prêts à taux fixe bas) ; A08 ≈ −232 k€. |
 | **D3** | Convention de calcul des impacts | Impact d'une anomalie = effet de ses écritures de correction sur les comptes présentés, dans un **ordre canonique** (A16 après A01). Les comptes « après négociation » sont recalculés exactement en réappliquant au propre les seules anomalies non corrigées (§5.4). | Impacts isolés par rapport au propre (non additifs en cas d'interaction). |
 | **D4** | Exercice 2024 | Simulé par **le même générateur** que 2025 : les comptes certifiés 2024 sont des sorties du moteur, pas des saisies. Les exercices 2021-2023 sont réduits à des agrégats paramétrés (tableau des résultats, ratio d'autofinancement net). | Balance 2024 synthétique sans écritures. |

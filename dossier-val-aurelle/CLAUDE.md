@@ -42,7 +42,7 @@ Jeu de rôle d'audit légal (navigateur, 100 % client) : le joueur audite les co
 
 ## Décisions prises
 
-- D1 : projet autonome dans `dossier-val-aurelle/`. Les Olympiades restent à la racine du dépôt ; leur déploiement Render n'utilise que le `package.json` racine.
+- D1 : projet autonome dans `dossier-val-aurelle/`, seul projet du dépôt depuis le retrait des Olympiades du Cabinet (16/10/2026, disponibles dans l'historique Git).
 - D2 (validée) : option 1 — frais financiers ≈ 11,3 M€ (2024) et ≈ 10,4 M€ (2025 présentés), marge moyenne des prêts indexés ≈ LA + 0,55, A08 ≈ −236 k€.
 - D3 : impacts par écritures de correction en ordre canonique ; recalcul exact des mondes partiels.
 - D4 : exercice 2024 simulé par le même générateur ; 2021-2023 en agrégats.
