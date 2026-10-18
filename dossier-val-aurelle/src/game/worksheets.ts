@@ -167,17 +167,23 @@ export function masterFormCheck(sheet: MasterSheet, refs: MasterReferences, toEx
 // actions
 // ---------------------------------------------------------------------------
 
+function cycleName(params: Params, id: string): string {
+  return params.cycles.cycles.find((c) => c.id === id)?.label ?? id;
+}
+
 export function concludeMasterSheet(s: GameState, params: Params, cycle: string, conclusion: string | null, comment: string): GameState {
   if (conclusion !== null && !params.cycles.conclusions.some((c) => c.id === conclusion)) return s;
   const next = withSheet(s, cycle, (m) => ({ ...m, conclusion, comment: comment.trim(), ...(conclusion !== null ? { on: s.clock.date } : {}) }));
-  return log(next, 'masterSheet', cycle, { conclusion: conclusion ?? '' });
+  const label = conclusion === null ? 'sans conclusion' : (params.cycles.conclusions.find((c) => c.id === conclusion)?.label ?? conclusion).toLowerCase();
+  return log(next, 'worksheet', `master:${cycle}`, { action: 'master', conclusion: conclusion ?? '', title: `feuille maîtresse « ${cycleName(params, cycle)} » : ${label}` });
 }
 
-export function explainVariation(s: GameState, cycle: string, lineId: string, text: string, evidence: readonly string[]): GameState {
+export function explainVariation(s: GameState, cycle: string, lineId: string, text: string, evidence: readonly string[], params?: Params): GameState {
   const clean = text.trim();
   if (!clean) return s;
   const next = withSheet(s, cycle, (m) => ({ ...m, explained: { ...m.explained, [lineId]: { text: clean, evidence: [...new Set(evidence)], on: s.clock.date } } }));
-  return log(next, 'variationExplained', `${cycle}:${lineId}`);
+  const line = params?.cycles.cycles.find((c) => c.id === cycle)?.lines.find((l) => l.id === lineId)?.label;
+  return log(next, 'worksheet', `master:${cycle}:${lineId}`, { action: 'explain', ...(params ? { title: `feuille maîtresse « ${cycleName(params, cycle)} » : variation expliquée${line ? ` (${line})` : ''}` } : {}) });
 }
 
 export function removeExplanation(s: GameState, cycle: string, lineId: string): GameState {

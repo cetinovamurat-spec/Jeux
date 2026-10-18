@@ -22,8 +22,10 @@ import {
   executionStatus,
   formCheck,
   hoursCharged,
+  launchBudgetImpact,
   launchExecution,
   plannedHours,
+  previewLaunch,
   planProcedure,
   procedureDef,
   procedureProgress,
@@ -305,6 +307,49 @@ describe('budget overrun: arbitration of the partner (J4-4)', () => {
   it('does not arbitrate within the tolerance', () => {
     const s = launch(fresh(), 'board-minutes', 'senior');
     expect(s.gauges.arbitrations).toEqual([]);
+  });
+
+  it('tells before the launch whether the partner will arbitrate (the IT auditor has a separate envelope)', () => {
+    const within = launchBudgetImpact(fresh(), params, 'board-minutes', 'senior')!;
+    expect(within).toMatchObject({ before: 0, after: def('board-minutes').hours.senior, budget: 340, arbitration: false, justified: false });
+    expect(within.limit).toBeCloseTo(374, 5);
+    const over = launchBudgetImpact(overBudget(fresh()), params, 'board-minutes', 'senior')!;
+    expect(over).toMatchObject({ before: 370, arbitration: true, justified: false });
+    expect(launchBudgetImpact(setRisk(overBudget(fresh()), 'crossCycle', null, 'high', 'Gouvernance'), params, 'board-minutes', 'senior')!.justified).toBe(true);
+    expect(launchBudgetImpact(fresh(), params, 'migration-review', 'sofia')).toBeNull();
+    expect(launchBudgetImpact(fresh(), params, 'impairment-recalc', 'hugo')).toBeNull();
+  });
+});
+
+describe('launch preview', () => {
+  it('gives the dates a launch would get, after the member’s queue, without changing the state', () => {
+    const s0 = fresh();
+    expect(previewLaunch(s0.program, cal, 'senior', 4.5, s0.clock.date)).toMatchObject({ start: '2025-11-03', end: '2025-11-03' });
+    const s = launch(s0, 'board-minutes', 'senior');
+    const t = scheduleExecutions(s.program, cal).get(s.program.executions[0]!.id)!;
+    const p = previewLaunch(s.program, cal, 'senior', 7, s.clock.date);
+    expect(p.start! >= t.end!).toBe(true);
+    expect(s.program.executions).toHaveLength(1);
+    // Léa is on site from the interim only
+    expect(previewLaunch(s0.program, cal, 'lea', 7, s0.clock.date).start).toBe('2025-11-17');
+  });
+});
+
+describe('journal of the programme (desk: kinds and French subjects)', () => {
+  it('logs the programme, launches and worksheets with a French title, never a bare identifier', () => {
+    let s = planProcedure(fresh(), params, 'board-minutes', 'lea');
+    expect(s.journal.at(-1)).toMatchObject({ kind: 'program', ref: 'board-minutes', data: { action: 'plan', title: expect.stringContaining('Léa') } });
+    s = launch(s, 'engagement-acceptance', 'senior');
+    expect(s.journal.at(-1)).toMatchObject({ kind: 'execution', data: { action: 'launch', title: expect.stringContaining(def('engagement-acceptance').title) } });
+    const id = s.program.executions[0]!.id;
+    s = documentExecution(s, params, id, 'satisfactory', '', cal);
+    expect(s.journal.at(-1)).toMatchObject({ kind: 'worksheet', data: { action: 'document', conclusion: 'satisfactory' } });
+    expect(String(s.journal.at(-1)!.data!['title'])).toMatch(/documentée/);
+    // Léa is on site from the interim: her work has not started, the launch can be cancelled
+    s = launch(s, 'board-minutes', 'lea');
+    s = cancelExecution(s, s.program.executions.at(-1)!.id, cal, params);
+    expect(s.journal.at(-1)).toMatchObject({ kind: 'execution', data: { action: 'cancel' } });
+    for (const e of s.journal) if (['program', 'execution', 'worksheet'].includes(e.kind)) expect(typeof e.data?.['title']).toBe('string');
   });
 });
 

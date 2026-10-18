@@ -11,38 +11,44 @@ import { formatDateFr } from '../../../engine/dates';
 import { formatEuro, formatPercent } from '../../../engine/format';
 import { planningThreshold } from '../../../game/planning';
 import { EXECUTION_STATUS_LABEL, executionStatus, procedureDef } from '../../../game/program';
-import { concludeMasterSheet, explainVariation, MASTER_STATUS_LABEL, masterFormCheck, masterReferences, masterRows, masterSheetOf, masterStatus, removeExplanation, variationsToExplain, type MasterRow, type MasterStatus } from '../../../game/worksheets';
+import { concludeMasterSheet, emptyMasterSheet, explainVariation, MASTER_STATUS_LABEL, masterFormCheck, masterReferences, masterRows, masterSheetOf, masterStatus, removeExplanation, variationsToExplain, type MasterRow, type MasterStatus } from '../../../game/worksheets';
+import { TOOL_DEFS } from '../../../game/recalcs';
+import { POPULATIONS } from '../../../game/samples';
 import type { Tone } from '../../../game/state';
 import { useCase } from '../../app/context';
 import { useAvailableDocuments } from '../../app/hooks';
 import { useGame } from '../../app/store';
 import { Amount } from '../../components/Amount';
 import { Badge, Button, Card, cx, Select, TextInput } from '../../components/ui';
+import { Field } from '../planning/Field';
 import { useWorkContext } from './hooks';
 import { useWorkView } from './workStore';
 
 const MASTER_TONE: Record<MasterStatus, Tone> = { notStarted: 'muted', inProgress: 'accent', concluded: 'ok' };
 
+/** Stable empty sheet: a store selector must not return a new object on every call. */
+const EMPTY_SHEET = emptyMasterSheet();
+
 function ExplainForm({ cycle, row, onDone }: { cycle: string; row: MasterRow; onDone: () => void }) {
+  const fid = `explain-${cycle}-${row.id}`;
   const docs = useAvailableDocuments();
   const sorted = useMemo(() => [...docs].sort((a, b) => a.title.localeCompare(b.title, 'fr')), [docs]);
-  const sheet = useGame((s) => masterSheetOf(s.game, cycle));
+  const sheet = useGame((s) => s.game.worksheets.master[cycle]) ?? EMPTY_SHEET;
   const act = useGame((s) => s.act);
   const prev = sheet.explained[row.id];
+  const c = useCase();
+  const params = c.params;
   const [text, setText] = useState(prev?.text ?? '');
   const [evidence, setEvidence] = useState<string[]>(prev?.evidence ?? []);
   const [pick, setPick] = useState('');
-  const c = useCase();
   return (
     <div className="space-y-2 rounded-md bg-sunken px-3 py-2 text-sm">
-      <label className="block">
-        <span className="block text-xs text-muted">Explication de la variation – {row.label}</span>
-        <TextInput value={text} onChange={(e) => setText(e.target.value)} className="w-full" autoFocus />
-      </label>
+      <Field id={`${fid}-text`} label={`Explication de la variation – ${row.label}`}>
+        <TextInput id={`${fid}-text`} value={text} onChange={(e) => setText(e.target.value)} className="w-full" autoFocus />
+      </Field>
       <div className="flex flex-wrap items-end gap-2">
-        <label className="min-w-0 flex-1">
-          <span className="block text-xs text-muted">Pièce justificative</span>
-          <Select value={pick} onChange={(e) => setPick(e.target.value)} className="w-full">
+        <Field id={`${fid}-doc`} label="Pièce justificative" className="flex-1">
+          <Select id={`${fid}-doc`} value={pick} onChange={(e) => setPick(e.target.value)} className="w-full">
             <option value="">Choisir une pièce…</option>
             {sorted.map((d) => (
               <option key={d.id} value={d.id}>
@@ -50,7 +56,7 @@ function ExplainForm({ cycle, row, onDone }: { cycle: string; row: MasterRow; on
               </option>
             ))}
           </Select>
-        </label>
+        </Field>
         <Button
           disabled={!pick}
           onClick={() => {
@@ -66,7 +72,7 @@ function ExplainForm({ cycle, row, onDone }: { cycle: string; row: MasterRow; on
           {evidence.map((d) => (
             <li key={d} className="flex items-center gap-2">
               {c.documentsById.get(d)?.title ?? d}
-              <Button variant="ghost" className="px-1 py-0 text-xs" onClick={() => setEvidence((ev) => ev.filter((x) => x !== d))}>
+              <Button variant="ghost" className="px-1 py-0 text-xs" aria-label={`Retirer la pièce « ${c.documentsById.get(d)?.title ?? d} »`} onClick={() => setEvidence((ev) => ev.filter((x) => x !== d))}>
                 Retirer
               </Button>
             </li>
@@ -78,7 +84,7 @@ function ExplainForm({ cycle, row, onDone }: { cycle: string; row: MasterRow; on
           variant="primary"
           disabled={!text.trim()}
           onClick={() => {
-            act((s) => explainVariation(s, cycle, row.id, text, evidence));
+            act((s) => explainVariation(s, cycle, row.id, text, evidence, params));
             onDone();
           }}
         >
@@ -123,7 +129,9 @@ function Sheet({ cycleId }: { cycleId: string }) {
   const [editing, setEditing] = useState<string | null>(null);
   const [conclusion, setConclusion] = useState(sheet.conclusion ?? '');
   const [comment, setComment] = useState(sheet.comment);
-  const periodLabel = c.view.ledger2025 === 'interim' ? `au ${formatDateFr(c.view.cutoff)}` : `au 31/12`;
+  // N at the cutoff of the data available, N-1 at the same date of the previous year
+  const currentLabel = c.view.ledger2025 === 'none' ? String(params.scenario.years.current) : `Au ${formatDateFr(c.view.cutoff)}`;
+  const priorLabel = c.view.ledger2025 === 'none' ? `Au ${formatDateFr(`${params.scenario.years.prior}-12-31`)}` : `Au ${formatDateFr(c.view.priorCutoff)}`;
   const docs = refs.documents;
 
   return (
@@ -141,14 +149,14 @@ function Sheet({ cycleId }: { cycleId: string }) {
             <caption className="sr-only">Soldes du cycle, exercice et exercice précédent à la même date, variation</caption>
             <thead>
               <tr className="border-b border-line text-xs text-muted">
-                <th scope="col" className="px-3 py-1.5 text-left font-medium">
+                <th scope="col" className="min-w-[11rem] px-3 py-1.5 text-left font-medium">
                   Rubrique
                 </th>
-                <th scope="col" className="px-2 py-1.5 text-right font-medium">
-                  {params.scenario.years.current} {periodLabel}
+                <th scope="col" className="px-2 py-1.5 text-right font-medium whitespace-nowrap">
+                  {currentLabel}
                 </th>
-                <th scope="col" className="px-2 py-1.5 text-right font-medium">
-                  {params.scenario.years.prior} {periodLabel}
+                <th scope="col" className="px-2 py-1.5 text-right font-medium whitespace-nowrap">
+                  {priorLabel}
                 </th>
                 <th scope="col" className="px-2 py-1.5 text-right font-medium">
                   Variation
@@ -156,7 +164,7 @@ function Sheet({ cycleId }: { cycleId: string }) {
                 <th scope="col" className="px-2 py-1.5 text-right font-medium">
                   %
                 </th>
-                <th scope="col" className="px-3 py-1.5 text-left font-medium">
+                <th scope="col" className="min-w-[12rem] px-3 py-1.5 text-left font-medium">
                   Explication
                 </th>
               </tr>
@@ -178,7 +186,14 @@ function Sheet({ cycleId }: { cycleId: string }) {
                     <td className="num px-2 py-1 text-right">{r.variationPct === null ? '–' : formatPercent(r.variationPct, 1)}</td>
                     <td className="px-3 py-1">
                       <div className="flex items-center gap-2">
-                        {ex ? <span className="text-xs">{ex.text}</span> : flagged ? <span className="text-xs text-warn">à expliquer</span> : null}
+                        {ex ? (
+                          <span className="text-xs">
+                            {ex.text}
+                            {ex.evidence.length > 0 && <span className="text-muted"> ({ex.evidence.length} pièce{ex.evidence.length > 1 ? 's' : ''})</span>}
+                          </span>
+                        ) : flagged ? (
+                          <span className="text-xs whitespace-nowrap text-warn">à expliquer</span>
+                        ) : null}
                         <Button variant="ghost" className="ml-auto px-1.5 py-0 text-xs" aria-expanded={editing === r.id} onClick={() => setEditing(editing === r.id ? null : r.id)} aria-label={`Expliquer la variation – ${r.label}`}>
                           {ex ? 'Modifier' : 'Expliquer'}
                         </Button>
@@ -221,12 +236,24 @@ function Sheet({ cycleId }: { cycleId: string }) {
                 </li>
               );
             })}
-            {refs.samples.map((id) => (
-              <li key={id}>Échantillon {id}</li>
-            ))}
-            {refs.recalcs.map((id) => (
-              <li key={id}>Recalcul {id}</li>
-            ))}
+            {refs.samples.map((id) => {
+              const x = game.samples.items.find((it) => it.id === id);
+              const label = POPULATIONS.find((p) => p.id === x?.population)?.label;
+              return (
+                <li key={id}>
+                  Échantillon{label ? ` – ${label}` : ''} {x && <span className="text-xs text-muted">(tiré le {formatDateFr(x.drawnOn)})</span>}
+                </li>
+              );
+            })}
+            {refs.recalcs.map((id) => {
+              const x = game.recalcs.items.find((it) => it.id === id);
+              const label = x ? TOOL_DEFS[x.tool as keyof typeof TOOL_DEFS]?.label : undefined;
+              return (
+                <li key={id}>
+                  Recalcul{label ? ` – ${label}` : ''} {x && <span className="text-xs text-muted">(le {formatDateFr(x.on)})</span>}
+                </li>
+              );
+            })}
             {refs.findings.map((id) => (
               <li key={id}>
                 <Link to="/constats" className="text-accent hover:underline">
@@ -255,9 +282,8 @@ function Sheet({ cycleId }: { cycleId: string }) {
         <h3 id="master-conclusion" className="text-xs font-semibold uppercase tracking-wide text-muted">
           Conclusion
         </h3>
-        <label className="block">
-          <span className="sr-only">Conclusion du cycle</span>
-          <Select value={conclusion} onChange={(e) => setConclusion(e.target.value)} className="w-full">
+        <Field id={`master-${cycleId}-conclusion`} label="Conclusion du cycle">
+          <Select id={`master-${cycleId}-conclusion`} value={conclusion} onChange={(e) => setConclusion(e.target.value)} className="w-full">
             <option value="">Pas encore de conclusion</option>
             {params.cycles.conclusions.map((k) => (
               <option key={k.id} value={k.id}>
@@ -265,11 +291,10 @@ function Sheet({ cycleId }: { cycleId: string }) {
               </option>
             ))}
           </Select>
-        </label>
-        <label className="block">
-          <span className="block text-xs text-muted">Commentaire</span>
-          <textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={3} className="w-full rounded-md border border-line bg-panel px-2 py-1 text-sm" />
-        </label>
+        </Field>
+        <Field id={`master-${cycleId}-comment`} label="Commentaire">
+          <textarea id={`master-${cycleId}-comment`} value={comment} onChange={(e) => setComment(e.target.value)} rows={3} className="w-full rounded-md border border-line bg-panel px-2 py-1 text-sm" />
+        </Field>
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="primary" onClick={() => act((s) => concludeMasterSheet(s, params, cycleId, conclusion || null, comment))}>
             Enregistrer
@@ -297,15 +322,15 @@ export function MasterSheets() {
   const game = useGame((s) => s.game);
   const { cycle, set } = useWorkView();
   return (
-    <div className="grid gap-4 lg:grid-cols-[16rem_minmax(0,1fr)]">
+    <div className="grid gap-4 xl:grid-cols-[16rem_minmax(0,1fr)]">
       <Card title="Cycles">
-        <ul className="py-1 text-sm">
+        <ul className="flex flex-wrap gap-1 p-2 text-sm xl:block xl:p-0 xl:py-1">
           {params.cycles.cycles.map((cy) => {
             const st = masterStatus(masterSheetOf(game, cy.id), masterReferences(game, params, cy));
             const selected = cy.id === cycle;
             return (
               <li key={cy.id}>
-                <button type="button" aria-current={selected ? 'true' : undefined} onClick={() => set({ cycle: cy.id })} className={cx('flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left hover:bg-sunken', selected && 'bg-accent-soft font-semibold text-accent')}>
+                <button type="button" aria-current={selected ? 'true' : undefined} onClick={() => set({ cycle: cy.id })} className={cx('flex w-full items-center justify-between gap-2 rounded-md px-3 py-1.5 text-left hover:bg-sunken xl:rounded-none', selected && 'bg-accent-soft font-semibold text-accent')}>
                   <span className="min-w-0">{cy.label}</span>
                   <Badge tone={MASTER_TONE[st]}>{MASTER_STATUS_LABEL[st]}</Badge>
                 </button>

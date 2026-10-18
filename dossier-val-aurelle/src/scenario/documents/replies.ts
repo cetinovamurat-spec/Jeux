@@ -19,6 +19,7 @@ import { createRng } from '../../engine/rng';
 import type { Invoice, Lease } from '../datasets';
 import { DocBuilder, ENTITY_HEADER, date, debitOf, euro, euro0, fromEuros, person, progName, pts, tpName, type AvailabilityInput, type DocContext } from './context';
 import type { DocumentModel, Interlocutor } from './model';
+import { requestLabel } from './request-labels';
 
 // ---------------------------------------------------------------------------
 // helpers
@@ -668,6 +669,49 @@ function interimExtraction(c: DocContext): DocumentModel {
 }
 
 // ---------------------------------------------------------------------------
+// closing file: transmittal of the documents already in the data room
+// ---------------------------------------------------------------------------
+
+/**
+ * Closing-file objects answered by a transmittal note of the chief accountant
+ * or the CFO: the documents it lists are handed over with the closing file
+ * (data room, at their own dates), so the note is dated on the last of them.
+ * The dates follow the catalogue (balances âgées, rapport de vacance).
+ */
+export const CLOSING_TRANSMITTALS: Readonly<Record<string, { date: IsoDate; from: Interlocutor; documents: readonly { title: string; date: IsoDate }[] }>> = {
+  'aged-balance': {
+    date: '2026-01-09',
+    from: 'chiefAccountant',
+    documents: [
+      { title: 'Balance âgée des comptes de locataires au 31/12/2025 (LOGIGES 2)', date: '2026-01-08' },
+      { title: 'Balance âgée des fournisseurs au 31/12/2025 – factures échues non réglées', date: '2026-01-09' },
+    ],
+  },
+  'management-report-support': {
+    date: '2026-01-15',
+    from: 'cfo',
+    documents: [
+      { title: 'Balance âgée des fournisseurs au 31/12/2025 – factures échues non réglées (délais de paiement)', date: '2026-01-09' },
+      { title: 'Rapport de vacance 2025 (gestion locative)', date: '2026-01-15' },
+      { title: 'Calcul de l’autofinancement net HLM, établi avec le projet de comptes', date: '2026-01-15' },
+    ],
+  },
+};
+
+function closingTransmittal(c: DocContext, object: string): DocumentModel | null {
+  const t = CLOSING_TRANSMITTALS[object];
+  if (!t) return null;
+  const who = person(c, t.from);
+  const label = c.params.requests.families.find((f) => f.id === 'closing-file')?.objects?.find((o) => o.id === object)?.label ?? object;
+  const b = new DocBuilder({ id: `bordereau-${object}`, title: `Bordereau de transmission – ${label}`, category: 'accounting', date: t.date, issuer: `${who.name}, ${who.role}`, recipient: c.params.game.firmName, availability: onRequest('closing-file', object, t.from) });
+  b.p('En réponse à votre demande, les pièces suivantes du dossier de clôture ont été versées à la gestion documentaire mise à votre disposition :');
+  b.table(['Pièce', 'Établie le'], t.documents.map((d) => [d.title, date(d.date)]), { align: ['left', 'left'] });
+  b.p('Nous restons à votre disposition pour tout complément.');
+  b.sign(who.name, who.role, t.date);
+  return b.build();
+}
+
+// ---------------------------------------------------------------------------
 // generic replies to requests
 // ---------------------------------------------------------------------------
 
@@ -678,6 +722,11 @@ function interimExtraction(c: DocContext): DocumentModel {
  * scenario documents answer.
  */
 export function genericReplies(c: DocContext, family: string, object: string, asOf: IsoDate): DocumentModel[] {
+  const label = requestLabel(c.params, family, object, (id) => thirdParty(c, id)?.name);
+  return buildGeneric(c, family, object, asOf).map((d) => (d.availability.kind === 'onRequest' ? { ...d, availability: { ...d.availability, request: label } } : d));
+}
+
+function buildGeneric(c: DocContext, family: string, object: string, asOf: IsoDate): DocumentModel[] {
   switch (family) {
     case 'interim-extraction':
       return [interimExtraction(c)];
@@ -708,8 +757,11 @@ export function genericReplies(c: DocContext, family: string, object: string, as
       return [bankStatement(c, object)];
     case 'rent-interface':
       return [interfaceJournal(c, object)];
-    case 'closing-file':
-      return object === 'debt-schedule' ? [debtSchedule(c)] : [];
+    case 'closing-file': {
+      if (object === 'debt-schedule') return [debtSchedule(c)];
+      const t = closingTransmittal(c, object);
+      return t ? [t] : [];
+    }
     default:
       return [];
   }

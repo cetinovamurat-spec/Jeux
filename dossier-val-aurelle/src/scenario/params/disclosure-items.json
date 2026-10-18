@@ -1,4 +1,43 @@
 {
-  "_comment": "Informations de l'annexe et du rapport de gestion pouvant faire l'objet d'un constat (objets « disclosureItem », plan J4 §13.1). Contenu fourni en J4d.",
-  "items": []
+  "_comment": "Catalogue du formulaire des constats (plan J4 §13) : informations de l'annexe et du rapport de gestion pouvant être l'objet d'un constat (objets « disclosureItem », liste générique d'un organisme HLM, sans lien avec les anomalies du cas), corrections d'information proposées au joueur quand le traitement ne passe pas par une écriture, et paramètres de l'appariement à la clé (tolérance par défaut du §10.6, plage élargie des anomalies extrapolées, à valider).",
+  "items": [
+    { "id": "accounting-methods", "label": "Règles et méthodes comptables", "document": "annex" },
+    { "id": "fixed-assets-table", "label": "Tableau des immobilisations et des amortissements", "document": "annex" },
+    { "id": "subsidies-table", "label": "Subventions d’investissement", "document": "annex" },
+    { "id": "provisions-table", "label": "Tableau des provisions et dépréciations", "document": "annex" },
+    { "id": "debt-maturity", "label": "État des dettes et échéances", "document": "annex" },
+    { "id": "retirement-commitments", "label": "Engagements de retraite (indemnités de fin de carrière)", "document": "annex" },
+    { "id": "off-balance-commitments", "label": "Engagements hors bilan donnés et reçus", "document": "annex" },
+    { "id": "contingent-liabilities", "label": "Passifs éventuels (litiges en cours)", "document": "annex" },
+    { "id": "related-parties", "label": "Transactions avec les parties liées", "document": "annex" },
+    { "id": "subsequent-events", "label": "Événements postérieurs à la clôture", "document": "annex" },
+    { "id": "workforce", "label": "Effectif et rémunérations des dirigeants", "document": "annex" },
+    { "id": "payment-terms", "label": "Délais de paiement des fournisseurs et des clients", "document": "report" },
+    { "id": "vacancy", "label": "Vacance du patrimoine", "document": "report" },
+    { "id": "net-self-financing", "label": "Autofinancement net HLM", "document": "report" },
+    { "id": "activity-indicators", "label": "Indicateurs d’activité (livraisons, ventes, réhabilitations)", "document": "report" },
+    { "id": "risks-uncertainties", "label": "Principaux risques et incertitudes", "document": "report" }
+  ],
+  "fixes": [
+    { "id": "add-missing", "label": "Compléter l’information omise", "treatments": ["disclose", "report"] },
+    { "id": "correct-amount", "label": "Corriger un montant, un nombre ou un taux publié", "treatments": ["disclose", "report"] },
+    { "id": "reconcile-table", "label": "Rapprocher le tableau de la balance et corriger son total", "treatments": ["disclose", "report"] },
+    { "id": "specify-definition", "label": "Préciser la définition ou la méthode retenue (permanence avec N-1)", "treatments": ["disclose", "report"] },
+    { "id": "update-after-corrections", "label": "Mettre à jour l’information après prise en compte des corrections", "treatments": ["disclose", "report"] },
+    { "id": "disclose-subsequent-event", "label": "Mentionner l’événement postérieur à la clôture", "treatments": ["disclose"] },
+    { "id": "explain-change", "label": "Expliquer un changement de méthode ou d’estimation", "treatments": ["disclose"] },
+    { "id": "restate-classification", "label": "Rétablir le classement des états (exercice et comparatif)", "treatments": ["reclassify", "disclose"] },
+    { "id": "special-report", "label": "Mentionner la convention dans le rapport spécial", "treatments": ["specialReport"] },
+    { "id": "governance-irregularity", "label": "Signaler l’irrégularité au conseil d’administration", "treatments": ["governance"] },
+    { "id": "governance-communication", "label": "Communiquer les faits relevés à la gouvernance", "treatments": ["governance"] },
+    { "id": "request-justification", "label": "Demander la justification à la direction et suivre la réponse", "treatments": ["governance", "specialReport"] },
+    { "id": "control-recommendation", "label": "Recommandation sur le contrôle interne (lettre de recommandations)", "treatments": ["internalControl"] }
+  ],
+  "matching": {
+    "toVerify": true,
+    "tolerancePct": 5,
+    "projectedShareRange": [0.5, 1.5],
+    "maxObjects": 3,
+    "maxNatures": 2
+  }
 }

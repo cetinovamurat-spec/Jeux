@@ -514,8 +514,9 @@ export function runRecalc(tool: RecalcToolId, scope: string, assumptions: Record
   }
 }
 
-/** Assumptions changed from the client's without a source (ids). */
+/** Assumptions changed from the client's without a source (ids); the prorata temporis has no client file: its inputs are the player's. */
 export function unsourcedChanges(params: Params, tool: RecalcToolId, scope: string, assumptions: Record<string, { value: string | number; source: string | null }>): string[] {
+  if (tool === 'prorata') return [];
   const client = clientAssumptions(params, tool, scope);
   return Object.entries(assumptions)
     .filter(([k, v]) => String(v.value) !== String(client[k] ?? '') && !v.source)

@@ -13,6 +13,7 @@
 import { z } from 'zod';
 import { sumPrefixes } from '../engine/balance';
 import type { IsoDate } from '../engine/dates';
+import { formatEuro } from '../engine/format';
 import { roundCents, type Cents } from '../engine/money';
 import { buildStatements } from '../engine/statements';
 import type { ChartOfAccounts, PresentationOverrides, StatementLineDef } from '../engine/types';
@@ -113,6 +114,21 @@ export const planningSchema = z.object({
 
 function withPlanning(s: GameState, planning: PlanningState): GameState {
   return { ...s, planning };
+}
+
+/** French subject of a journal event (desk journal: `data.title`), when the parameters are known. */
+function titled(params: Params | undefined, f: (p: Params) => string): { title?: string } {
+  return params ? { title: f(params) } : {};
+}
+
+function cycleName(params: Params, id: string): string {
+  return params.cycles.cycles.find((c) => c.id === id)?.label ?? id;
+}
+
+function riskSubject(params: Params, key: string): string {
+  const [cycle, assertion] = key.split(':') as [string, string | undefined];
+  const a = assertion ? params.planning.assertions.find((x) => x.id === assertion)?.label ?? assertion : null;
+  return a ? `${cycleName(params, cycle)} – ${a}` : cycleName(params, cycle);
 }
 
 // ---------------------------------------------------------------------------
@@ -275,7 +291,9 @@ export function validateMateriality(s: GameState, params: Params, choice: Omit<M
   if (materialityErrors(params, c).length) return s;
   const p = s.planning;
   const next = withPlanning(s, { ...p, materiality: [...p.materiality, c], validated: { ...p.validated, materiality: s.clock.date } });
-  return log(next, 'materiality', c.base, { amount: c.amount, vintage: c.vintage, revision: p.materiality.length > 0 });
+  const revision = p.materiality.length > 0;
+  const baseLabel = params.planning.bases.find((b) => b.id === c.base)?.label ?? c.base;
+  return log(next, 'materiality', c.base, { amount: c.amount, vintage: c.vintage, revision, title: `${formatEuro(c.amount, 0)}, base : ${baseLabel}${revision ? ' (révision)' : ''}` });
 }
 
 /** The materiality must be revised on the draft accounts at the final (NEP 320): due from the start of the final until it is. */
@@ -352,30 +370,35 @@ export function needsJustification(params: Params, level: RiskLevel): boolean {
 }
 
 /** Sets the risk of a cycle or of an assertion (dated revision; the history is in the journal). */
-export function setRisk(s: GameState, cycle: string, assertion: string | null, level: RiskLevel, justification: string): GameState {
+export function setRisk(s: GameState, cycle: string, assertion: string | null, level: RiskLevel, justification: string, params?: Params): GameState {
   const key = riskKey(cycle, assertion);
   const p = s.planning;
   const prev = p.risks[key];
   const text = justification.trim();
   if (prev && prev.level === level && prev.justification === text) return s;
   const risks = { ...p.risks, [key]: { level, justification: text, on: s.clock.date } };
-  return log(withPlanning(s, { ...p, risks }), 'risk', key, { level });
+  return log(withPlanning(s, { ...p, risks }), 'risk', key, { level, ...titled(params, (x) => `${riskSubject(x, key)} : ${(x.planning.riskLevels.find((l) => l.id === level)?.label ?? level).toLowerCase()}`) });
 }
 
 /** Removes the detail of an assertion (back to the level of the cycle). */
-export function clearRisk(s: GameState, key: string): GameState {
+export function clearRisk(s: GameState, key: string, params?: Params): GameState {
   if (!s.planning.risks[key]) return s;
   const risks = { ...s.planning.risks };
   delete risks[key];
-  return log(withPlanning(s, { ...s.planning, risks }), 'risk', key, { cleared: true });
+  return log(withPlanning(s, { ...s.planning, risks }), 'risk', key, { cleared: true, ...titled(params, (x) => `${riskSubject(x, key)} : niveau du cycle`) });
 }
 
-export function setFraudPresumption(s: GameState, revenueType: string, retained: boolean, justification: string): GameState {
+export function setFraudPresumption(s: GameState, revenueType: string, retained: boolean, justification: string, params?: Params): GameState {
   const p = s.planning;
   const entry: FraudPresumption = { retained, justification: justification.trim(), on: s.clock.date };
   const prev = p.fraudPresumption[revenueType];
   if (prev && prev.retained === entry.retained && prev.justification === entry.justification) return s;
-  return log(withPlanning(s, { ...p, fraudPresumption: { ...p.fraudPresumption, [revenueType]: entry } }), 'fraudPresumption', revenueType, { retained });
+  const label = (x: Params) => x.planning.revenueTypes.find((r) => r.id === revenueType)?.label ?? revenueType;
+  return log(withPlanning(s, { ...p, fraudPresumption: { ...p.fraudPresumption, [revenueType]: entry } }), 'risk', `fraud:${revenueType}`, {
+    action: 'fraudPresumption',
+    retained,
+    ...titled(params, (x) => `présomption de fraude sur « ${label(x)} » ${retained ? 'retenue' : 'réfutée'}`),
+  });
 }
 
 /** The presumption of fraud is retained unless the player rebuts it. */
@@ -383,10 +406,12 @@ export function fraudRetained(p: PlanningState, revenueType: string): boolean {
   return p.fraudPresumption[revenueType]?.retained ?? true;
 }
 
-export function toggleLaw(s: GameState, id: string): GameState {
+export function toggleLaw(s: GameState, id: string, params?: Params): GameState {
   const p = s.planning;
   const laws = p.laws.includes(id) ? p.laws.filter((x) => x !== id) : [...p.laws, id];
-  return log(withPlanning(s, { ...p, laws }), 'laws', id, { retained: laws.includes(id) });
+  const retained = laws.includes(id);
+  const label = (x: Params) => x.planning.lawsRegulations.find((l) => l.id === id)?.label ?? id;
+  return log(withPlanning(s, { ...p, laws }), 'risk', `laws:${id}`, { action: 'laws', retained, ...titled(params, (x) => `textes « ${label(x)} » ${retained ? 'retenus' : 'retirés'}`) });
 }
 
 /** Adds a risk factor captured from a document passage (id given by the caller, from the state counter). */
@@ -399,11 +424,16 @@ export function removeRiskFactor(p: PlanningState, id: string): PlanningState {
 }
 
 /** « Marquer comme facteur de risque » on a document (or one of its blocks), with a cycle and an optional assertion. */
-export function captureRiskFactor(s: GameState, f: Omit<RiskFactor, 'id' | 'on'>): GameState {
+export function captureRiskFactor(s: GameState, f: Omit<RiskFactor, 'id' | 'on'>, params?: Params): GameState {
   if (!f.docId || !f.cycle) return s;
   const [id, s1] = nextId(s, 'rf');
   const factor: RiskFactor = { ...f, note: f.note.trim(), id, on: s1.clock.date };
-  return log(withPlanning(s1, addRiskFactor(s1.planning, factor)), 'riskFactor', f.docId, { cycle: f.cycle, ...(f.block !== null ? { block: f.block } : {}) });
+  return log(withPlanning(s1, addRiskFactor(s1.planning, factor)), 'risk', f.docId, {
+    action: 'riskFactor',
+    cycle: f.cycle,
+    ...(f.block !== null ? { block: f.block } : {}),
+    ...titled(params, (x) => `facteur de risque relevé dans une pièce (${riskSubject(x, f.assertion ? `${f.cycle}:${f.assertion}` : f.cycle)})`),
+  });
 }
 
 export function deleteRiskFactor(s: GameState, id: string): GameState {
@@ -436,7 +466,7 @@ export function validateRisks(s: GameState, params: Params): GameState {
   if (riskErrors(params, s.planning).length) return s;
   const program = ensureOverrideResponses(s.program, params);
   const next: GameState = { ...s, program, planning: { ...s.planning, validated: { ...s.planning.validated, risks: s.clock.date } } };
-  return log(next, 'planningValidated', 'risks');
+  return log(next, 'risk', 'validated', { action: 'validate', title: 'évaluation des risques validée' });
 }
 
 /** Adds the responses to management override missing from the programme (assigned to the senior when possible). */
@@ -557,5 +587,5 @@ export function recordInterimWithoutPlanning(s: GameState): GameState {
   if (s.gauges.events.some((e) => e.reason === INTERIM_WITHOUT_PLANNING)) return s;
   const missing = planningWarnings(s.planning).map((m) => m.step);
   const gauges = recordGaugeEvent(s.gauges, { on: s.clock.date, gauge: 'partnerTrust', reason: INTERIM_WITHOUT_PLANNING, ref: missing.join(',') });
-  return log({ ...s, gauges }, 'gaugeEvent', INTERIM_WITHOUT_PLANNING, { missing: missing.join(',') });
+  return log({ ...s, gauges }, 'gaugeEvent', INTERIM_WITHOUT_PLANNING, { missing: missing.join(','), title: 'intérim commencé sans planification validée' });
 }

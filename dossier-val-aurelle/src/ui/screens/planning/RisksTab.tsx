@@ -6,7 +6,7 @@
  * (always retained), laws and regulations, risk factors captured from the
  * documents, and the coverage of the risks by the programme.
  */
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { formatDateFr } from '../../../engine/dates';
 import { formatEuro } from '../../../engine/format';
@@ -34,6 +34,7 @@ import { useCase } from '../../app/context';
 import { useAvailableDocuments } from '../../app/hooks';
 import { useGame } from '../../app/store';
 import { Badge, Button, Card, Checkbox, cx, Select, TextInput } from '../../components/ui';
+import { Field } from './Field';
 import { assertionLabel, cycleLabel, RISK_TONE, riskLevelLabel } from './labels';
 
 function excerpt(text: string, n = 70): string {
@@ -53,8 +54,8 @@ function RiskEditor({ cycle, assertion, label }: { cycle: string; assertion: str
   const [text, setText] = useState(entry?.justification ?? '');
   const required = level !== 'inherit' && needsJustification(params, level);
   const commit = (lv: RiskLevel | 'inherit', j: string) => {
-    if (lv === 'inherit') act((s) => clearRisk(s, key));
-    else act((s) => setRisk(s, cycle, assertion, lv, j));
+    if (lv === 'inherit') act((s) => clearRisk(s, key, params));
+    else act((s) => setRisk(s, cycle, assertion, lv, j, params));
   };
   return (
     <>
@@ -131,19 +132,36 @@ function RiskMatrix() {
               return [
                 <tr key={cy.id} className="border-b border-line">
                   <th scope="row" className="px-2 py-1 text-left font-normal">
-                    <button type="button" aria-expanded={isOpen} onClick={() => toggle(cy.id)} className="inline-flex items-center gap-1 text-left hover:text-accent" title="Détailler par assertion">
+                    <button type="button" aria-expanded={isOpen} onClick={() => toggle(cy.id)} className="inline-flex items-center gap-1 text-left hover:text-accent" title="Détailler par assertion et voir les comptes significatifs">
                       <span aria-hidden className="w-3 text-xs text-muted">
                         {isOpen ? '▾' : '▸'}
                       </span>
                       <span className="font-medium">{cy.label}</span>
-                      <span className="sr-only">{isOpen ? ' (masquer le détail par assertion)' : ' (détailler par assertion)'}</span>
+                      <span className="sr-only">{isOpen ? ' (masquer le détail)' : ' (détailler par assertion et voir les comptes significatifs)'}</span>
                     </button>
                   </th>
-                  <td className="px-2 py-1 text-right" title={sig?.map((a) => `${a.account} ${c.accountLabel(a.account)} : ${formatEuro(a.balance, 0)}`).join('\n')}>
+                  <td className="px-2 py-1 text-right">
                     {sig === undefined ? <span className="text-xs text-muted">{threshold === null ? 'seuil à fixer' : '–'}</span> : sig.length}
                   </td>
                   <RiskEditor cycle={cy.id} assertion={null} label={cy.label} />
                 </tr>,
+                ...(isOpen && sig && sig.length > 0
+                  ? [
+                      <tr key={`${cy.id}:sig`} className="border-b border-line bg-sunken/50">
+                        <td colSpan={5} className="py-1 pl-8 pr-2 text-xs text-muted">
+                          Comptes dont le solde atteint le seuil de planification :{' '}
+                          {sig.map((a, i) => (
+                            <Fragment key={a.account}>
+                              {i > 0 && ' · '}
+                              <span className="whitespace-nowrap">
+                                {a.account} {c.accountLabel(a.account)} <span className="num">{formatEuro(a.balance, 0)}</span>
+                              </span>
+                            </Fragment>
+                          ))}
+                        </td>
+                      </tr>,
+                    ]
+                  : []),
                 ...(isOpen
                   ? params.planning.assertions.map((a) => (
                       <tr key={`${cy.id}:${a.id}`} className="border-b border-line bg-sunken/50">
@@ -173,7 +191,7 @@ function FraudPresumption() {
     <Card title="Présomption de fraude dans la comptabilisation des produits">
       <ul className="divide-y divide-line text-sm">
         {params.planning.revenueTypes.map((r) => (
-          <FraudRow key={r.id} id={r.id} label={r.label} description={r.description} retained={fraudRetained(planning, r.id)} justification={planning.fraudPresumption[r.id]?.justification ?? ''} onChange={(retained, j) => act((s) => setFraudPresumption(s, r.id, retained, j))} />
+          <FraudRow key={r.id} id={r.id} label={r.label} description={r.description} retained={fraudRetained(planning, r.id)} justification={planning.fraudPresumption[r.id]?.justification ?? ''} onChange={(retained, j) => act((s) => setFraudPresumption(s, r.id, retained, j, params))} />
         ))}
       </ul>
       <p className="border-t border-line px-3 py-2 text-xs text-muted">La présomption s’applique à chaque type de produits ; elle ne peut être réfutée que par une justification documentée (formulation de la norme à vérifier).</p>
@@ -238,7 +256,7 @@ function OverrideAndLaws() {
         <ul className="space-y-1.5 px-3 py-2 text-sm">
           {params.planning.lawsRegulations.map((l) => (
             <li key={l.id}>
-              <Checkbox id={`law-${l.id}`} label={<span className="font-medium">{l.label}</span>} checked={planning.laws.includes(l.id)} onChange={() => act((s) => toggleLaw(s, l.id))} />
+              <Checkbox id={`law-${l.id}`} label={<span className="font-medium">{l.label}</span>} checked={planning.laws.includes(l.id)} onChange={() => act((s) => toggleLaw(s, l.id, params))} />
               <p className="pl-6 text-xs text-muted">{l.description}</p>
             </li>
           ))}
@@ -263,20 +281,20 @@ function RiskFactors() {
   const doc = c.documentsById.get(docId);
   const add = () => {
     if (!docId || !cycle) return;
-    act((s) => captureRiskFactor(s, { docId, block: block === '' ? null : Number(block), cycle, assertion: assertion || null, note }));
+    act((s) => captureRiskFactor(s, { docId, block: block === '' ? null : Number(block), cycle, assertion: assertion || null, note }, params));
     setBlock('');
     setNote('');
   };
   return (
     <Card title="Facteurs de risque relevés dans les pièces">
       {factors.length === 0 ? (
-        <p className="px-3 py-2 text-sm text-muted">Aucun facteur relevé. Relevez les passages des pièces qui fondent votre évaluation.</p>
+        <p className="px-3 py-2 text-sm text-muted">Aucun facteur relevé. Relevez ici les passages des pièces de la gestion documentaire qui fondent votre évaluation.</p>
       ) : (
         <ul className="divide-y divide-line text-sm">
           {factors.map((f) => (
             <li key={f.id} className="flex flex-wrap items-start gap-2 px-3 py-1.5">
               <div className="min-w-0 flex-1">
-                <Link to={`/ged/${encodeURIComponent(f.docId)}`} className="text-accent hover:underline">
+                <Link to={`/ged/${encodeURIComponent(f.docId)}${f.block !== null ? `?bloc=${f.block + 1}` : ''}`} className="text-accent hover:underline">
                   {c.documentsById.get(f.docId)?.title ?? f.docId}
                 </Link>
                 {f.block !== null && <span className="text-xs text-muted"> – bloc {f.block + 1}</span>}
@@ -293,10 +311,10 @@ function RiskFactors() {
           ))}
         </ul>
       )}
-      <div className="grid gap-2 border-t border-line px-3 py-2 md:grid-cols-2">
-        <label className="text-sm md:col-span-2">
-          <span className="block text-xs text-muted">Pièce</span>
+      <div className="grid gap-2 border-t border-line px-3 py-2 md:grid-cols-2 xl:grid-cols-4">
+        <Field id="rf-doc" label="Pièce" className="md:col-span-2">
           <Select
+            id="rf-doc"
             value={docId}
             onChange={(e) => {
               setDocId(e.target.value);
@@ -311,10 +329,9 @@ function RiskFactors() {
               </option>
             ))}
           </Select>
-        </label>
-        <label className="text-sm md:col-span-2">
-          <span className="block text-xs text-muted">Passage (facultatif)</span>
-          <Select value={block} onChange={(e) => setBlock(e.target.value)} disabled={!doc} className="w-full">
+        </Field>
+        <Field id="rf-block" label="Passage (facultatif)" className="md:col-span-2">
+          <Select id="rf-block" value={block} onChange={(e) => setBlock(e.target.value)} disabled={!doc} className="w-full">
             <option value="">Document entier</option>
             {doc?.blocks.map((b, i) => (
               <option key={i} value={i}>
@@ -322,10 +339,9 @@ function RiskFactors() {
               </option>
             ))}
           </Select>
-        </label>
-        <label className="text-sm">
-          <span className="block text-xs text-muted">Cycle</span>
-          <Select value={cycle} onChange={(e) => setCycle(e.target.value)} className="w-full">
+        </Field>
+        <Field id="rf-cycle" label="Cycle">
+          <Select id="rf-cycle" value={cycle} onChange={(e) => setCycle(e.target.value)} className="w-full">
             <option value="">Choisir…</option>
             {params.cycles.cycles.map((cy) => (
               <option key={cy.id} value={cy.id}>
@@ -333,10 +349,9 @@ function RiskFactors() {
               </option>
             ))}
           </Select>
-        </label>
-        <label className="text-sm">
-          <span className="block text-xs text-muted">Assertion (facultatif)</span>
-          <Select value={assertion} onChange={(e) => setAssertion(e.target.value)} className="w-full">
+        </Field>
+        <Field id="rf-assertion" label="Assertion (facultatif)">
+          <Select id="rf-assertion" value={assertion} onChange={(e) => setAssertion(e.target.value)} className="w-full">
             <option value="">Toutes</option>
             {params.planning.assertions.map((a) => (
               <option key={a.id} value={a.id}>
@@ -344,12 +359,11 @@ function RiskFactors() {
               </option>
             ))}
           </Select>
-        </label>
-        <label className="text-sm md:col-span-2">
-          <span className="block text-xs text-muted">Note</span>
-          <TextInput value={note} onChange={(e) => setNote(e.target.value)} className="w-full" />
-        </label>
-        <div className="md:col-span-2">
+        </Field>
+        <Field id="rf-note" label="Note" className="md:col-span-2">
+          <TextInput id="rf-note" value={note} onChange={(e) => setNote(e.target.value)} className="w-full" />
+        </Field>
+        <div className="flex items-end md:col-span-2">
           <Button onClick={add} disabled={!docId || !cycle}>
             Marquer comme facteur de risque
           </Button>
@@ -417,33 +431,36 @@ export function RisksTab() {
   };
   return (
     <div className="space-y-4">
+      <div className="space-y-2 rounded-lg border border-line bg-panel px-4 py-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <Button variant="primary" onClick={validate}>
+            {planning.validated.risks ? 'Valider la révision des risques' : 'Valider l’évaluation des risques'}
+          </Button>
+          <span className="text-xs text-muted">
+            {planning.validated.risks ? `Dernière validation le ${formatDateFr(planning.validated.risks)}. ` : ''}
+            Les risques se révisent à tout moment, par exemple après la découverte d’un indice de fraude ; seuls les niveaux « élevé » et « risque important » demandent une justification.
+          </span>
+          {errors && errors.length === 0 && (
+            <span role="status" className="text-xs text-ok">
+              Évaluation des risques validée.
+            </span>
+          )}
+        </div>
+        {errors && errors.length > 0 && (
+          <ul role="alert" className="list-disc space-y-0.5 pl-5 text-sm text-ko">
+            {errors.map((e) => (
+              <li key={e}>{e}</li>
+            ))}
+          </ul>
+        )}
+      </div>
       <RiskMatrix />
       <div className="grid gap-4 xl:grid-cols-2">
         <FraudPresumption />
         <OverrideAndLaws />
       </div>
-      <div className="grid gap-4 xl:grid-cols-2">
-        <RiskFactors />
-        <Coverage />
-      </div>
-      <div className="flex flex-wrap items-center gap-3">
-        <Button variant="primary" onClick={validate}>
-          Valider l’évaluation des risques
-        </Button>
-        {planning.validated.risks && <span className="text-xs text-muted">Dernière validation le {formatDateFr(planning.validated.risks)}. Une révision reste possible à tout moment.</span>}
-        {errors && errors.length === 0 && (
-          <span role="status" className="text-xs text-ok">
-            Évaluation des risques validée.
-          </span>
-        )}
-      </div>
-      {errors && errors.length > 0 && (
-        <ul role="alert" className="list-disc space-y-0.5 pl-5 text-sm text-ko">
-          {errors.map((e) => (
-            <li key={e}>{e}</li>
-          ))}
-        </ul>
-      )}
+      <RiskFactors />
+      <Coverage />
     </div>
   );
 }

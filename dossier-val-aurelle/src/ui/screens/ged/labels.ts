@@ -77,3 +77,40 @@ export function availabilityText(a: Availability, docDate: string, params: Param
 export function plural(n: number, one: string, many: string): string {
   return `${n} ${n > 1 ? many : one}`;
 }
+
+// ---------------------------------------------------------------------------
+// requests and confirmations (plan J4 §8, §9)
+// ---------------------------------------------------------------------------
+
+export type GedTab = 'documents' | 'courrier' | 'demandes';
+
+export const GED_TABS: readonly GedTab[] = ['documents', 'courrier', 'demandes'];
+
+export const POPULATION_LABELS: Readonly<Record<string, string>> = {
+  lenders: 'Prêteurs',
+  banks: 'Banques (comptes et engagements)',
+  notaries: 'Notaires des ventes 2025-2026',
+  lawyers: 'Avocats (litiges)',
+  funders: 'Financeurs (subventions à recevoir)',
+  suppliers: 'Fournisseurs',
+  debtors: 'Débiteurs (gestionnaires, entités du groupe)',
+};
+
+export const CONFIRMATION_STATE_LABELS: Readonly<Record<string, string>> = {
+  prepared: 'Préparée',
+  notSent: 'Non envoyée',
+  sent: 'Envoyée, en attente',
+  replied: 'Réponse reçue',
+  noReply: 'Sans réponse',
+};
+
+/** Person of the client who answers a request: « Karim Haddad (chef comptable) ». */
+export function interlocutorText(params: Params, id: string): string {
+  const p = params.documents.people[id];
+  return p ? `${p.name} (${p.role.charAt(0).toLowerCase()}${p.role.slice(1)})` : id;
+}
+
+/** Delay of an interlocutor in working days, in words. */
+export function delayText(days: number): string {
+  return days <= 1 ? '1 jour ouvré' : `${days} jours ouvrés`;
+}

@@ -313,14 +313,37 @@ export function remindRequest<S extends RequestHost>(s: S, id: string, params: P
 // clock and budget
 // ---------------------------------------------------------------------------
 
-/** Upcoming events of the requests: answers due after the game date. */
-export function upcomingRequests(s: RequestsState, ctx: UpcomingContext): UpcomingEvent[] {
+/**
+ * Dates of the documents answering a request key (scenario documents and
+ * generic replies), given by the UI to announce the documents served later
+ * (« pas encore établi »). Optional: without it, only the answers are announced.
+ */
+export type RequestDocDates = (key: string) => readonly IsoDate[];
+
+/**
+ * Upcoming events of the requests: answers due after the game date and,
+ * when the context knows the dates of the documents (`requestDocDates`), the
+ * documents not established yet that will be served at their date plus the
+ * interlocutor's delay.
+ */
+export function upcomingRequests(s: RequestsState, ctx: UpcomingContext & { requestDocDates?: RequestDocDates }): UpcomingEvent[] {
   const out: UpcomingEvent[] = [];
+  const seen = new Set<string>();
   for (const it of s.items) {
+    const key = requestKey(it.family, it.object);
+    const label = requestLabel(ctx.params, it.family, it.object);
     const due = answerDate(ctx.params, ctx.cal, it);
-    if (due <= ctx.date) continue;
     const who = ctx.params.documents.people[interlocutorOf(ctx.params, it.family, it.object)];
-    out.push({ date: due, kind: 'answer', label: `Réponse attendue${who ? ` de ${who.name}` : ''} : ${requestLabel(ctx.params, it.family, it.object)}`, to: '/ged?onglet=demandes' });
+    if (due > ctx.date && !seen.has(`${key}|${due}`)) {
+      seen.add(`${key}|${due}`);
+      out.push({ date: due, kind: 'answer', label: `Réponse attendue${who ? ` de ${who.name}` : ''} : ${label}`, to: '/ged?onglet=demandes' });
+    }
+    for (const d of ctx.requestDocDates?.(key) ?? []) {
+      const on = arrivalDate(ctx.params, ctx.cal, it, d);
+      if (on <= ctx.date || on === due || seen.has(`${key}|${on}`)) continue;
+      seen.add(`${key}|${on}`);
+      out.push({ date: on, kind: 'answer', label: `Pièce attendue (établie le ${formatDateFr(d)}) : ${label}`, to: '/ged?onglet=demandes' });
+    }
   }
   return out;
 }

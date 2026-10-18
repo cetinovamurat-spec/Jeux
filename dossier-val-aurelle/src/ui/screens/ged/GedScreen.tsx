@@ -1,20 +1,27 @@
 /**
- * GED — document management (routes '/ged' and '/ged/:docId'): list of the
- * documents available at the game date (search, filters, sort) on the left,
- * the selected document on the right (reading, annotations, evidence).
+ * GED — document management (routes '/ged' and '/ged/:docId'), in three
+ * tabs: the documents available at the game date (search, filters, sort) with
+ * the selected document on the right (reading, annotations, evidence); the
+ * mail received during the engagement (« Courrier reçu », most recent first,
+ * unread marked); the requests and confirmations (plan J4 §8, §9). The
+ * replies built on demand (generic replies, « sans écart » confirmations) are
+ * listed with the scenario documents. `?onglet=courrier|demandes` opens a tab.
  */
 import { useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
-import { Link, useParams } from 'react-router';
-import { listDocuments, searchWords } from '../../../game/documents';
+import { Link, useParams, useSearchParams } from 'react-router';
+import { buildDocumentIndex, listDocuments, searchWords } from '../../../game/documents';
 import { markRead, type GameState } from '../../../game/state';
 import { useCase } from '../../app/context';
-import { useAvailableDocuments, useDesigner } from '../../app/hooks';
+import { useDesigner } from '../../app/hooks';
 import { useGame } from '../../app/store';
-import { Button, cx, Kbd, PageHeader } from '../../components/ui';
+import { Badge, Button, cx, Kbd, PageHeader, tabPanelId, Tabs } from '../../components/ui';
 import { DocumentList } from './DocumentList';
 import { DocumentViewer } from './DocumentViewer';
 import { useGedView } from './gedStore';
-import { plural } from './labels';
+import { InboxList } from './InboxList';
+import { GED_TABS, plural, type GedTab } from './labels';
+import { useGedDocuments, useReceivedMail } from './replies';
+import { RequestsTab } from './RequestsTab';
 
 /** Print only the document sheet (the rest of the application is hidden). */
 const PRINT_CSS = `
@@ -56,29 +63,53 @@ function useFillHeight(ref: RefObject<HTMLElement | null>): number | undefined {
   return height;
 }
 
+function isTab(v: string | null): v is GedTab {
+  return v !== null && (GED_TABS as readonly string[]).includes(v);
+}
+
 export function GedScreen() {
   const { docId } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const c = useCase();
-  const available = useAvailableDocuments();
+  const { available, replies, byId } = useGedDocuments();
+  const mail = useReceivedMail();
   const designer = useDesigner();
   const states = useGame((s) => s.game.documents);
   const act = useGame((s) => s.act);
   const view = useGedView();
+  const urlTab = searchParams.get('onglet');
+  const tab: GedTab = isTab(urlTab) ? urlTab : view.tab;
+  const [unreadOnly, setUnreadOnly] = useState(false);
+  useEffect(() => {
+    if (isTab(urlTab) && urlTab !== view.tab) view.update({ tab: urlTab });
+  }, [urlTab]); // eslint-disable-line react-hooks/exhaustive-deps
+  const selectTab = (t: GedTab) => {
+    view.update({ tab: t });
+    setSearchParams(t === 'documents' ? {} : { onglet: t }, { replace: true });
+  };
+
   const query = useDeferredValue(view.query);
   const pending = query !== view.query;
   const words = useMemo(() => searchWords(query), [query]);
   const availableIds = useMemo(() => new Set(available.map((d) => d.id)), [available]);
-  const hits = useMemo(() => (words.length ? c.documentIndex().search(query, availableIds) : null), [c, query, words, availableIds]);
+  const replyIndex = useMemo(() => buildDocumentIndex(replies), [replies]);
+  const hits = useMemo(() => {
+    if (!words.length) return null;
+    return [...c.documentIndex().search(query, availableIds), ...replyIndex.search(query)].sort((a, b) => b.score - a.score || (a.docId < b.docId ? -1 : 1));
+  }, [c, query, words, availableIds, replyIndex]);
 
-  const requested = docId !== undefined ? c.documentsById.get(docId) : undefined;
+  const requested = docId !== undefined ? byId(docId) : undefined;
   const open = requested && availableIds.has(requested.id) ? requested : undefined;
 
   const filter = useMemo(() => ({ category: view.category, status: view.status, sort: view.sort }), [view.category, view.status, view.sort]);
   const items = useMemo(() => listDocuments(available, states, filter, hits, open?.id), [available, states, filter, hits, open]);
-  const position = open ? items.findIndex((x) => x.doc.id === open.id) : -1;
-  const prevId = position > 0 ? items[position - 1]!.doc.id : null;
-  const nextId = position >= 0 ? (items[position + 1]?.doc.id ?? null) : (items.find((x) => x.doc.id !== open?.id)?.doc.id ?? null);
-  const hit = open && hits ? (hits.find((h) => h.docId === open.id) ?? null) : null;
+  const inboxShown = useMemo(() => (unreadOnly ? mail.filter((x) => !states[x.doc.id]?.readOn || x.doc.id === open?.id) : mail), [mail, unreadOnly, states, open]);
+  const order = tab === 'courrier' ? inboxShown.map((x) => x.doc.id) : items.map((x) => x.doc.id);
+  const position = open ? order.indexOf(open.id) : -1;
+  const prevId = position > 0 ? order[position - 1]! : null;
+  const nextId = position >= 0 ? (order[position + 1] ?? null) : (order.find((id) => id !== open?.id) ?? null);
+  const hit = open && hits && tab === 'documents' ? (hits.find((h) => h.docId === open.id) ?? null) : null;
+  const unreadMail = mail.filter((x) => !states[x.doc.id]?.readOn).length;
 
   // Opening a document marks it as read (once: markRead keeps the first date).
   const readOn = open ? states[open.id]?.readOn : undefined;
@@ -105,43 +136,60 @@ export function GedScreen() {
   const fillRef = useRef<HTMLDivElement>(null);
   const height = useFillHeight(fillRef);
   const listHidden = view.listHidden;
+  const tabs = [
+    { id: 'documents' as const, label: <>Documents <span className="text-xs font-normal text-muted">({available.length})</span></> },
+    { id: 'courrier' as const, label: <span className="inline-flex items-center gap-1.5">Courrier reçu {unreadMail > 0 && <Badge tone="accent" title={plural(unreadMail, 'pièce non lue', 'pièces non lues')}>{unreadMail}<span className="sr-only"> non lues</span></Badge>}</span> },
+    { id: 'demandes' as const, label: 'Demandes et confirmations' },
+  ];
 
   return (
     <>
       <style>{PRINT_CSS}</style>
       <PageHeader
         title="Gestion documentaire"
-        description="Documents remis par le client et réponses des tiers reçues à la date du dossier : recherche en texte intégral, lecture, annotations et éléments probants."
+        description="Documents remis par le client et réponses des tiers reçues à la date du dossier : recherche en texte intégral, lecture, annotations et éléments probants ; demandes de pièces et confirmations."
         actions={
-          <Button onClick={() => view.update({ listHidden: !listHidden })} aria-expanded={!listHidden} aria-controls="ged-list">
-            {listHidden ? 'Afficher la liste' : 'Masquer la liste'}
-          </Button>
+          tab !== 'demandes' ? (
+            <Button onClick={() => view.update({ listHidden: !listHidden })} aria-expanded={!listHidden} aria-controls="ged-list">
+              {listHidden ? 'Afficher la liste' : 'Masquer la liste'}
+            </Button>
+          ) : undefined
         }
       />
-      <div
-        ref={fillRef}
-        data-ged-fill
-        style={{ height: height ?? `calc(100vh - ${FALLBACK_OFFSET})` }}
-        className={cx('grid grid-rows-[minmax(0,1fr)] gap-4', listHidden ? 'grid-cols-1' : 'grid-cols-[19rem_minmax(0,1fr)] xl:grid-cols-[26rem_minmax(0,1fr)]')}
-      >
-        {!listHidden && (
-          <DocumentList id="ged-list" listKey={`${words.join(' ')}|${filter.category}|${filter.status}|${filter.sort}`} items={items} availableCount={available.length} selectedId={open?.id} states={states} words={words} pending={pending} designer={designer} searchRef={searchRef} />
+      <Tabs value={tab} onChange={selectTab} items={tabs} label="Gestion documentaire" idPrefix="ged" />
+      <div id={tabPanelId('ged')} role="tabpanel" aria-labelledby={`ged-tab-${tab}`} className="pt-3">
+        {tab === 'demandes' ? (
+          <RequestsTab />
+        ) : (
+          <div
+            ref={fillRef}
+            data-ged-fill
+            style={{ height: height ?? `calc(100vh - ${FALLBACK_OFFSET})` }}
+            className={cx('grid grid-rows-[minmax(0,1fr)] gap-4', listHidden ? 'grid-cols-1' : 'grid-cols-[19rem_minmax(0,1fr)] xl:grid-cols-[26rem_minmax(0,1fr)]')}
+          >
+            {!listHidden &&
+              (tab === 'courrier' ? (
+                <InboxList id="ged-list" items={mail} selectedId={open?.id} states={states} unreadOnly={unreadOnly} onUnreadOnly={setUnreadOnly} />
+              ) : (
+                <DocumentList id="ged-list" listKey={`${words.join(' ')}|${filter.category}|${filter.status}|${filter.sort}`} items={items} availableCount={available.length} selectedId={open?.id} states={states} words={words} pending={pending} designer={designer} searchRef={searchRef} />
+              ))}
+            <section aria-label="Lecture du document" className="flex min-h-0 min-w-0 flex-col">
+              {open ? (
+                <DocumentViewer key={open.id} doc={open} state={states[open.id]} prevId={prevId} nextId={nextId} position={position} total={order.length} hit={hit} words={tab === 'documents' ? words : []} designer={designer} />
+              ) : docId !== undefined ? (
+                <div role="alert" className="rounded-lg border border-line bg-panel px-6 py-8">
+                  <p className="font-semibold">Ce document n’est pas disponible à la date du dossier.</p>
+                  <p className="mt-1 text-sm text-muted">Il n’a pas encore été reçu, il n’est communiqué que sur demande, ou la référence est inconnue. Choisissez un document dans la liste.</p>
+                  <Link to="/ged" className="mt-3 inline-block text-sm text-accent underline-offset-2 hover:underline">
+                    Revenir à la gestion documentaire
+                  </Link>
+                </div>
+              ) : (
+                <Welcome total={available.length} states={states} ids={availableIds} firstUnread={(tab === 'courrier' ? inboxShown.find((x) => !states[x.doc.id]?.readOn)?.doc.id : items.find((x) => !states[x.doc.id]?.readOn)?.doc.id) ?? null} />
+              )}
+            </section>
+          </div>
         )}
-        <section aria-label="Lecture du document" className="flex min-h-0 min-w-0 flex-col">
-          {open ? (
-            <DocumentViewer key={open.id} doc={open} state={states[open.id]} prevId={prevId} nextId={nextId} position={position} total={items.length} hit={hit} words={words} designer={designer} />
-          ) : docId !== undefined ? (
-            <div role="alert" className="rounded-lg border border-line bg-panel px-6 py-8">
-              <p className="font-semibold">Ce document n’est pas disponible à la date du dossier.</p>
-              <p className="mt-1 text-sm text-muted">Il n’a pas encore été reçu, il n’est communiqué que sur demande, ou la référence est inconnue. Choisissez un document dans la liste.</p>
-              <Link to="/ged" className="mt-3 inline-block text-sm text-accent underline-offset-2 hover:underline">
-                Revenir à la gestion documentaire
-              </Link>
-            </div>
-          ) : (
-            <Welcome total={available.length} states={states} ids={availableIds} firstUnread={items.find((x) => !states[x.doc.id]?.readOn)?.doc.id ?? null} />
-          )}
-        </section>
       </div>
     </>
   );

@@ -140,7 +140,9 @@
         { "id": "governance-register", "label": "Registre des conventions et composition des conseils du groupe", "interlocutor": "cfo" },
         { "id": "mail-register", "label": "Registre du courrier arrivé et correspondance des financeurs" },
         { "id": "migration", "label": "Dossier de migration du système d’information" },
-        { "id": "subsequent-invoices", "label": "Factures reçues et décaissements de janvier-février 2026" }
+        { "id": "subsequent-invoices", "label": "Factures reçues et décaissements de janvier-février 2026" },
+        { "id": "aged-balance", "label": "Balances âgées des locataires et des fournisseurs au 31/12/2025" },
+        { "id": "management-report-support", "label": "Justificatifs des informations du rapport de gestion (délais de paiement, vacance, autofinancement net)", "interlocutor": "cfo" }
       ]
     }
   ],
@@ -151,6 +153,14 @@
     "supplierMinVolumeEuros": 600000,
     "suppliersAlways": ["F0027", "F0022", "F0015"],
     "nonResponders": ["ACCUEIL_HORIZONS"],
+    "procedurePopulations": {
+      "lender-confirmations": ["lenders", "banks"],
+      "notary-confirmations": ["notaries"],
+      "litigation": ["lawyers"],
+      "funder-confirmations": ["funders"],
+      "supplier-confirmations": ["suppliers"],
+      "debtor-confirmations": ["debtors"]
+    },
     "replyBusinessDays": {
       "BDT": 14,
       "BANK1": 10,

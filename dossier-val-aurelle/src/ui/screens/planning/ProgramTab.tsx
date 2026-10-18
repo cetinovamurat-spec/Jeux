@@ -29,6 +29,7 @@ import { useCase } from '../../app/context';
 import { useGame } from '../../app/store';
 import { Badge, Button, Card, cx, Select, TextInput } from '../../components/ui';
 import { AidButton } from '../work/AidButton';
+import { Field } from './Field';
 import { cycleLabel, formatHours, MANDATORY_LABEL, memberShort, outputText, OVERRIDE_LABEL, phasesText } from './labels';
 import { DEFAULT_LIBRARY, usePlanningView } from './planningStore';
 
@@ -220,9 +221,8 @@ function Library() {
   return (
     <Card title="Bibliothèque de procédures" actions={<span className="text-xs text-muted">{list.length} procédure{list.length > 1 ? 's' : ''} hors programme</span>}>
       <div className="grid gap-2 border-b border-line px-3 py-2 sm:grid-cols-2 lg:grid-cols-4">
-        <label className="text-sm">
-          <span className="block text-xs text-muted">Cycle</span>
-          <Select value={f.cycle} onChange={(e) => setLibrary({ cycle: e.target.value })} className="w-full">
+        <Field id="lib-cycle" label="Cycle">
+          <Select id="lib-cycle" value={f.cycle} onChange={(e) => setLibrary({ cycle: e.target.value })} className="w-full">
             <option value="all">Tous les cycles</option>
             {params.cycles.cycles.map((cy) => (
               <option key={cy.id} value={cy.id}>
@@ -230,18 +230,16 @@ function Library() {
               </option>
             ))}
           </Select>
-        </label>
-        <label className="text-sm">
-          <span className="block text-xs text-muted">Risques</span>
-          <Select value={f.risk} onChange={(e) => setLibrary({ risk: e.target.value as typeof f.risk })} className="w-full">
+        </Field>
+        <Field id="lib-risk" label="Risques">
+          <Select id="lib-risk" value={f.risk} onChange={(e) => setLibrary({ risk: e.target.value as typeof f.risk })} className="w-full">
             <option value="all">Toutes les procédures</option>
             <option value="high">Couvrant vos risques élevés</option>
             <option value="uncovered">Répondant à vos risques non couverts</option>
           </Select>
-        </label>
-        <label className="text-sm">
-          <span className="block text-xs text-muted">Phase</span>
-          <Select value={f.phase} onChange={(e) => setLibrary({ phase: e.target.value })} className="w-full">
+        </Field>
+        <Field id="lib-phase" label="Phase">
+          <Select id="lib-phase" value={f.phase} onChange={(e) => setLibrary({ phase: e.target.value })} className="w-full">
             <option value="all">Toutes les phases</option>
             {['planning', 'interim', 'final', 'completion', 'reporting'].map((p) => (
               <option key={p} value={p}>
@@ -249,11 +247,10 @@ function Library() {
               </option>
             ))}
           </Select>
-        </label>
-        <label className="text-sm">
-          <span className="block text-xs text-muted">Recherche</span>
-          <TextInput type="search" value={f.query} onChange={(e) => setLibrary({ query: e.target.value })} className="w-full" />
-        </label>
+        </Field>
+        <Field id="lib-query" label="Recherche">
+          <TextInput id="lib-query" type="search" value={f.query} onChange={(e) => setLibrary({ query: e.target.value })} className="w-full" />
+        </Field>
         {(f.cycle !== 'all' || f.risk !== 'all' || f.phase !== 'all' || f.query) && (
           <div className="sm:col-span-2 lg:col-span-4">
             <Button variant="ghost" className="px-1.5 py-0 text-xs" onClick={() => setLibrary(DEFAULT_LIBRARY)}>

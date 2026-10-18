@@ -7,6 +7,8 @@
 import { useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router';
 import { formatDateFr } from '../../../engine/dates';
+import { materialityRevisionDue } from '../../../game/planning';
+import { useCase } from '../../app/context';
 import { useGame } from '../../app/store';
 import { PageHeader, tabId, tabPanelId, Tabs } from '../../components/ui';
 import { MaterialityTab } from './MaterialityTab';
@@ -24,7 +26,9 @@ function parseTab(v: string | null): TabKey {
 export function PlanningScreen() {
   const [params, setParams] = useSearchParams();
   const tab = parseTab(params.get('onglet'));
+  const c = useCase();
   const validated = useGame((s) => s.game.planning.validated);
+  const revisionDue = useGame((s) => materialityRevisionDue(s.game.planning, c.params, s.game.clock.date));
   const tabsRef = useRef<HTMLDivElement>(null);
 
   // the focus follows the selected tab when it moves with the arrow keys
@@ -41,6 +45,17 @@ export function PlanningScreen() {
   };
   const label = (t: TabKey, text: string) => {
     const on = validated[TAB_STEP[t]];
+    // at the final, the materiality must be revised on the draft accounts
+    if (t === 'seuils' && revisionDue && on)
+      return (
+        <span className="inline-flex items-center gap-1.5">
+          {text}
+          <span aria-hidden className="text-warn">
+            ⚠
+          </span>
+          <span className="sr-only"> (à revoir sur le projet de comptes)</span>
+        </span>
+      );
     return (
       <span className="inline-flex items-center gap-1.5">
         {text}

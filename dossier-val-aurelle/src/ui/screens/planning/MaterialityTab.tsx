@@ -7,7 +7,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { formatDateFr } from '../../../engine/dates';
-import { formatEuro } from '../../../engine/format';
+import { formatAmount, formatEuro } from '../../../engine/format';
 import {
   assessMateriality,
   baseAmount,
@@ -27,6 +27,7 @@ import {
 import { useCase } from '../../app/context';
 import { useGame } from '../../app/store';
 import { Badge, Button, Card, Checkbox, cx, Select, TextInput } from '../../components/ui';
+import { Field } from './Field';
 import { formatPct } from './labels';
 import { decimalText, parseDecimal, usePlanningView, type MaterialityDraft } from './planningStore';
 
@@ -53,6 +54,15 @@ function draftFrom(c: MaterialityChoice, vintage: MaterialityVintage): Materiali
 
 function Money({ cents }: { cents: number }) {
   return <span className="num whitespace-nowrap">{formatEuro(cents, 0)}</span>;
+}
+
+/** Range of amounts on one line, the currency once at the end. */
+function MoneyRange({ from, to }: { from: number; to: number }) {
+  return (
+    <span className="num whitespace-nowrap">
+      {formatAmount(from, 0)} – {formatEuro(to, 0)}
+    </span>
+  );
 }
 
 export function MaterialityTab() {
@@ -195,7 +205,7 @@ export function MaterialityTab() {
                         {formatPct(b.pctRange[0])} – {formatPct(b.pctRange[1])}
                       </td>
                       <td className="px-2 py-1.5 text-right text-xs text-muted">
-                        <Money cents={materialityFrom(a, b.pctRange[0], 0)} /> à <Money cents={materialityFrom(a, b.pctRange[1], 0)} />
+                        <MoneyRange from={materialityFrom(a, b.pctRange[0], 0)} to={materialityFrom(a, b.pctRange[1], 0)} />
                       </td>
                     </tr>
                   );
@@ -203,36 +213,31 @@ export function MaterialityTab() {
               </tbody>
             </table>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <label className="text-sm">
-                <span className="block text-xs text-muted">Pourcentage de la base</span>
-                <TextInput inputMode="decimal" value={d.pct} placeholder={base ? `${decimalText(base.pctRange[0])} à ${decimalText(base.pctRange[1])}` : 'choisir une base'} onChange={(e) => updateDraft({ pct: e.target.value })} invalid={d.pct !== '' && !Number.isFinite(pct)} className="w-full" />
-              </label>
-              <label className="text-sm">
-                <span className="block text-xs text-muted">Arrondi</span>
-                <Select value={d.rounding} onChange={(e) => updateDraft({ rounding: Number(e.target.value) })} className="w-full">
+              <Field id="mat-pct" label="Pourcentage de la base">
+                <TextInput id="mat-pct" inputMode="decimal" value={d.pct} placeholder={base ? `${decimalText(base.pctRange[0])} à ${decimalText(base.pctRange[1])}` : 'choisir une base'} onChange={(e) => updateDraft({ pct: e.target.value })} invalid={d.pct !== '' && !Number.isFinite(pct)} className="w-full" />
+              </Field>
+              <Field id="mat-rounding" label="Arrondi">
+                <Select id="mat-rounding" value={d.rounding} onChange={(e) => updateDraft({ rounding: Number(e.target.value) })} className="w-full">
                   {t.roundingEuros.map((r) => (
                     <option key={r} value={r}>
                       {r === 0 ? 'Aucun' : formatEuro(r * 100, 0)}
                     </option>
                   ))}
                 </Select>
-              </label>
-              <label className="text-sm">
-                <span className="block text-xs text-muted">Seuil de planification (% du seuil)</span>
-                <TextInput inputMode="decimal" value={d.planningPct} placeholder={`${decimalText(t.planningPctRange[0])} à ${decimalText(t.planningPctRange[1])}`} onChange={(e) => updateDraft({ planningPct: e.target.value })} invalid={d.planningPct !== '' && !Number.isFinite(planningPct)} className="w-full" />
-              </label>
-              <label className="text-sm">
-                <span className="block text-xs text-muted">Anomalies insignifiantes (% du seuil)</span>
-                <TextInput inputMode="decimal" value={d.trivialPct} placeholder={`${decimalText(t.trivialPctRange[0])} à ${decimalText(t.trivialPctRange[1])}`} onChange={(e) => updateDraft({ trivialPct: e.target.value })} invalid={d.trivialPct !== '' && !Number.isFinite(trivialPct)} className="w-full" />
-              </label>
+              </Field>
+              <Field id="mat-planning" label="Seuil de planification (% du seuil)">
+                <TextInput id="mat-planning" inputMode="decimal" value={d.planningPct} placeholder={`${decimalText(t.planningPctRange[0])} à ${decimalText(t.planningPctRange[1])}`} onChange={(e) => updateDraft({ planningPct: e.target.value })} invalid={d.planningPct !== '' && !Number.isFinite(planningPct)} className="w-full" />
+              </Field>
+              <Field id="mat-trivial" label="Anomalies insignifiantes (% du seuil)">
+                <TextInput id="mat-trivial" inputMode="decimal" value={d.trivialPct} placeholder={`${decimalText(t.trivialPctRange[0])} à ${decimalText(t.trivialPctRange[1])}`} onChange={(e) => updateDraft({ trivialPct: e.target.value })} invalid={d.trivialPct !== '' && !Number.isFinite(trivialPct)} className="w-full" />
+              </Field>
             </div>
             <div className="flex flex-wrap items-end gap-3">
               <Checkbox id="mat-specific" label="Seuil spécifique pour les conventions réglementées" checked={d.specific} onChange={(v) => updateDraft({ specific: v })} />
               {d.specific && (
-                <label className="text-sm">
-                  <span className="block text-xs text-muted">Seuil spécifique (% du seuil)</span>
-                  <TextInput inputMode="decimal" value={d.specificPct} placeholder={`${decimalText(t.specificPctRange[0])} à ${decimalText(t.specificPctRange[1])}`} onChange={(e) => updateDraft({ specificPct: e.target.value })} className="w-40" />
-                </label>
+                <Field id="mat-specific-pct" label="Seuil spécifique (% du seuil)">
+                  <TextInput id="mat-specific-pct" inputMode="decimal" value={d.specificPct} placeholder={`${decimalText(t.specificPctRange[0])} à ${decimalText(t.specificPctRange[1])}`} onChange={(e) => updateDraft({ specificPct: e.target.value })} invalid={d.specificPct !== '' && specificPct !== null && !Number.isFinite(specificPct)} className="w-40" />
+                </Field>
               )}
             </div>
             <dl className="grid grid-cols-2 gap-3 rounded-md border border-line bg-sunken px-3 py-2 lg:grid-cols-4" aria-live="polite">
@@ -268,10 +273,9 @@ export function MaterialityTab() {
                   ))}
                 </div>
               </fieldset>
-              <label className="block text-sm">
-                <span className="block text-xs text-muted">Commentaire</span>
-                <textarea value={d.comment} onChange={(e) => updateDraft({ comment: e.target.value })} rows={3} className="w-full rounded-md border border-line bg-panel px-2 py-1 text-sm" />
-              </label>
+              <Field id="mat-comment" label="Commentaire">
+                <textarea id="mat-comment" value={d.comment} onChange={(e) => updateDraft({ comment: e.target.value })} rows={3} className="w-full rounded-md border border-line bg-panel px-2 py-1 text-sm" />
+              </Field>
               <div className="flex flex-wrap items-center gap-2">
                 <Button variant="primary" onClick={validate}>
                   {current ? 'Valider la révision du seuil' : 'Valider le seuil'}

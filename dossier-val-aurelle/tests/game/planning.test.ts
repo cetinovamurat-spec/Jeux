@@ -176,6 +176,18 @@ describe('risks, fraud presumption, laws and regulations', () => {
     expect(s.journal.filter((e) => e.kind === 'risk')).toHaveLength(3);
   });
 
+  it('logs the risk decisions with a French title when the parameters are given (desk journal)', () => {
+    let s = setRisk(fresh(), 'provisions', 'valuation', 'significant', 'Estimation', params);
+    expect(s.journal.at(-1)).toMatchObject({ kind: 'risk', ref: 'provisions:valuation', data: { level: 'significant', title: 'Provisions – Évaluation : risque important' } });
+    s = setFraudPresumption(s, 'recurringRents', false, 'Automatique', params);
+    expect(s.journal.at(-1)).toMatchObject({ kind: 'risk', ref: 'fraud:recurringRents', data: { retained: false } });
+    expect(String(s.journal.at(-1)!.data!['title'])).toMatch(/réfutée$/);
+    s = toggleLaw(s, 'rentRevision', params);
+    expect(s.journal.at(-1)).toMatchObject({ kind: 'risk', ref: 'laws:rentRevision', data: { retained: true } });
+    s = validateRisks(s, params);
+    expect(s.journal.at(-1)).toMatchObject({ kind: 'risk', ref: 'validated', data: { action: 'validate' } });
+  });
+
   it('asks a justification for high and significant risks only, and for a rebutted fraud presumption', () => {
     let s = setRisk(fresh(), 'fixedAssets', null, 'high', '  ');
     s = setRisk(s, 'purchases', null, 'low', '');

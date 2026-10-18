@@ -16,6 +16,22 @@ export type Nature = 'occurrence' | 'completeness' | 'cutoff' | 'valuation' | 'c
 export type Classification = 'factual' | 'judgemental' | 'projected';
 export type Treatment = 'adjust' | 'reclassify' | 'disclose' | 'report' | 'specialReport' | 'governance';
 
+/**
+ * Measure on which the quantification of a finding is credited (plan J4
+ * §13.2): the result impact (adjustments), the equity impact (A09), the
+ * amount reclassified (sum of the debits of the correction entry: A01 for the
+ * reclassification, A07.c, A18, A16.a for the debt) or the disclosure (no
+ * amount: signature, treatment, expected fix and evidence).
+ */
+export type CreditBasis = 'result' | 'equity' | 'reclassified' | 'disclosure';
+
+/** Object of a finding that has no counterpart in the engine's ObjectRef: an item of the annex or of the management report (params/disclosure-items.json). */
+export interface DisclosureItemRef {
+  kind: 'disclosureItem';
+  id: string;
+}
+export type PartObject = ObjectRef | DisclosureItemRef;
+
 export interface AnomalyPart {
   /** Full key ('A01', 'A07.a'). */
   id: PartKey;
@@ -24,12 +40,36 @@ export interface AnomalyPart {
   signature: { cycle: Cycle; objects: readonly ObjectRef[]; natures: readonly Nature[] };
   treatment: Treatment;
   /**
-   * Accepted range for the result impact proposed by the player (euros,
-   * overstatement positive). Absent: the computed impact ± 3 % (± 10 % for A08).
+   * Cycles under which a finding about this part is accepted (J4-12): the
+   * signature's cycle first, then the alternatives.
+   */
+  cycles: readonly Cycle[];
+  /**
+   * Discriminating objects: when sibling parts (or neighbouring anomalies)
+   * share their objects, a finding must name or link at least one of them.
+   * They also count as objects of the part.
+   */
+  keyObjects?: readonly PartObject[];
+  /** Items of the annex or of the management report concerned (ids of params/disclosure-items.json → items); they count as objects. */
+  disclosureItems?: readonly string[];
+  /** Measures on which the quantification is credited: the first is the main one, the others are accepted alternatives. */
+  creditBasis: readonly CreditBasis[];
+  /**
+   * Accepted range for the measure proposed by the player, as shares of the
+   * computed measure of the part (estimates: A07.a). It widens the default
+   * tolerance (max of ± params tolerance % and the reference clearly-trivial
+   * threshold), never replaces it by euros.
+   */
+  toleranceShare?: { min: number; max: number };
+  /**
+   * @deprecated Euro range of J2, kept only for the J2 impact test and the
+   * review pack; the matching reads `toleranceShare`.
    */
   tolerance?: { minEuros: number; maxEuros: number };
   /** Correction without accounting entry (annex, management report, special report). */
   disclosureFix?: string;
+  /** Fixes of the findings form that answer the part (ids of params/disclosure-items.json → fixes). */
+  expectedFixes?: readonly string[];
 }
 
 export interface NegotiationStance {

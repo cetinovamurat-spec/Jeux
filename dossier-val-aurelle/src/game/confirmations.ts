@@ -70,6 +70,23 @@ export type ConfirmationPopulation = 'lenders' | 'banks' | 'notaries' | 'lawyers
 
 export const POPULATION_ORDER: readonly ConfirmationPopulation[] = ['lenders', 'banks', 'notaries', 'lawyers', 'funders', 'suppliers', 'debtors'];
 
+/** Populations prepared by a confirmation procedure (params/requests.json → confirmations.procedurePopulations; all of them by default). */
+export function populationsOfProcedure(params: Params, procedureId: string | null | undefined): readonly ConfirmationPopulation[] {
+  const p = procedureId ? params.requests.confirmations.procedurePopulations[procedureId] : undefined;
+  return p && p.length ? POPULATION_ORDER.filter((x) => p.includes(x)) : POPULATION_ORDER;
+}
+
+/** Cycle of the work programme a population of third parties belongs to (findings created from the tracker). */
+export const POPULATION_CYCLE: Readonly<Record<ConfirmationPopulation, string>> = {
+  lenders: 'debtTreasury',
+  banks: 'debtTreasury',
+  notaries: 'fixedAssets',
+  lawyers: 'provisions',
+  funders: 'equitySubsidies',
+  suppliers: 'purchases',
+  debtors: 'rentReceivables',
+};
+
 export interface ConfirmationCandidate {
   thirdParty: string;
   name: string;
@@ -188,7 +205,7 @@ export function withdrawConfirmation<S extends ConfirmationHost>(s: S, thirdPart
 export function remindConfirmation<S extends ConfirmationHost>(s: S, thirdParty: string, label: string, params: Params = loadParams()): S {
   if (s.clock.date < sendingDate(params)) return s;
   const it = s.confirmations.items.find((x) => x.thirdParty === thirdParty);
-  if (!it) return s;
+  if (!it || it.preparedOn >= sendingDate(params) || it.remindedOn === s.clock.date) return s;
   const next: S = { ...s, confirmations: { items: s.confirmations.items.map((x) => (x.thirdParty === thirdParty ? { ...x, remindedOn: s.clock.date } : x)) } };
   return withJournal(next, 'confirmationReminder', thirdParty, `Relance de la demande de confirmation – ${label}`);
 }

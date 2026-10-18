@@ -25,6 +25,9 @@ export type RequestParameter = (typeof REQUEST_PARAMETERS)[number];
 /** Which programmes can be the object of a family (built from the data). */
 export const PROGRAMME_FILTERS = ['all', 'invoices', 'operations', 'sales', 'components', 'rentRoll'] as const;
 
+/** Populations of third parties proposed for confirmation (game/confirmations.ts). */
+export const CONFIRMATION_POPULATIONS = ['lenders', 'banks', 'notaries', 'lawyers', 'funders', 'suppliers', 'debtors'] as const;
+
 const month = z.string().regex(/^\d{4}-\d{2}$/);
 
 const familySchema = z.object({
@@ -61,6 +64,8 @@ export const requestsParamsSchema = z.object({
     suppliersAlways: z.array(z.string()),
     /** Third parties that never reply (the reminder stays without effect). */
     nonResponders: z.array(z.string()),
+    /** Populations of third parties prepared by each confirmation procedure (params/procedures.json ids; all populations when absent). */
+    procedurePopulations: z.record(z.string(), z.array(z.enum(CONFIRMATION_POPULATIONS))),
     /** Scenario replies: delay in business days after the sending (the dates of the third parties' letters). */
     replyBusinessDays: z.record(z.string(), z.number().int().min(0)),
   }),

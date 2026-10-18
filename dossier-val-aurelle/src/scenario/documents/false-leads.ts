@@ -5,6 +5,20 @@
  */
 import { DocBuilder, ENTITY_HEADER, creditOf, debitOf, euro0, person, progName, type DocContext } from './context';
 import type { DocumentModel, FalseLeadId } from './model';
+import type { ObjectRef } from '../../engine/types';
+import { acct, doc, tp } from '../anomalies/refs';
+import type { Cycle } from '../anomalies/types';
+
+/**
+ * Matching signature of a false lead (plan J4 §13.2): cycles under which a
+ * finding about it is recognised, its objects and, when neighbouring anomalies
+ * share objects with it, the discriminating ones (at least one is required).
+ */
+export interface FalseLeadSignature {
+  cycles: readonly Cycle[];
+  objects: readonly ObjectRef[];
+  keyObjects?: readonly ObjectRef[];
+}
 
 export interface FalseLead {
   id: FalseLeadId;
@@ -17,16 +31,17 @@ export interface FalseLead {
   evidence: readonly string[];
   /** Reporting it without evidence hurts the client relationship (F4). */
   relationshipCost: 'normal' | 'high';
+  signature: FalseLeadSignature;
 }
 
 export const FALSE_LEADS: readonly FalseLead[] = [
-  { id: 'F1', title: 'Honoraires en forte hausse', observation: 'Les honoraires augmentent fortement entre 2024 et 2025.', explanation: 'Études préalables du renouvellement urbain des Glycines et actualisation du plan stratégique de patrimoine, autorisées par le conseil et contractualisées après consultation.', evidence: ['contrats-etudes-npnru', 'pv-ca-2025-03', 'psp-extraits'], relationshipCost: 'normal' },
-  { id: 'F2', title: 'Produit à recevoir sur dégrèvement de TFPB', observation: 'Produit à recevoir significatif sur un dégrèvement non encore notifié à la clôture.', explanation: 'Réclamation déposée le 15/12/2025 sur des travaux éligibles, historique d’acceptation intégrale, dégrèvement notifié en mars 2026 pour l’essentiel du montant : écart négligeable.', evidence: ['reclamation-tfpb', 'avis-degrevement-tfpb', 'etat-cap-par'], relationshipCost: 'normal' },
-  { id: 'F3', title: 'Charges de personnel en hausse', observation: 'Les charges de personnel progressent nettement plus vite que l’inflation.', explanation: 'Accord salarial, prime de partage de la valeur, recrutement de gardiens et pourvoi de postes vacants.', evidence: ['accord-nao-2025', 'etat-effectifs-2025'], relationshipCost: 'normal' },
-  { id: 'F4', title: 'Fournisseur dont le gérant porte le nom de la directrice du patrimoine', observation: 'Le gérant de Bâti-Rénov Est porte le même nom que la directrice du patrimoine.', explanation: 'Aucun lien de parenté (homonymie) ; marché attribué après mise en concurrence de quatre offres, au moins-disant, par une commission collégiale.', evidence: ['marche-bati-renov', 'attestation-absence-lien'], relationshipCost: 'high' },
-  { id: 'F5', title: 'Taxe foncière en hausse', observation: 'La TFPB augmente nettement plus que l’inflation.', explanation: 'Revalorisation forfaitaire des bases et fin de périodes d’exonération sur plusieurs programmes.', evidence: ['tableau-fiscal-tfpb', 'avis-tfpb-2025'], relationshipCost: 'normal' },
-  { id: 'F6', title: 'Chèques en suspens au rapprochement bancaire', observation: 'Des règlements émis ne sont pas débités à la clôture.', explanation: 'Chèques émis fin décembre, tous débités début janvier 2026 : rapprochement correct.', evidence: ['rapprochement-bancaire', 'releve-bancaire-2026-01'], relationshipCost: 'normal' },
-  { id: 'F7', title: 'Écritures du week-end saisies par l’utilisateur MIGRATION', observation: 'Écritures d’opérations diverses passées un week-end par un utilisateur technique.', explanation: 'Reprise des soldes des comptes de locataires lors de la migration, rapprochée programme par programme et signée.', evidence: ['note-migration', 'rapprochement-reprise-soldes'], relationshipCost: 'normal' },
+  { id: 'F1', title: 'Honoraires en forte hausse', observation: 'Les honoraires augmentent fortement entre 2024 et 2025.', explanation: 'Études préalables du renouvellement urbain des Glycines et actualisation du plan stratégique de patrimoine, autorisées par le conseil et contractualisées après consultation.', evidence: ['contrats-etudes-npnru', 'pv-ca-2025-03', 'psp-extraits'], relationshipCost: 'normal', signature: { cycles: ['purchases', 'crossCycle'], objects: [acct('6226'), doc('contrats-etudes-npnru'), doc('psp-extraits'), doc('pv-ca-2025-03')] } },
+  { id: 'F2', title: 'Produit à recevoir sur dégrèvement de TFPB', observation: 'Produit à recevoir significatif sur un dégrèvement non encore notifié à la clôture.', explanation: 'Réclamation déposée le 15/12/2025 sur des travaux éligibles, historique d’acceptation intégrale, dégrèvement notifié en mars 2026 pour l’essentiel du montant : écart négligeable.', evidence: ['reclamation-tfpb', 'avis-degrevement-tfpb', 'etat-cap-par'], relationshipCost: 'normal', signature: { cycles: ['purchases', 'crossCycle'], objects: [acct('4487'), acct('7718'), tp('DGFIP'), doc('reclamation-tfpb'), doc('avis-degrevement-tfpb'), doc('etat-cap-par')], keyObjects: [doc('reclamation-tfpb'), doc('avis-degrevement-tfpb'), acct('4487')] } },
+  { id: 'F3', title: 'Charges de personnel en hausse', observation: 'Les charges de personnel progressent nettement plus vite que l’inflation.', explanation: 'Accord salarial, prime de partage de la valeur, recrutement de gardiens et pourvoi de postes vacants.', evidence: ['accord-nao-2025', 'etat-effectifs-2025'], relationshipCost: 'normal', signature: { cycles: ['purchases', 'crossCycle'], objects: [acct('6411'), acct('6413'), doc('accord-nao-2025'), doc('etat-effectifs-2025')] } },
+  { id: 'F4', title: 'Fournisseur dont le gérant porte le nom de la directrice du patrimoine', observation: 'Le gérant de Bâti-Rénov Est porte le même nom que la directrice du patrimoine.', explanation: 'Aucun lien de parenté (homonymie) ; marché attribué après mise en concurrence de quatre offres, au moins-disant, par une commission collégiale.', evidence: ['marche-bati-renov', 'attestation-absence-lien'], relationshipCost: 'high', signature: { cycles: ['purchases', 'fixedAssets', 'crossCycle'], objects: [tp('F0015'), doc('marche-bati-renov'), doc('attestation-absence-lien')], keyObjects: [tp('F0015'), doc('marche-bati-renov')] } },
+  { id: 'F5', title: 'Taxe foncière en hausse', observation: 'La TFPB augmente nettement plus que l’inflation.', explanation: 'Revalorisation forfaitaire des bases et fin de périodes d’exonération sur plusieurs programmes.', evidence: ['tableau-fiscal-tfpb', 'avis-tfpb-2025'], relationshipCost: 'normal', signature: { cycles: ['purchases', 'crossCycle'], objects: [acct('63512'), tp('DGFIP'), doc('tableau-fiscal-tfpb'), doc('avis-tfpb-2025')] } },
+  { id: 'F6', title: 'Chèques en suspens au rapprochement bancaire', observation: 'Des règlements émis ne sont pas débités à la clôture.', explanation: 'Chèques émis fin décembre, tous débités début janvier 2026 : rapprochement correct.', evidence: ['rapprochement-bancaire', 'releve-bancaire-2026-01'], relationshipCost: 'normal', signature: { cycles: ['debtTreasury', 'crossCycle'], objects: [acct('5121'), doc('rapprochement-bancaire'), doc('releve-bancaire-2026-01')], keyObjects: [doc('rapprochement-bancaire')] } },
+  { id: 'F7', title: 'Écritures du week-end saisies par l’utilisateur MIGRATION', observation: 'Écritures d’opérations diverses passées un week-end par un utilisateur technique.', explanation: 'Reprise des soldes des comptes de locataires lors de la migration, rapprochée programme par programme et signée.', evidence: ['note-migration', 'rapprochement-reprise-soldes'], relationshipCost: 'normal', signature: { cycles: ['rentReceivables', 'crossCycle'], objects: [acct('4111'), doc('note-migration'), doc('rapprochement-reprise-soldes')], keyObjects: [doc('note-migration'), doc('rapprochement-reprise-soldes')] } },
 ];
 
 /** Supporting documents added for false leads and for a second independent clue of A18 and A21. */

@@ -142,6 +142,57 @@ function impactBetween(before: StateFigures, after: StateFigures): Impact {
   };
 }
 
+/** Line of a correction entry proposed by the player (account of the chart, cents). */
+export interface ProposedEntryLine {
+  account: string;
+  debit: Cents;
+  credit: Cents;
+}
+
+const priorBalancesCache = new WeakMap<World, Map<string, Cents>>();
+
+/**
+ * Figures of the presented accounts once the lines are applied (balances,
+ * statements and key figures rebuilt with the code of the key). Lines on an
+ * account absent from the chart are ignored (the findings form only offers
+ * the accounts of the chart). The repayments of the year are those of the
+ * presented accounts: a correction entry does not change the loan schedules.
+ */
+export function figuresWithLines(presented: StateFigures, lines: readonly ProposedEntryLine[], ctx: { world: World; params: Params }): StateFigures {
+  const known = new Set(ctx.world.chart.accounts.map((a) => a.number));
+  const balances = new Map(presented.balances);
+  for (const l of lines) {
+    if (!known.has(l.account)) continue;
+    balances.set(l.account, (balances.get(l.account) ?? 0) + l.debit - l.credit);
+  }
+  let prior = priorBalancesCache.get(ctx.world);
+  if (!prior) {
+    prior = closingBalances(ctx.world.ledgers.prior);
+    priorBalancesCache.set(ctx.world, prior);
+  }
+  const statements = buildStatements({
+    defs: ctx.params.statements,
+    chart: ctx.world.chart,
+    current: balances,
+    prior,
+    currentYear: ctx.world.meta.currentYear,
+    priorYear: ctx.world.meta.priorYear,
+    presentation: ctx.world.presentation,
+  });
+  return { balances, figures: keyFigures(balances, ctx.params.analysis, presented.figures.loanRepayments), statements };
+}
+
+/**
+ * Impact of a correction entry proposed by the player, as overstatement of
+ * the presented figures (before − after), read exactly like the impacts of
+ * the key (impactBetween): result, equity, CAF, net self-financing, balance
+ * sheet total and statement lines. Several entries are applied at once by
+ * passing all their lines (the net self-financing ratio is not additive).
+ */
+export function impactOfLines(presented: StateFigures, lines: readonly ProposedEntryLine[], ctx: { world: World; params: Params }): Impact {
+  return impactBetween(presented, figuresWithLines(presented, lines, ctx));
+}
+
 /** Presented world and correction entries of every part, in canonical order. */
 export function buildCorrectionKey(clean: World, params: Params, keys: readonly PartKey[] = PART_KEYS): CorrectionKey {
   const active = new Set(keys);

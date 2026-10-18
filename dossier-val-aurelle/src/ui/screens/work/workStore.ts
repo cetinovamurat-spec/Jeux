@@ -2,7 +2,7 @@
 import { create } from 'zustand';
 
 export type WorkTab = 'procedures' | 'feuilles';
-export type WorkFilter = 'all' | 'toLaunch' | 'running' | 'toDocument' | 'documented';
+export type WorkFilter = 'all' | 'launchable' | 'toLaunch' | 'running' | 'toDocument' | 'documented';
 
 interface WorkView {
   filter: WorkFilter;

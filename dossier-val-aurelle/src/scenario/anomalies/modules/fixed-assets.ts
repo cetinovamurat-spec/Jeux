@@ -5,7 +5,7 @@ import type { AssetComponent, EntryLine } from '../../../engine/types';
 import { depreciationAccount } from '../closing';
 import { acct, doc, prog, tp } from '../refs';
 import type { AnomalyModule } from '../types';
-import { programmeName, without } from './util';
+import { item, programmeName, without } from './util';
 
 const TIL_OPERATION = 'OP-TIL-C2025';
 
@@ -23,6 +23,9 @@ export const A01: AnomalyModule = {
       label: 'Les Tilleuls : mise en service par composants au 01/07/2025, amortissement et quote-part de subventions du 2e semestre',
       signature: { cycle: 'fixedAssets', objects: [prog('TIL'), acct('2313'), acct('2312'), doc('pv-reception-tilleuls')], natures: ['classification', 'valuation'] },
       treatment: 'adjust',
+      cycles: ['fixedAssets'],
+      keyObjects: [acct('2313'), acct('2312'), doc('pv-reception-tilleuls'), doc('fiche-operation-tilleuls'), doc('registre-composants-tilleuls'), doc('invitation-inauguration-tilleuls'), doc('quittancement-programmes'), doc('tableau-immobilisations')],
+      creditBasis: ['result', 'reclassified'],
     },
   ],
   apply(draft) {
@@ -57,6 +60,8 @@ export const A02: AnomalyModule = {
       label: 'Les Érables : sortie de la chaufferie collective remplacée par la pompe à chaleur au 30/06/2025',
       signature: { cycle: 'fixedAssets', objects: [prog('ERA'), doc('registre-composants'), doc('facture-pac-erables')], natures: ['occurrence', 'valuation'] },
       treatment: 'adjust',
+      cycles: ['fixedAssets'],
+      creditBasis: ['result'],
     },
   ],
   apply(draft) {
@@ -91,6 +96,8 @@ export const A03: AnomalyModule = {
       label: 'Le Clos Fleuri : annulation en 2025 de la cession des 7 pavillons (actes du 14/01/2026) et information sur l’événement postérieur',
       signature: { cycle: 'fixedAssets', objects: [prog('CLF'), acct('7752'), acct('462'), tp('NOTAIRE_GIRARD'), doc('actes-clos-fleuri')], natures: ['cutoff', 'occurrence'] },
       treatment: 'adjust',
+      cycles: ['fixedAssets'],
+      creditBasis: ['result'],
     },
   ],
   apply(draft, ctx) {
@@ -164,6 +171,8 @@ export const A04: AnomalyModule = {
       label: 'Les Glycines, bâtiment B : révision prospective du plan d’amortissement jusqu’au 31/12/2027 et reprise accélérée des subventions',
       signature: { cycle: 'fixedAssets', objects: [prog('GLB'), doc('pv-ca-2025-06'), doc('avenant-anru-glycines')], natures: ['valuation'] },
       treatment: 'adjust',
+      cycles: ['fixedAssets'],
+      creditBasis: ['result'],
     },
   ],
   apply(draft) {
@@ -202,6 +211,8 @@ export const A06: AnomalyModule = {
       label: 'Les Peupliers : reclassement en charges de l’entretien immobilisé (peinture, robinetterie, réparation de toiture) et extourne de l’amortissement',
       signature: { cycle: 'fixedAssets', objects: [prog('PEU'), acct('2135'), doc('factures-peupliers')], natures: ['classification'] },
       treatment: 'adjust',
+      cycles: ['fixedAssets', 'purchases'],
+      creditBasis: ['result'],
     },
   ],
   apply(draft, ctx) {
@@ -246,12 +257,20 @@ export const A16: AnomalyModule = {
       label: 'Travaux supplémentaires dus (ordre de service n° 7) : dette fournisseur d’immobilisations en contrepartie du coût du programme',
       signature: { cycle: 'fixedAssets', objects: [prog('TIL'), tp('F0022'), acct('4084'), doc('os7-tilleuls'), doc('reponse-avocate')], natures: ['completeness'] },
       treatment: 'adjust',
+      cycles: ['fixedAssets', 'provisions'],
+      keyObjects: [doc('os7-tilleuls'), acct('4084'), acct('4041')],
+      creditBasis: ['reclassified'],
     },
     {
       id: 'A16.b',
       label: 'Pénalités de retard contestées : information en annexe sur le passif éventuel',
       signature: { cycle: 'fixedAssets', objects: [prog('TIL'), tp('F0022'), doc('reponse-avocate'), doc('registre-contentieux')], natures: ['completeness', 'presentation'] },
       treatment: 'disclose',
+      cycles: ['fixedAssets', 'provisions', 'disclosures'],
+      keyObjects: [item('contingent-liabilities'), doc('registre-contentieux')],
+      disclosureItems: ['contingent-liabilities'],
+      creditBasis: ['disclosure'],
+      expectedFixes: ['add-missing'],
       disclosureFix: 'Mentionner en annexe le litige avec l’entreprise générale des Tilleuls : pénalités de retard retenues et contestées, issue incertaine (passif éventuel).',
     },
   ],

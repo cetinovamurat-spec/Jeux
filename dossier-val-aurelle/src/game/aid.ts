@@ -65,7 +65,8 @@ export function askAntoine(s: GameState, params: Params): GameState {
   const mode = aidMode(params, s.difficulty);
   if (mode === 'unavailable') return s;
   const advice = antoineAdvice(s, params, s.clock.date);
-  let next = log(s, 'aid', advice.cycle ?? '', { mode });
+  const manager = params.game.firm.find((f) => f.id === 'manager')?.name ?? 'le manager';
+  let next = log(s, 'aid', advice.cycle ?? '', { mode, title: `conseil de méthode demandé à ${manager}` });
   if (mode === 'partnerTrust') next = { ...next, gauges: recordGaugeEvent(next.gauges, { on: s.clock.date, gauge: 'partnerTrust', reason: AID_USED, ...(advice.cycle ? { ref: advice.cycle } : {}) }) };
   return next;
 }

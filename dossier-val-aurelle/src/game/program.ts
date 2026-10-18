@@ -131,11 +131,16 @@ function withProgram(s: GameState, program: ProgramState): GameState {
   return { ...s, program };
 }
 
+/** French subject of a journal event on a procedure (desk journal: `data.title`). */
+function procTitle(params: Params | undefined, procedureId: string): string {
+  return (params && procedureDef(params, procedureId)?.title) || procedureId;
+}
+
 export function planProcedure(s: GameState, params: Params, procedureId: string, assignee?: MemberId): GameState {
   const def = procedureDef(params, procedureId);
   if (!def || s.program.planned.some((p) => p.procedureId === procedureId)) return s;
   const m = assignee && procedureHours(def, assignee, params) !== undefined ? assignee : defaultAssignee(def, params);
-  return log(withProgram(s, { ...s.program, planned: [...s.program.planned, { procedureId, assignee: m }] }), 'programme', procedureId, { action: 'plan', assignee: m });
+  return log(withProgram(s, { ...s.program, planned: [...s.program.planned, { procedureId, assignee: m }] }), 'program', procedureId, { action: 'plan', assignee: m, title: `« ${def.title} » ajoutée (${memberName(params, m)})` });
 }
 
 /** Removes a procedure from the programme (refused for the mandatory ones, the override responses and the launched ones). */
@@ -144,7 +149,7 @@ export function unplanProcedure(s: GameState, params: Params, procedureId: strin
   if (def && isRequired(def)) return s;
   if (s.program.executions.some((e) => e.procedureId === procedureId)) return s;
   if (!s.program.planned.some((p) => p.procedureId === procedureId)) return s;
-  return log(withProgram(s, { ...s.program, planned: s.program.planned.filter((p) => p.procedureId !== procedureId) }), 'programme', procedureId, { action: 'unplan' });
+  return log(withProgram(s, { ...s.program, planned: s.program.planned.filter((p) => p.procedureId !== procedureId) }), 'program', procedureId, { action: 'unplan', title: `« ${procTitle(params, procedureId)} » retirée` });
 }
 
 export function assignProcedure(s: GameState, params: Params, procedureId: string, m: MemberId): GameState {
@@ -152,7 +157,7 @@ export function assignProcedure(s: GameState, params: Params, procedureId: strin
   if (!def || procedureHours(def, m, params) === undefined) return s;
   const planned = s.program.planned.map((p) => (p.procedureId === procedureId ? { ...p, assignee: m } : p));
   if (planned.every((p, i) => p === s.program.planned[i])) return s;
-  return log(withProgram(s, { ...s.program, planned }), 'programme', procedureId, { action: 'assign', assignee: m });
+  return log(withProgram(s, { ...s.program, planned }), 'program', procedureId, { action: 'assign', assignee: m, title: `« ${def.title} » confiée à ${memberName(params, m)}` });
 }
 
 /** Starts from the firm's 2024 programme (plan J4 §6.3): it replaces the planned procedures not yet launched; the override responses are kept. */
@@ -164,7 +169,7 @@ export function adoptFirmProgramme(s: GameState, params: Params): GameState {
   });
   const keptIds = new Set(kept.map((p) => p.procedureId));
   const firm = params.procedures.firmProgramme2024.filter((f) => !keptIds.has(f.procedureId)).map((f) => ({ procedureId: f.procedureId, assignee: f.assignee }));
-  return log(withProgram(s, { ...s.program, planned: [...kept, ...firm] }), 'programme', 'firmProgramme2024', { action: 'adopt' });
+  return log(withProgram(s, { ...s.program, planned: [...kept, ...firm] }), 'program', 'firmProgramme2024', { action: 'adopt', title: 'reprise du programme 2024 du cabinet' });
 }
 
 export interface PlannedHours {
@@ -217,7 +222,7 @@ export function programmeCheck(s: GameState, params: Params): ProgrammeCheck {
 /** Validates the programme (desk checklist); refused while a mandatory diligence is missing. */
 export function validateProgramme(s: GameState, params: Params): GameState {
   if (programmeCheck(s, params).errors.length) return s;
-  return log({ ...s, planning: { ...s.planning, validated: { ...s.planning.validated, program: s.clock.date } } }, 'planningValidated', 'program');
+  return log({ ...s, planning: { ...s.planning, validated: { ...s.planning.validated, program: s.clock.date } } }, 'program', 'validated', { action: 'validate', title: 'programme validé' });
 }
 
 function fmtHours(h: number): string {
@@ -232,6 +237,13 @@ function fmtHours(h: number): string {
 export function scheduleExecutions(program: ProgramState, cal: WorkCalendar): Map<string, ScheduledTask> {
   const tasks = program.executions.map((e) => ({ id: e.id, member: e.assignee, hours: e.hours, earliest: e.launchedOn }));
   return new Map(schedule(cal, tasks).map((t) => [t.id, t]));
+}
+
+/** Start and delivery dates a launch would get today (after the member's queue), without launching it. */
+export function previewLaunch(program: ProgramState, cal: WorkCalendar, m: MemberId, hours: number, date: IsoDate): ScheduledTask {
+  const id = '\u0000preview';
+  const probe: Execution = { id, procedureId: '', assignee: m, hours, launchedOn: date, conclusion: null, comment: '', refs: [], review: { status: 'pending' } };
+  return scheduleExecutions({ ...program, executions: [...program.executions, probe] }, cal).get(id)!;
 }
 
 export type ExecutionStatus = 'waiting' | 'inProgress' | 'delivered' | 'documented' | 'unfinishable';
@@ -337,6 +349,36 @@ export function overrunJustified(s: GameState, cycle: string): boolean {
 
 export const UNJUSTIFIED_OVERRUN = 'unjustifiedOverrun';
 
+export interface BudgetImpact {
+  /** Team hours charged before and after the launch. */
+  before: number;
+  after: number;
+  budget: number;
+  /** Budget plus the tolerance: beyond it, the partner arbitrates. */
+  limit: number;
+  /** The launch takes the team beyond the tolerance (the partner arbitrates). */
+  arbitration: boolean;
+  /** The overrun is justified (risk assessed high or open finding of the cycle, J4-4). */
+  justified: boolean;
+}
+
+/**
+ * Effect of launching a procedure on the team budget (null for the IT
+ * auditor, whose hours are a separate envelope). Shown before the launch, so
+ * that the player knows when the partner will arbitrate.
+ */
+export function launchBudgetImpact(s: GameState, params: Params, procedureId: string, m: MemberId): BudgetImpact | null {
+  const def = procedureDef(params, procedureId);
+  const hours = def ? procedureHours(def, m, params) : undefined;
+  if (!def || hours === undefined || m === 'sofia') return null;
+  const budget = params.game.budgetHours[s.difficulty];
+  const limit = budget * (1 + params.game.overrunTolerancePct / 100);
+  const before = hoursUsed(s, params).team;
+  const after = before + hours;
+  const arbitration = after > limit + 1e-9;
+  return { before, after, budget, limit, arbitration, justified: arbitration && overrunJustified(s, def.cycle) };
+}
+
 /**
  * Launches a procedure: it joins the queue of the member (scheduled on the
  * member's working days on site) and charges its hours. Beyond the budget
@@ -346,34 +388,39 @@ export function launchExecution(s: GameState, params: Params, procedureId: strin
   if (!canLaunch(s, params, procedureId, m, ctx).ok) return s;
   const def = procedureDef(params, procedureId)!;
   const hours = procedureHours(def, m, params)!;
-  const before = hoursUsed(s, params).team;
+  const impact = launchBudgetImpact(s, params, procedureId, m);
   const [id, s1] = nextId(s, 'exec');
   const e: Execution = { id, procedureId, assignee: m, hours, launchedOn: s1.clock.date, conclusion: null, comment: '', refs: [], review: { status: 'pending' } };
   const planned = s1.program.planned.some((p) => p.procedureId === procedureId)
     ? s1.program.planned.map((p) => (p.procedureId === procedureId ? { ...p, assignee: m } : p))
     : [...s1.program.planned, { procedureId, assignee: m }];
-  let next = log(withProgram(s1, { planned, executions: [...s1.program.executions, e] }), 'launch', procedureId, { assignee: m, hours });
+  let next = log(withProgram(s1, { planned, executions: [...s1.program.executions, e] }), 'execution', procedureId, {
+    action: 'launch',
+    assignee: m,
+    hours,
+    title: `« ${def.title} » lancée (${memberName(params, m)}, ${fmtHours(hours)} h)`,
+  });
   // budget: arbitration of the partner beyond the tolerance
-  if (m !== 'sofia') {
-    const budget = params.game.budgetHours[s.difficulty];
-    const limit = budget * (1 + params.game.overrunTolerancePct / 100);
-    const after = before + hours;
-    if (after > limit + 1e-9) {
-      const justified = overrunJustified(s, def.cycle);
-      const gauges = { ...next.gauges, arbitrations: [...next.gauges.arbitrations, { on: next.clock.date, overrunHours: Math.round((after - budget) * 10) / 10, justified }] };
-      next = log({ ...next, gauges: justified ? gauges : recordGaugeEvent(gauges, { on: next.clock.date, gauge: 'partnerTrust', reason: UNJUSTIFIED_OVERRUN, ref: procedureId }) }, 'arbitration', procedureId, { justified, overrun: after - budget });
-    }
+  if (impact?.arbitration) {
+    const { justified } = impact;
+    const overrun = Math.round((impact.after - impact.budget) * 10) / 10;
+    const gauges = { ...next.gauges, arbitrations: [...next.gauges.arbitrations, { on: next.clock.date, overrunHours: overrun, justified }] };
+    next = log({ ...next, gauges: justified ? gauges : recordGaugeEvent(gauges, { on: next.clock.date, gauge: 'partnerTrust', reason: UNJUSTIFIED_OVERRUN, ref: procedureId }) }, 'arbitration', procedureId, {
+      justified,
+      overrun,
+      title: `arbitrage de l’associée : dépassement du budget de ${fmtHours(overrun)} h, ${justified ? 'justifié par le risque du cycle' : 'non justifié'}`,
+    });
   }
   return next;
 }
 
 /** Cancels an execution not yet started (its hours are given back). */
-export function cancelExecution(s: GameState, executionId: string, cal: WorkCalendar): GameState {
+export function cancelExecution(s: GameState, executionId: string, cal: WorkCalendar, params?: Params): GameState {
   const e = s.program.executions.find((x) => x.id === executionId);
   if (!e) return s;
   const t = scheduleExecutions(s.program, cal).get(executionId);
   if (t && t.start !== null && t.start <= s.clock.date) return s;
-  return log(withProgram(s, { ...s.program, executions: s.program.executions.filter((x) => x.id !== executionId) }), 'cancel', e.procedureId);
+  return log(withProgram(s, { ...s.program, executions: s.program.executions.filter((x) => x.id !== executionId) }), 'execution', e.procedureId, { action: 'cancel', title: `« ${procTitle(params, e.procedureId)} » : lancement annulé` });
 }
 
 function withExecution(s: GameState, id: string, f: (e: Execution) => Execution): GameState {
@@ -388,14 +435,15 @@ export function documentExecution(s: GameState, params: Params, executionId: str
   if (st !== 'delivered' && st !== 'documented') return s;
   const updated = e.conclusion !== null;
   const next = withExecution(s, executionId, (x) => ({ ...x, conclusion, comment: comment.trim(), ...(updated ? { updatedOn: s.clock.date } : { documentedOn: s.clock.date }) }));
-  return log(next, updated ? 'worksheetUpdate' : 'worksheet', e.procedureId, { conclusion });
+  const label = params.procedures.conclusions.find((c) => c.id === conclusion)?.label ?? conclusion;
+  return log(next, 'worksheet', e.procedureId, { action: updated ? 'update' : 'document', conclusion, title: `« ${procTitle(params, e.procedureId)} » ${updated ? 'mise à jour' : 'documentée'} : ${label.toLowerCase()}` });
 }
 
 /** Records an update of a documented worksheet (subsequent events: update up to the signature). */
-export function updateExecution(s: GameState, executionId: string): GameState {
+export function updateExecution(s: GameState, executionId: string, params?: Params): GameState {
   const e = s.program.executions.find((x) => x.id === executionId);
   if (!e || e.conclusion === null) return s;
-  return log(withExecution(s, executionId, (x) => ({ ...x, updatedOn: s.clock.date })), 'worksheetUpdate', e.procedureId);
+  return log(withExecution(s, executionId, (x) => ({ ...x, updatedOn: s.clock.date })), 'worksheet', e.procedureId, { action: 'update', title: `« ${procTitle(params, e.procedureId)} » mise à jour` });
 }
 
 function sameRef(a: WorkRef, b: WorkRef): boolean {
@@ -413,11 +461,11 @@ export function removeExecutionRef(s: GameState, executionId: string, ref: WorkR
 }
 
 /** Review of a delegated worksheet by the senior (fields of J5; no effect in J4). */
-export function reviewExecution(s: GameState, executionId: string, status: 'accepted' | 'returned', comment: string): GameState {
+export function reviewExecution(s: GameState, executionId: string, status: 'accepted' | 'returned', comment: string, params?: Params): GameState {
   const e = s.program.executions.find((x) => x.id === executionId);
   if (!e || e.assignee === 'senior') return s;
   const review = { status, on: s.clock.date, ...(comment.trim() ? { comment: comment.trim() } : {}) };
-  return log(withExecution(s, executionId, (x) => ({ ...x, review })), 'review', e.procedureId, { status });
+  return log(withExecution(s, executionId, (x) => ({ ...x, review })), 'worksheet', e.procedureId, { action: 'review', status, title: `« ${procTitle(params, e.procedureId)} » ${status === 'accepted' ? 'acceptée' : 'renvoyée'} en revue` });
 }
 
 // ---------------------------------------------------------------------------

@@ -87,17 +87,29 @@ export interface PopulationDef {
   description: string;
   /** Unit of an item, for the sample table. */
   unit: string;
+  /** Cycle of the work programme (risk assessed, controls tested, findings). */
+  cycle: string;
+  /**
+   * Data needed: the 2025 ledger as available (the extraction at the interim,
+   * then the final ledger), or the year-end data (final ledger, subsequent
+   * invoices, year-end receivables and loans).
+   */
+  needs: 'ledger' | 'yearEnd';
 }
 
 export const POPULATIONS: readonly PopulationDef[] = [
-  { id: 'capitalised-works', label: 'Travaux immobilisés sur le patrimoine en service', description: 'Écritures 2025 débitant les comptes d’immobilisations corporelles (21), hors mises en service des immobilisations en cours.', unit: 'écriture' },
-  { id: 'construction-progress', label: 'Situations de travaux des opérations en cours', description: 'Écritures 2025 débitant les constructions en cours (2313), hors virements internes.', unit: 'écriture' },
-  { id: 'maintenance-charges', label: 'Charges d’entretien et de réparation', description: 'Factures 2025 débitant les comptes d’entretien et de réparations (615).', unit: 'écriture' },
-  { id: 'invoices-2026', label: 'Factures reçues en janvier et février 2026', description: 'Factures datées de janvier et février 2026 (recherche de passifs non comptabilisés).', unit: 'facture' },
-  { id: 'rent-roll', label: 'Quittancement par programme et par mois', description: 'Loyers quittancés en 2025, programme par programme et mois par mois (sélection par l’auditeur).', unit: 'programme × mois' },
-  { id: 'tenant-receivables', label: 'Créances sur les locataires', description: 'Comptes de locataires débiteurs au 31/12/2025 (auxiliaire LOGIGES 2).', unit: 'compte' },
-  { id: 'loans', label: 'Emprunts', description: 'Emprunts en cours au 31/12/2025 (capital restant dû).', unit: 'contrat' },
+  { id: 'capitalised-works', label: 'Travaux immobilisés sur le patrimoine en service', description: 'Écritures 2025 débitant les comptes d’immobilisations corporelles (21), hors mises en service des immobilisations en cours.', unit: 'écriture', cycle: 'fixedAssets', needs: 'ledger' },
+  { id: 'construction-progress', label: 'Situations de travaux des opérations en cours', description: 'Écritures 2025 débitant les constructions en cours (2313), hors virements internes.', unit: 'écriture', cycle: 'fixedAssets', needs: 'ledger' },
+  { id: 'maintenance-charges', label: 'Charges d’entretien et de réparation', description: 'Factures 2025 débitant les comptes d’entretien et de réparations (615).', unit: 'écriture', cycle: 'purchases', needs: 'ledger' },
+  { id: 'invoices-2026', label: 'Factures reçues en janvier et février 2026', description: 'Factures datées de janvier et février 2026 (recherche de passifs non comptabilisés).', unit: 'facture', cycle: 'purchases', needs: 'yearEnd' },
+  { id: 'rent-roll', label: 'Quittancement par programme et par mois', description: 'Loyers quittancés en 2025, programme par programme et mois par mois (sélection par l’auditeur).', unit: 'programme × mois', cycle: 'rentReceivables', needs: 'ledger' },
+  { id: 'tenant-receivables', label: 'Créances sur les locataires', description: 'Comptes de locataires débiteurs au 31/12/2025 (auxiliaire LOGIGES 2).', unit: 'compte', cycle: 'rentReceivables', needs: 'yearEnd' },
+  { id: 'loans', label: 'Emprunts', description: 'Emprunts en cours au 31/12/2025 (capital restant dû).', unit: 'contrat', cycle: 'debtTreasury', needs: 'yearEnd' },
 ];
+
+export function populationDef(id: string): PopulationDef | undefined {
+  return POPULATIONS.find((p) => p.id === id);
+}
 
 /** FEC numbers of the entries of a ledger (per journal, in FEC order). */
 function fecNumbers(ledger: Ledger): Map<string, string> {
@@ -198,7 +210,7 @@ export function populationItems(id: string, world: World, params: Params): Popul
     case 'tenant-receivables':
       return ds.tenants
         .filter((t) => (t.byYear.y2025?.balance ?? 0) > 0)
-        .map((t) => ({ key: t.id, amount: t.byYear.y2025!.balance, date: null, label: t.name, programme: programmeLabel(params, t.programmeId) }));
+        .map((t) => ({ key: t.id, amount: t.byYear.y2025!.balance, date: null, label: t.name, programme: programmeLabel(params, t.programmeId), request: { family: 'programme-rent-roll', object: `${t.programmeId}:2025-12` } }));
     case 'loans': {
       const schedules = new Map<string, LoanScheduleLine[]>();
       for (const l of ds.loanSchedules) schedules.set(l.loanId, [...(schedules.get(l.loanId) ?? []), l]);
@@ -222,6 +234,27 @@ export interface SamplePlan {
   controls: string;
   /** Tolerable misstatement (cents): the planning materiality. */
   tolerable: Cents;
+}
+
+export type ControlReliance = 'effective' | 'notTested' | 'deficient';
+
+/**
+ * Reliance on the controls of a cycle, from the tests of controls documented
+ * by the player (procedures whose output is a memo on the controls, or the
+ * IT general controls for every cycle): a satisfactory conclusion makes them
+ * effective, exceptions make them deficient; otherwise not tested.
+ */
+export function controlRelianceOf(s: { program: { executions: readonly { procedureId: string; conclusion: string | null }[] } }, params: Params, cycle: string): ControlReliance {
+  let effective = false;
+  let deficient = false;
+  for (const e of s.program.executions) {
+    const def = params.procedures.procedures.find((p) => p.id === e.procedureId);
+    if (!def || def.output.kind !== 'memo' || (def.output.memo !== 'controls' && def.output.memo !== 'it-controls')) continue;
+    if (def.cycle !== cycle && def.output.memo !== 'it-controls') continue;
+    if (e.conclusion === 'exceptions') deficient = true;
+    else if (e.conclusion === 'satisfactory' && def.cycle === cycle) effective = true;
+  }
+  return deficient ? 'deficient' : effective ? 'effective' : 'notTested';
 }
 
 export function confidenceFactor(params: Params, risk: string, controls: string): number {
