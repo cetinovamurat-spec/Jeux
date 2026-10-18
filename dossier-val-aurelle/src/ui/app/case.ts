@@ -22,7 +22,7 @@ import { loanRepayments, type CorrectionKey } from '../../scenario/anomalies/pre
 import type { Synthesis } from '../../scenario/anomalies/synthesis';
 import type { PresentationFacts } from '../../scenario/anomalies/draft';
 import type { ScenarioDatasets } from '../../scenario/datasets';
-import type { DocumentModel, FalseLead } from '../../scenario/documents';
+import { makeContext, type DocContext, type DocumentModel, type FalseLead } from '../../scenario/documents';
 import type { Params } from '../../scenario/params';
 import type { CasePayload } from './dossier';
 
@@ -60,6 +60,7 @@ interface Shared {
   fec2024?: FecLineInternal[];
   fecIndex2024?: FecIndex;
   documentIndex?: DocumentIndex;
+  docContext?: DocContext;
 }
 
 export class CaseData {
@@ -169,6 +170,11 @@ export class CaseData {
   fecIndex(year: Year): FecIndex {
     if (year === 2024) return (this.shared.fecIndex2024 ??= buildFecIndex(this.fec(2024), { closingDate: '2024-12-31', maxLinesForPairs: 20 }));
     return (this.fecIndex2025 ??= buildFecIndex(this.fec(2025), { closingDate: '2025-12-31', maxLinesForPairs: 20 }));
+  }
+
+  /** Context of the document builders (generic replies built on demand), shared by every view. */
+  docContext(): DocContext {
+    return (this.shared.docContext ??= makeContext(this.params, this.clean, this.key));
   }
 
   documentIndex(): DocumentIndex {

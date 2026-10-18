@@ -6,6 +6,7 @@
  * explain follow the generic thresholds of the analytical review.
  */
 import { useMemo, useState } from 'react';
+import { useGedDocuments } from '../ged/replies';
 import { Link } from 'react-router';
 import { formatDateFr } from '../../../engine/dates';
 import { formatEuro, formatPercent } from '../../../engine/format';
@@ -16,7 +17,6 @@ import { TOOL_DEFS } from '../../../game/recalcs';
 import { POPULATIONS } from '../../../game/samples';
 import type { Tone } from '../../../game/state';
 import { useCase } from '../../app/context';
-import { useAvailableDocuments } from '../../app/hooks';
 import { useGame } from '../../app/store';
 import { Amount } from '../../components/Amount';
 import { Badge, Button, Card, cx, Select, TextInput } from '../../components/ui';
@@ -31,7 +31,7 @@ const EMPTY_SHEET = emptyMasterSheet();
 
 function ExplainForm({ cycle, row, onDone }: { cycle: string; row: MasterRow; onDone: () => void }) {
   const fid = `explain-${cycle}-${row.id}`;
-  const docs = useAvailableDocuments();
+  const docs = useGedDocuments().available;
   const sorted = useMemo(() => [...docs].sort((a, b) => a.title.localeCompare(b.title, 'fr')), [docs]);
   const sheet = useGame((s) => s.game.worksheets.master[cycle]) ?? EMPTY_SHEET;
   const act = useGame((s) => s.act);

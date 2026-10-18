@@ -18,6 +18,7 @@ import { Button, cx } from '../components/ui';
 import { useFullCase } from './context';
 import { useDesigner } from './hooks';
 import { useGame } from './store';
+import { useRequestDocDates } from '../screens/ged/replies';
 
 export function TimeControls() {
   const c = useFullCase();
@@ -29,7 +30,8 @@ export function TimeControls() {
   const [open, setOpen] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
 
-  const ctx: UpcomingContext = useMemo(() => ({ params: c.params, cal, date }), [c, cal, date]);
+  const requestDocDates = useRequestDocDates();
+  const ctx: UpcomingContext = useMemo(() => ({ params: c.params, cal, date, requestDocDates }), [c, cal, date, requestDocDates]);
   const upcoming = useMemo(() => upcomingEvents(game, ctx), [game, ctx]);
   const period = periodAt(c.params.game.calendar, date);
   const onSite = MEMBERS.filter((m) => isOnSite(cal, m, date));
@@ -68,13 +70,13 @@ export function TimeControls() {
         </p>
       </div>
       <div className="flex items-center gap-1">
-        <Button onClick={() => moveTo(nextWorkingDay(cal, date))} title="Avancer d’un jour ouvré">
+        <Button className="whitespace-nowrap" onClick={() => moveTo(nextWorkingDay(cal, date))} title="Avancer d’un jour ouvré">
           Jour ouvré suivant
         </Button>
-        <Button onClick={() => moveTo(nextDate)} title={`Avancer jusqu’au prochain événement attendu (${formatDateFr(nextDate)})`}>
+        <Button className="whitespace-nowrap" onClick={() => moveTo(nextDate)} title={`Avancer jusqu’au prochain événement attendu (${formatDateFr(nextDate)})`}>
           Prochain événement
         </Button>
-        <Button variant="ghost" aria-expanded={open} aria-controls="clock-upcoming" onClick={() => setOpen((o) => !o)} title="Ce qui est attendu">
+        <Button variant="ghost" className="whitespace-nowrap" aria-expanded={open} aria-controls="clock-upcoming" onClick={() => setOpen((o) => !o)} title="Ce qui est attendu">
           Attendus ▾
         </Button>
       </div>

@@ -3,11 +3,12 @@
  * an account in the general ledger, run a saved FEC query.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useGedDocuments } from '../screens/ged/replies';
 import { useNavigate } from 'react-router';
 import { normalize } from '../../game/fec-query';
 import { cx, Kbd } from '../components/ui';
 import { useCase } from './context';
-import { useAvailableDocuments, useDesigner } from './hooks';
+import { useDesigner } from './hooks';
 import { NAV } from './routes';
 import { useGame } from './store';
 
@@ -26,7 +27,7 @@ function optionId(i: number): string {
 export function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
   const c = useCase();
   const navigate = useNavigate();
-  const docs = useAvailableDocuments();
+  const docs = useGedDocuments().available;
   const designer = useDesigner();
   const saved = useGame((s) => s.game.savedQueries);
   const [q, setQ] = useState('');

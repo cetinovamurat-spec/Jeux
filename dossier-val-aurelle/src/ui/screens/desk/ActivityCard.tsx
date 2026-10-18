@@ -1,9 +1,9 @@
 /** Desk: activity counters and the latest events of the mission journal. */
 import { useMemo } from 'react';
+import { useGedDocuments } from '../ged/replies';
 import { Link } from 'react-router';
 import { formatDateFr } from '../../../engine/dates';
 import { useCase } from '../../app/context';
-import { useAvailableDocuments } from '../../app/hooks';
 import { useGame } from '../../app/store';
 import { Card, EmptyState } from '../../components/ui';
 import { describeEvent, latestEvents } from './journal';
@@ -24,7 +24,7 @@ function Counter({ label, value, of, to }: { label: string; value: number; of?: 
 
 export function ActivityCard() {
   const c = useCase();
-  const available = useAvailableDocuments();
+  const available = useGedDocuments().available;
   const docs = useGame((s) => s.game.documents);
   const ticks = useGame((s) => s.game.ticks);
   const savedQueries = useGame((s) => s.game.savedQueries);

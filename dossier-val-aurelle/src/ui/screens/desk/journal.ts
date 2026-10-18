@@ -40,6 +40,11 @@ const KIND_TEXT: Readonly<Record<string, string>> = {
   recalc: 'Recalcul :',
   finding: 'Constat :',
   worksheet: 'Feuille de travail :',
+  requestReminder: 'Relance d’une demande :',
+  confirmationReminder: 'Relance d’une confirmation :',
+  arbitration: 'Budget :',
+  gaugeEvent: 'Associée :',
+  aid: 'Aide :',
 };
 
 export function describeEvent(e: JournalEvent, ctx: JournalContext): EventView {

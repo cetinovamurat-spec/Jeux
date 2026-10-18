@@ -5,6 +5,7 @@
  * criteria, the references, the conclusion and the review fields of J5.
  */
 import { useMemo, useState, type ReactNode } from 'react';
+import { useGedDocuments } from '../ged/replies';
 import { Link } from 'react-router';
 import { formatDateFr } from '../../../engine/dates';
 import type { MemberId } from '../../../game/calendar';
@@ -40,7 +41,6 @@ import { POPULATIONS } from '../../../game/samples';
 import type { Tone } from '../../../game/state';
 import type { ProcedureDef } from '../../../scenario/schemas/procedures';
 import { useCase } from '../../app/context';
-import { useAvailableDocuments } from '../../app/hooks';
 import { useGame } from '../../app/store';
 import { Badge, Button, cx, Select, TextInput } from '../../components/ui';
 import { NewFindingButton } from '../findings/NewFindingButton';
@@ -186,7 +186,7 @@ function Worksheet({ def, e }: { def: ProcedureDef; e: Execution }) {
   const game = useGame((s) => s.game);
   const act = useGame((s) => s.act);
   const w = useWorkContext();
-  const docs = useAvailableDocuments();
+  const docs = useGedDocuments().available;
   const sortedDocs = useMemo(() => [...docs].sort((a, b) => a.title.localeCompare(b.title, 'fr')), [docs]);
   const t = w.sched.get(e.id);
   const status = executionStatus(e, t, game.clock.date);

@@ -26,6 +26,8 @@ export interface UpcomingContext {
   cal: WorkCalendar;
   /** Current game date: only events strictly after it are upcoming. */
   date: IsoDate;
+  /** Dates of the documents answering a request key (documents served later than the answer are announced too). */
+  requestDocDates?: (key: string) => readonly IsoDate[];
 }
 
 /** Events known to the player after the game date, in date order: calendar, data vintages and the sections' events. */

@@ -12,7 +12,7 @@ import { workCalendar } from '../../../game/calendar';
 import { confirmationStatus, type ConfirmationItem, type ConfirmationState } from '../../../game/confirmations';
 import { isAvailable, receivedOn, type AvailabilityContext } from '../../../game/documents';
 import { requestKey, requestStatus, type RequestItem, type RequestStatus } from '../../../game/requests';
-import { genericConfirmationReply, genericReplies, makeContext, scenarioConfirmations, scenarioRequestKeys, type DocContext, type DocumentModel } from '../../../scenario/documents';
+import { genericConfirmationReply, genericReplies, scenarioConfirmations, scenarioRequestKeys, type DocContext, type DocumentModel } from '../../../scenario/documents';
 import type { CaseData } from '../../app/case';
 import { useCase } from '../../app/context';
 import { useAvailability, useAvailableDocuments } from '../../app/hooks';
@@ -39,7 +39,7 @@ function cacheOf(c: CaseData): ReplyCache {
 }
 
 function docContext(c: CaseData, x: ReplyCache): DocContext {
-  return (x.ctx ??= makeContext(c.params, c.clean, c.key));
+  return (x.ctx ??= c.docContext());
 }
 
 /**

@@ -7,6 +7,7 @@
  * documents, and the coverage of the risks by the programme.
  */
 import { Fragment, useMemo, useState } from 'react';
+import { useGedDocuments } from '../ged/replies';
 import { Link } from 'react-router';
 import { formatDateFr } from '../../../engine/dates';
 import { formatEuro } from '../../../engine/format';
@@ -31,7 +32,6 @@ import {
 import { procedureDef } from '../../../game/program';
 import { RISK_LEVELS } from '../../../scenario/schemas/planning';
 import { useCase } from '../../app/context';
-import { useAvailableDocuments } from '../../app/hooks';
 import { useGame } from '../../app/store';
 import { Badge, Button, Card, Checkbox, cx, Select, TextInput } from '../../components/ui';
 import { Field } from './Field';
@@ -271,7 +271,7 @@ function RiskFactors() {
   const params = c.params;
   const factors = useGame((s) => s.game.planning.riskFactors);
   const act = useGame((s) => s.act);
-  const docs = useAvailableDocuments();
+  const docs = useGedDocuments().available;
   const sorted = useMemo(() => [...docs].sort((a, b) => a.title.localeCompare(b.title, 'fr')), [docs]);
   const [docId, setDocId] = useState('');
   const [block, setBlock] = useState('');

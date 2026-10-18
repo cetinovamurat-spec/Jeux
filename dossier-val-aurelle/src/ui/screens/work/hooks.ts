@@ -1,11 +1,11 @@
 /** Derived data shared by the work screen: calendar, scheduling, launch and completion contexts. */
 import { useMemo } from 'react';
+import { useGedDocuments } from '../ged/replies';
 import type { ScheduledTask, WorkCalendar } from '../../../game/calendar';
 import { workCalendar } from '../../../game/calendar';
 import { conditionContext } from '../../../game/conditions';
 import { procedureProgress, scheduleExecutions, type CompletionContext, type LaunchContext } from '../../../game/program';
 import { useCase } from '../../app/context';
-import { useAvailableDocuments } from '../../app/hooks';
 import { useGame } from '../../app/store';
 
 export interface WorkContext {
@@ -19,7 +19,7 @@ export function useWorkContext(): WorkContext {
   const c = useCase();
   const params = c.params;
   const game = useGame((s) => s.game);
-  const docs = useAvailableDocuments();
+  const docs = useGedDocuments().available;
   const cal = useMemo(() => workCalendar(params), [params]);
   return useMemo(() => {
     const date = game.clock.date;

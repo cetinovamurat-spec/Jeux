@@ -1,4 +1,6 @@
 /** Desk: audit team, hours budget by member and firm supervisors (§4.5, §4.6, §10.9). */
+import { useMemo } from 'react';
+import { hoursUsed } from '../../../game/budget';
 import type { Difficulty } from '../../../game/state';
 import { formatPercent } from '../../../engine/format';
 import { useCase } from '../../app/context';
@@ -7,10 +9,6 @@ import { Badge, Card, cx } from '../../components/ui';
 
 const DIFFICULTY_LABEL: Record<Difficulty, string> = { assistant: 'Assistant', senior: 'Senior', manager: 'Manager' };
 
-/** Hours charged by a team member. Procedures charge time from J4 on; none yet. */
-function hoursUsed(_memberId: string): number {
-  return 0;
-}
 
 function initials(name: string): string {
   const words = name.split(/\s+/).filter(Boolean);
@@ -37,9 +35,15 @@ export function TeamCard() {
   const gp = c.params.game;
   const budget = gp.budgetHours[difficulty];
   const ceiling = Math.round(budget * (1 + gp.overrunTolerancePct / 100));
+  const program = useGame((s) => s.game.program);
+  const requests = useGame((s) => s.game.requests);
+  const confirmations = useGame((s) => s.game.confirmations);
+  const samples = useGame((s) => s.game.samples);
+  const recalcs = useGame((s) => s.game.recalcs);
+  const byMember = useMemo(() => hoursUsed({ program, requests, confirmations, samples, recalcs }, c.params).byMember, [program, requests, confirmations, samples, recalcs, c]);
   const members = gp.team.map((m) => {
     const allotted = m.hoursByDifficulty[difficulty];
-    const used = hoursUsed(m.id);
+    const used = byMember[m.id];
     return { ...m, allotted, used, left: allotted - used };
   });
   const total = members.reduce((acc, m) => ({ allotted: acc.allotted + m.allotted, used: acc.used + m.used, left: acc.left + m.left }), { allotted: 0, used: 0, left: 0 });
