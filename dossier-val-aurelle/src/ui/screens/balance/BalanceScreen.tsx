@@ -12,12 +12,14 @@ import { formatDateFr } from '../../../engine/dates';
 import { formatAmount, formatPercent } from '../../../engine/format';
 import { normalize } from '../../../game/fec-query';
 import { balanceCheck, balanceTotals, filterBalance, parseDecimal, variation, type BalanceFilter, type Variation } from '../../../game/ledger';
+import { cycleOfAccount } from '../../../game/planning';
 import type { BalanceRow } from '../../app/case';
 import { useCase } from '../../app/context';
 import { useDesigner } from '../../app/hooks';
 import { DataTable, type Column } from '../../components/DataTable';
 import { download } from '../../components/download';
 import { Badge, Button, Checkbox, cx, Kbd, PageHeader, Select } from '../../components/ui';
+import { NewFindingButton } from '../findings/NewFindingButton';
 import { useBalanceView } from './balanceView';
 import { ACCOUNT_CLASSES, CSV_BOM, csvAmount, plural } from './format';
 import { useFillHeight, useSlashFocus } from './hooks';
@@ -117,12 +119,24 @@ export function BalanceScreen() {
   const filtered = view.text.trim() !== '' || view.accountClass !== '' || view.minVariation.trim() !== '' || view.minRatio.trim() !== '' || view.hideSettled || changedOnly;
 
   const decimals = view.cents ? 2 : 0;
+  const cycles = c.params.cycles.cycles;
   const columns = useMemo((): Column<Row>[] => {
     const w = view.cents ? '8.5rem' : '7rem';
     const amount = (id: string, header: ReturnType<typeof Head>, get: (r: Row) => number): Column<Row> => ({ id, header, width: w, align: 'right', cell: (r) => <Signed cents={get(r)} decimals={decimals} />, sortValue: get });
     const cols: (Column<Row> | false)[] = [
       { id: 'account', header: 'Compte', width: '4.75rem', cell: (r) => <span className="font-mono">{r.account}</span>, sortValue: (r) => r.account },
       { id: 'label', header: 'Libellé', width: 'minmax(10rem,1fr)', cell: (r) => r.label, title: (r) => `${r.account} – ${r.label}`, sortValue: (r) => normalize(r.label) },
+      {
+        // « Constat… » and « ? » on the account, shown on the row under the pointer or holding the focus
+        id: 'finding',
+        header: <span className="sr-only">Constat</span>,
+        width: '6.75rem',
+        cell: (r) => (
+          <span className="opacity-0 transition-opacity focus-within:opacity-100 [[role=row]:hover_&]:opacity-100">
+            <NewFindingButton compact seed={{ cycle: cycleOfAccount(r.account, cycles), objects: [{ kind: 'account', id: r.account }], label: `Balance – compte ${r.account} ${r.label}` }} />
+          </span>
+        ),
+      },
       amount('prior', <Head top="Solde" bottom={priorEnd} />, (r) => r.prior),
       view.showOpening && amount('opening', <Head top="À-nouveaux" bottom={String(current)} />, (r) => r.opening),
       amount('debit', <Head top="Débit" bottom={String(current)} />, (r) => r.debit),
@@ -148,7 +162,7 @@ export function BalanceScreen() {
       },
     ];
     return cols.filter((x): x is Column<Row> => x !== false);
-  }, [view.cents, view.showOpening, decimals, designer, current, currentEnd, priorEnd]);
+  }, [view.cents, view.showOpening, decimals, designer, current, currentEnd, priorEnd, cycles]);
 
   const exportCsv = () => {
     const header = ['Compte', 'Libellé', `Solde ${priorEnd}`, ...(view.showOpening ? [`À-nouveaux ${current}`] : []), `Débit ${current}`, `Crédit ${current}`, `Solde ${currentEnd}`, 'Variation', 'Variation (%)'];

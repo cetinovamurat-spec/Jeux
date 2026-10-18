@@ -21,6 +21,8 @@ export const A08: AnomalyModule = {
       signature: { cycle: 'debtTreasury', objects: [acct('1688'), acct('6611'), doc('calcul-icne'), doc('etat-dette'), tp('BDT')], natures: ['valuation', 'cutoff'] },
       treatment: 'adjust',
       cycles: ['debtTreasury'],
+      // A08 and A18 share the lender (Banque des Territoires) and its confirmation
+      keyObjects: [acct('1688'), acct('6611'), doc('calcul-icne')],
       creditBasis: ['result'],
     },
   ],
@@ -102,6 +104,7 @@ export const A18: AnomalyModule = {
       signature: { cycle: 'debtTreasury', objects: [acct('471'), acct('1631'), tp('BDT'), doc('confirmation-bdt')], natures: ['classification', 'completeness'] },
       treatment: 'reclassify',
       cycles: ['debtTreasury'],
+      keyObjects: [acct('471'), acct('1631'), doc('detail-comptes-attente'), doc('releve-bancaire-2025-12')],
       creditBasis: ['reclassified'],
     },
   ],

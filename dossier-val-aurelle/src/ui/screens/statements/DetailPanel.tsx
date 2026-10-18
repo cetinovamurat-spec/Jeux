@@ -17,8 +17,10 @@ import { accountsByPrefixes, componentLines, lineComposition, movementsByPrefixe
 import { useCase } from '../../app/context';
 import { Amount } from '../../components/Amount';
 import { Badge, Button, cx } from '../../components/ui';
+import { NewFindingButton } from '../findings/NewFindingButton';
 import { sideAmount, type TabId } from './labels';
 import type { Selection } from './statementsView';
+import type { FindingSeed } from '../../../game/findings';
 
 export interface DetailPanelProps {
   selection: Selection;
@@ -74,13 +76,29 @@ export function DetailPanel({ selection, designer, onSelect, onGoTab, onClose }:
             {title}
           </h2>
         </div>
-        <Button variant="ghost" onClick={onClose} aria-label="Fermer le détail" title="Fermer le détail (Échap)" className="shrink-0 px-1.5">
-          <span aria-hidden="true">✕</span>
-        </Button>
+        <span className="flex shrink-0 items-center gap-1">
+          <NewFindingButton compact seed={findingSeed(selection, title, c.params.cycles.cycles)} />
+          <Button variant="ghost" onClick={onClose} aria-label="Fermer le détail" title="Fermer le détail (Échap)" className="shrink-0 px-1.5">
+            <span aria-hidden="true">✕</span>
+          </Button>
+        </span>
       </header>
       <div className="min-h-0 flex-1 overflow-y-auto pb-3">{body}</div>
     </div>
   );
+}
+
+/** Item of the annex or of the management report a table of the annex reports (findings form). */
+const ANNEX_TABLE_ITEMS: Readonly<Record<string, string>> = { immobilisations: 'fixed-assets-table', amortissements: 'fixed-assets-table', provisions: 'provisions-table', subventions: 'subsidies-table', dettes: 'debt-maturity' };
+
+/** Context of « Créer un constat » on a statement line (its cycle) or on an annex row (cycle « annexe », item of the annex). */
+function findingSeed(selection: Selection, title: string, cycles: readonly { id: string; statementLines: readonly string[] }[]): FindingSeed {
+  if (selection.kind === 'line') {
+    const cycle = cycles.find((x) => x.statementLines.includes(selection.lineId))?.id;
+    return { ...(cycle ? { cycle } : {}), label: `États financiers – ${title}` };
+  }
+  const item = ANNEX_TABLE_ITEMS[selection.tableId];
+  return { cycle: 'disclosures', ...(item ? { objects: [{ kind: 'disclosureItem', id: item }] } : {}), label: `Annexe – ${title}` };
 }
 
 // ---------------------------------------------------------------------------

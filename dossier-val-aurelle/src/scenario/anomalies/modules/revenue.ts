@@ -169,6 +169,8 @@ export const A17: AnomalyModule = {
       signature: { cycle: 'rentReceivables', objects: [acct('70411'), acct('4196'), doc('pv-ca-2024-10'), doc('quittances-echantillon')], natures: ['compliance', 'completeness'] },
       treatment: 'adjust',
       cycles: ['rentReceivables'],
+      // the rent accounts are shared with A19 and F7: the debt of restitution or the evidence of the rise is required
+      keyObjects: [acct('4196'), doc('pv-ca-2024-10'), doc('quittances-echantillon'), doc('memo-irl'), doc('note-gestion-locative-hausse')],
       creditBasis: ['result'],
       disclosureFix: 'Signaler l’irrégularité au conseil d’administration et demander la régularisation des quittances.',
     },

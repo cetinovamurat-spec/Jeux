@@ -98,6 +98,9 @@ export function GedScreen() {
     return [...c.documentIndex().search(query, availableIds), ...replyIndex.search(query)].sort((a, b) => b.score - a.score || (a.docId < b.docId ? -1 : 1));
   }, [c, query, words, availableIds, replyIndex]);
 
+  // '?bloc=N' (1-based) selects and shows block N of the document (links from the risk factors)
+  const blocParam = Number(searchParams.get('bloc'));
+  const initialBlock = Number.isInteger(blocParam) && blocParam >= 1 ? blocParam - 1 : null;
   const requested = docId !== undefined ? byId(docId) : undefined;
   const open = requested && availableIds.has(requested.id) ? requested : undefined;
 
@@ -175,7 +178,7 @@ export function GedScreen() {
               ))}
             <section aria-label="Lecture du document" className="flex min-h-0 min-w-0 flex-col">
               {open ? (
-                <DocumentViewer key={open.id} doc={open} state={states[open.id]} prevId={prevId} nextId={nextId} position={position} total={order.length} hit={hit} words={tab === 'documents' ? words : []} designer={designer} />
+                <DocumentViewer key={open.id} doc={open} state={states[open.id]} prevId={prevId} nextId={nextId} position={position} total={order.length} hit={hit} words={tab === 'documents' ? words : []} designer={designer} initialBlock={initialBlock} />
               ) : docId !== undefined ? (
                 <div role="alert" className="rounded-lg border border-line bg-panel px-6 py-8">
                   <p className="font-semibold">Ce document n’est pas disponible à la date du dossier.</p>

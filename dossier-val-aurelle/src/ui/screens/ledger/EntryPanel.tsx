@@ -9,7 +9,10 @@ import { Link } from 'react-router';
 import { formatDateFr } from '../../../engine/dates';
 import type { Year } from '../../app/case';
 import { useCase } from '../../app/context';
+import { cycleOfAccount } from '../../../game/planning';
 import { Badge, cx } from '../../components/ui';
+import { NewFindingButton } from '../findings/NewFindingButton';
+import { RequestButton } from '../tools/RequestControls';
 import { fecDateFr, formatCount, plural } from '../balance/format';
 import { Signed } from '../balance/tableParts';
 
@@ -212,9 +215,21 @@ export function EntryPanel({ year, entryId, account, defaultYear, onClose, origi
 
       <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-4 py-2 text-sm">
         {first && (
-          <Link to={`/fec?ecriture=${encodeURIComponent(first.EcritureNum)}&exercice=${year}`} className="font-medium text-accent underline-offset-2 hover:underline">
-            Ouvrir dans le FEC
-          </Link>
+          <span className="flex flex-wrap items-center gap-3">
+            <Link to={`/fec?ecriture=${encodeURIComponent(first.EcritureNum)}&exercice=${year}`} className="font-medium text-accent underline-offset-2 hover:underline">
+              Ouvrir dans le FEC
+            </Link>
+            <RequestButton compact family="entry-voucher" object={`${year}:${first.EcritureNum}`} />
+            <NewFindingButton
+              compact
+              seed={{
+                cycle: cycleOfAccount(account, c.params.cycles.cycles),
+                objects: [{ kind: 'account', id: account }],
+                evidence: [{ kind: 'fec', year, num: first.EcritureNum }],
+                label: `Écriture ${first.EcritureNum} (${year}) – ${first.EcritureLib}`,
+              }}
+            />
+          </span>
         )}
         {origin !== undefined && (
           <span className="text-xs text-muted">

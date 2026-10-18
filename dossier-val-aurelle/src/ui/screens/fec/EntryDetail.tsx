@@ -7,8 +7,12 @@ import { useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { formatEuro } from '../../../engine/format';
 import { entryLinesOf, pairsOf, rarePairsOf, type FecIndex } from '../../../game/fec-query';
+import { cycleOfAccount } from '../../../game/planning';
+import { useCase } from '../../app/context';
 import { Amount } from '../../components/Amount';
 import { Badge, Button, cx } from '../../components/ui';
+import { NewFindingButton } from '../findings/NewFindingButton';
+import { RequestButton } from '../tools/RequestControls';
 import { originLabel, type EntryDiagnostic } from './diagnostics';
 import { dateWithWeekday, formatFecDate, plural } from './labels';
 
@@ -33,6 +37,7 @@ function Item({ label, children, className }: { label: string; children: ReactNo
 }
 
 export function EntryDetail({ index, entryId, threshold, roles, diagnostic, designer, onClose }: EntryDetailProps) {
+  const c = useCase();
   const lines = useMemo(() => entryLinesOf(index, entryId), [index, entryId]);
   const pairs = useMemo(() => pairsOf(index, entryId), [index, entryId]);
   const rare = useMemo(() => rarePairsOf(index, entryId, threshold), [index, entryId, threshold]);
@@ -53,6 +58,10 @@ export function EntryDetail({ index, entryId, threshold, roles, diagnostic, desi
   }, [onClose]);
   const first = lines[0];
   if (!first) return null;
+  const year = Number(index.closingDate.slice(0, 4));
+  // accounts of the entry other than cash, largest amounts first (objects proposed to a finding)
+  const entryAccounts = [...new Set([...lines].sort((a, b) => b.debitCents + b.creditCents - (a.debitCents + a.creditCents)).map((l) => l.CompteNum).filter((n) => !n.startsWith('5')))].slice(0, 2);
+  const mainAccount = entryAccounts[0] ?? first.CompteNum;
   const labels = new Map(lines.map((l) => [l.CompteNum, l.CompteLib]));
   const debit = lines.reduce((t, l) => t + l.debitCents, 0);
   const credit = lines.reduce((t, l) => t + l.creditCents, 0);
@@ -78,7 +87,19 @@ export function EntryDetail({ index, entryId, threshold, roles, diagnostic, desi
             {diagnostic.change === 'added' ? `Ajoutée (${originLabel(diagnostic.origin)})` : diagnostic.change === 'modified' ? 'Modifiée par rapport au monde propre' : `Origine ${originLabel(diagnostic.origin)}`}
           </Badge>
         )}
-        <Button ref={closeRef} variant="ghost" className="ml-auto px-2 py-0.5 text-xs" onClick={onClose} aria-label="Fermer le détail de l’écriture" title="Fermer (Échap)">
+        <span className="ml-auto flex flex-wrap items-center gap-1">
+          <RequestButton compact family="entry-voucher" object={`${year}:${first.EcritureNum}`} />
+          <NewFindingButton
+            compact
+            seed={{
+              cycle: cycleOfAccount(mainAccount, c.params.cycles.cycles),
+              objects: entryAccounts.map((id) => ({ kind: 'account', id })),
+              evidence: [{ kind: 'fec', year, num: first.EcritureNum }],
+              label: `Écriture ${first.EcritureNum} (${year}) – ${first.EcritureLib}`,
+            }}
+          />
+        </span>
+        <Button ref={closeRef} variant="ghost" className="px-2 py-0.5 text-xs" onClick={onClose} aria-label="Fermer le détail de l’écriture" title="Fermer (Échap)">
           Fermer ✕
         </Button>
       </header>

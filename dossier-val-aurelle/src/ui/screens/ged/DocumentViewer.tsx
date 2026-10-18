@@ -8,12 +8,14 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router';
 import { formatDateFr } from '../../../engine/dates';
 import { blockText, type SearchHit } from '../../../game/documents';
+import { captureRiskFactor } from '../../../game/planning';
 import { addAnnotation, removeAnnotation, toggleEvidence, type DocumentState } from '../../../game/state';
 import type { DocumentModel } from '../../../scenario/documents';
 import { useCase } from '../../app/context';
 import { useGame } from '../../app/store';
 import { DocumentView } from '../../components/DocumentView';
-import { Badge, Button, Card, cx, Select } from '../../components/ui';
+import { Badge, Button, Card, cx, Select, TextInput } from '../../components/ui';
+import { NewFindingButton } from '../findings/NewFindingButton';
 import { availabilityText, CATEGORY_LABELS, CLUE_SOURCE_LABELS, plural } from './labels';
 
 export interface DocumentViewerProps {
@@ -27,6 +29,8 @@ export interface DocumentViewerProps {
   hit: SearchHit | null;
   words: readonly string[];
   designer: boolean;
+  /** Block selected and shown when the document opens ('?bloc=N' of the address, 0-based here). */
+  initialBlock?: number | null;
 }
 
 const EXCERPT = 70;
@@ -36,10 +40,12 @@ function excerpt(text: string): string {
   return t.length > EXCERPT ? `${t.slice(0, EXCERPT - 1)}…` : t;
 }
 
-export function DocumentViewer({ doc, state, prevId, nextId, position, total, hit, words, designer }: DocumentViewerProps) {
+export function DocumentViewer({ doc, state, prevId, nextId, position, total, hit, words, designer, initialBlock = null }: DocumentViewerProps) {
   const act = useGame((s) => s.act);
   const navigate = useNavigate();
-  const [selected, setSelected] = useState<number | null>(null);
+  const validInitial = initialBlock !== null && initialBlock >= 0 && initialBlock < doc.blocks.length ? initialBlock : null;
+  const [selected, setSelected] = useState<number | null>(validInitial);
+  const [riskOpen, setRiskOpen] = useState(false);
   const [draft, setDraft] = useState('');
   const [occurrence, setOccurrence] = useState(0);
   const [focused, setFocused] = useState(false);
@@ -73,6 +79,13 @@ export function DocumentViewer({ doc, state, prevId, nextId, position, total, hi
     setOccurrence(0);
     if (hit && hit.block >= 0) scrollToBlock(hit.block, false, true);
   }, [hitKey]);
+
+  // '?bloc=N': select the block and bring it into view
+  useEffect(() => {
+    if (validInitial === null) return;
+    setSelected(validInitial);
+    requestAnimationFrame(() => scrollToBlock(validInitial, false));
+  }, [validInitial]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const go = (id: string | null) => {
     if (id) navigate(`/ged/${encodeURIComponent(id)}`);
@@ -122,8 +135,15 @@ export function DocumentViewer({ doc, state, prevId, nextId, position, total, hi
             <Button onClick={() => window.print()} title="Imprimer le document">
               Imprimer
             </Button>
+            <Button aria-expanded={riskOpen} aria-controls="ged-risk-factor" onClick={() => setRiskOpen((o) => !o)} title={selected === null ? 'Marquer le document comme facteur de risque' : `Marquer le bloc ${selected + 1} comme facteur de risque`}>
+              Facteur de risque…
+            </Button>
+            <NewFindingButton
+              seed={{ objects: [{ kind: 'document', id: doc.id }], evidence: [selected === null ? { kind: 'doc', docId: doc.id } : { kind: 'doc', docId: doc.id, block: selected }], label: `${doc.title}${selected === null ? '' : ` – bloc ${selected + 1}`}` }}
+            />
           </span>
         </div>
+        {riskOpen && <RiskFactorForm docId={doc.id} block={selected} onClose={() => setRiskOpen(false)} />}
         <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
           <span>{CATEGORY_LABELS[doc.category]}</span>
           <span>{state?.readOn ? `Consulté pour la première fois le ${formatDateFr(state.readOn)}` : 'Non lu'}</span>
@@ -244,6 +264,65 @@ export function DocumentViewer({ doc, state, prevId, nextId, position, total, hi
         </div>
       </form>
     </div>
+  );
+}
+
+/** « Marquer comme facteur de risque » (plan J4 §6.2): the selected block (or the whole document), with a cycle and an optional assertion. */
+function RiskFactorForm({ docId, block, onClose }: { docId: string; block: number | null; onClose: () => void }) {
+  const c = useCase();
+  const params = c.params;
+  const act = useGame((s) => s.act);
+  const count = useGame((s) => s.game.planning.riskFactors.filter((f) => f.docId === docId).length);
+  const [cycle, setCycle] = useState<string>(params.cycles.cycles[0]?.id ?? 'crossCycle');
+  const [assertion, setAssertion] = useState('');
+  const [note, setNote] = useState('');
+  const [done, setDone] = useState<string | null>(null);
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    act((s) => captureRiskFactor(s, { docId, block, cycle, assertion: assertion || null, note }, params));
+    setDone(`Facteur de risque noté (${params.cycles.cycles.find((x) => x.id === cycle)?.label ?? cycle}${block === null ? '' : `, bloc ${block + 1}`}).`);
+    setNote('');
+  };
+  return (
+    <form id="ged-risk-factor" onSubmit={submit} aria-label="Marquer comme facteur de risque" className="mt-2 flex flex-wrap items-end gap-2 rounded-md border border-line bg-sunken px-2.5 py-2 text-xs">
+      <p className="basis-full text-muted">
+        {block === null ? 'Document entier' : `Bloc ${block + 1}`} – sélectionnez un passage dans le document pour le cibler.{count > 0 ? ` ${count} facteur${count > 1 ? 's' : ''} de risque déjà relevé${count > 1 ? 's' : ''} sur cette pièce.` : ''}
+      </p>
+      <label className="flex flex-col gap-0.5">
+        <span className="text-muted">Cycle</span>
+        <Select value={cycle} onChange={(e) => setCycle(e.target.value)} className="py-0.5 text-xs">
+          {params.cycles.cycles.map((x) => (
+            <option key={x.id} value={x.id}>
+              {x.label}
+            </option>
+          ))}
+        </Select>
+      </label>
+      <label className="flex flex-col gap-0.5">
+        <span className="text-muted">Assertion</span>
+        <Select value={assertion} onChange={(e) => setAssertion(e.target.value)} className="py-0.5 text-xs">
+          <option value="">Toutes</option>
+          {params.planning.assertions.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.label}
+            </option>
+          ))}
+        </Select>
+      </label>
+      <label className="flex min-w-[12rem] flex-1 flex-col gap-0.5">
+        <span className="text-muted">Note (facultative)</span>
+        <TextInput value={note} onChange={(e) => setNote(e.target.value)} className="py-0.5 text-xs" />
+      </label>
+      <Button type="submit" variant="primary" className="text-xs">
+        Marquer
+      </Button>
+      <Button className="text-xs" onClick={onClose}>
+        Fermer
+      </Button>
+      <p aria-live="polite" className="basis-full text-ok">
+        {done}
+      </p>
+    </form>
   );
 }
 

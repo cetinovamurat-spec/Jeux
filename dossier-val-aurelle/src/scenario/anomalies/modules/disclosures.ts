@@ -31,6 +31,7 @@ export const A12: AnomalyModule = {
       treatment: 'specialReport',
       cycles: ['crossCycle', 'debtTreasury', 'fixedAssets', 'disclosures'],
       keyObjects: [doc('composition-ca'), doc('registre-conventions'), doc('pv-ca-2025-09')],
+      treatmentRequired: true,
       creditBasis: ['disclosure'],
       expectedFixes: ['special-report'],
       disclosureFix: 'Rapport spécial : convention non autorisée préalablement (administrateur commun), avance sans intérêt.',
@@ -41,6 +42,8 @@ export const A12: AnomalyModule = {
       signature: { cycle: 'crossCycle', objects: [tp('COTEAUX_SEREIN'), doc('convention-soutien-csh')], natures: ['compliance'] },
       treatment: 'governance',
       cycles: ['crossCycle', 'debtTreasury', 'fixedAssets', 'disclosures'],
+      // no discriminating document: the treatment (irrégularité, justification demandée) tells it from A12.i and A12.ii
+      treatmentRequired: true,
       creditBasis: ['disclosure'],
       expectedFixes: ['governance-irregularity', 'request-justification'],
       disclosureFix: 'Demander la justification de la déclaration préalable de l’avance ; à défaut, signaler l’irrégularité au conseil.',

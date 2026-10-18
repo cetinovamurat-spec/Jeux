@@ -50,6 +50,12 @@ export interface AnomalyPart {
    * They also count as objects of the part.
    */
   keyObjects?: readonly PartObject[];
+  /**
+   * The finding must also propose the part's treatment (or an expected fix of
+   * it): sibling parts that share every object and differ only by their
+   * treatment (A12.ii rapport spécial, A12.iii irrégularité).
+   */
+  treatmentRequired?: boolean;
   /** Items of the annex or of the management report concerned (ids of params/disclosure-items.json → items); they count as objects. */
   disclosureItems?: readonly string[];
   /** Measures on which the quantification is credited: the first is the main one, the others are accepted alternatives. */
