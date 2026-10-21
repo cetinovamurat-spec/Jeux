@@ -17,7 +17,8 @@ import { FindingForm } from './FindingForm';
 
 const NOTICE_MS = 6000;
 
-export function NewFindingButton({ seed, compact }: { seed: FindingSeed; compact?: boolean }) {
+/** `tabIndex`: -1 inside a row of a table that is not its Tab stop (DataTable). */
+export function NewFindingButton({ seed, compact, tabIndex }: { seed: FindingSeed; compact?: boolean; tabIndex?: number }) {
   const c = useCase();
   const act = useGame((s) => s.act);
   const [draft, setDraft] = useState<FindingDraft | null>(null);
@@ -44,10 +45,10 @@ export function NewFindingButton({ seed, compact }: { seed: FindingSeed; compact
         if (e.key === 'Enter' || e.key === ' ') e.stopPropagation();
       }}
     >
-      <Button className={small} onClick={open} aria-haspopup="dialog" aria-label={`Créer un constat${about}`} title={`Créer un constat${about}`}>
+      <Button className={small} tabIndex={tabIndex} onClick={open} aria-haspopup="dialog" aria-label={`Créer un constat${about}`} title={`Créer un constat${about}`}>
         Constat…
       </Button>
-      <Button className={cx(small)} onClick={question} aria-label={`Noter une question en un clic${about}`} title={`Noter une question en un clic${about}`}>
+      <Button className={cx(small)} tabIndex={tabIndex} onClick={question} aria-label={`Noter une question en un clic${about}`} title={`Noter une question en un clic${about}`}>
         {compact ? '?' : 'Question'}
       </Button>
       <span aria-live="polite" className="text-xs">

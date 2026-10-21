@@ -5,6 +5,8 @@
  * and cycles parameters.
  */
 import { describe, expect, it } from 'vitest';
+import { RECALC_TOOLS } from '../../src/game/recalcs';
+import { POPULATIONS } from '../../src/game/samples';
 import { PART_KEYS } from '../../src/scenario/anomalies/modules';
 import { ANOMALY_IDS } from '../../src/scenario/anomalies/types';
 import { loadParams } from '../../src/scenario/params';
@@ -142,6 +144,13 @@ describe('procedure library: contract ids and references', () => {
           }
         }
     }
+  });
+
+  it('opens every recalculation tool and every sample population from a procedure of the library', () => {
+    const tools = new Set(lib.procedures.flatMap((p) => (p.output.kind === 'recalc' ? [p.output.tool] : [])));
+    const populations = new Set(lib.procedures.flatMap((p) => (p.output.kind === 'sample' ? [p.output.population] : [])));
+    for (const t of RECALC_TOOLS) expect(tools.has(t), t).toBe(true);
+    for (const x of POPULATIONS) expect(populations.has(x.id), x.id).toBe(true);
   });
 
   it('references existing anomaly parts, risks, phases, procedures and documents', () => {

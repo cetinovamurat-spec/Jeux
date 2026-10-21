@@ -4,7 +4,8 @@
  * Enter when `onRowClick` is given. Keyboard: the rows are a single Tab stop
  * (roving tabindex); arrows, Page up / Page down, Home and End move between
  * them. Rows carry `data-row-index` (position in the sorted rows), so that a
- * screen can give the focus back to a row.
+ * screen can give the focus back to a row. Controls inside a cell should be
+ * tabbable on the active row only (`active` argument of `cell`).
  */
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
@@ -16,7 +17,8 @@ export interface Column<T> {
   /** CSS grid track, e.g. '6rem', 'minmax(12rem,1fr)'. */
   width: string;
   align?: 'left' | 'right';
-  cell: (row: T, index: number) => ReactNode;
+  /** `active`: the row is the Tab stop of the table (controls in a cell are tabbable only there). */
+  cell: (row: T, index: number, active: boolean) => ReactNode;
   /** Enables sorting on this column. */
   sortValue?: (row: T) => number | string;
   title?: (row: T) => string;
@@ -120,7 +122,7 @@ export function DataTable<T>({ rows, columns, rowKey, ariaLabel, height = '65vh'
               >
                 {columns.map((c) => (
                   <div key={c.id} role="gridcell" className={cx('truncate', c.align === 'right' && 'text-right')} title={c.title?.(row)}>
-                    {c.cell(row, item.index)}
+                    {c.cell(row, item.index, item.index === tabStop)}
                   </div>
                 ))}
               </div>

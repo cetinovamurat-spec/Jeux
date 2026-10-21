@@ -1,7 +1,8 @@
 /**
  * A tickable table (statement, annex table or certified statement): labels
  * indented by level, subtotals and totals in bold, each figure followed by its
- * tick button. Row labels open the detail panel when `onSelectRow` is given.
+ * tick button. Row labels open the detail panel when `onSelectRow` is given;
+ * the menu of a figure then also offers « Créer un constat » on its row.
  */
 import { Amount } from '../../components/Amount';
 import { cx } from '../../components/ui';
@@ -27,6 +28,19 @@ export interface TickTableProps {
 /** Value of the data-row attribute of a row label button (focus return, scrolling). */
 export function rowAnchor(sectionId: string, rowId: string): string {
   return `${sectionId}:${rowId}`;
+}
+
+/** Opens « Créer un constat » of the detail panel once it shows the row (the panel renders after the selection). */
+function openFindingInPanel(panelId: string): void {
+  let tries = 0;
+  const step = () => {
+    const b = document.getElementById(panelId)?.querySelector<HTMLButtonElement>('button[aria-haspopup="dialog"]');
+    if (b) {
+      b.focus();
+      b.click();
+    } else if (++tries < 10) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
 }
 
 function Figure({ value }: { value: number | undefined }) {
@@ -97,7 +111,20 @@ export function TickTable({ section, labelHeader = 'Rubrique', selectedRow, onSe
                   <td key={cell.key} className="whitespace-nowrap border-b border-line px-2 py-1 align-middle">
                     <div className="flex items-center justify-end gap-2">
                       <Figure value={cell.value} />
-                      <TickButton cell={cell.key} label={`${row.label} – ${col.name}${section.qualify ? ` (${section.title})` : ''}`} row={r} col={ci} />
+                      <TickButton
+                        cell={cell.key}
+                        label={`${row.label} – ${col.name}${section.qualify ? ` (${section.title})` : ''}`}
+                        row={r}
+                        col={ci}
+                        onFinding={
+                          onSelectRow && panelId
+                            ? () => {
+                                if (!selected) onSelectRow(row.id);
+                                openFindingInPanel(panelId);
+                              }
+                            : undefined
+                        }
+                      />
                     </div>
                   </td>
                 );

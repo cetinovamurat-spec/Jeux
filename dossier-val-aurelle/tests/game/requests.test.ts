@@ -14,6 +14,7 @@ import {
   interlocutorOf,
   isValidObject,
   notYetEstablishedText,
+  receivedRequests,
   remindRequest,
   requestArrivals,
   requestKey,
@@ -96,6 +97,13 @@ describe('dates', () => {
     expect([...answeredRequests(s, p, '2025-11-07')]).toEqual([]);
     expect([...answeredRequests(s, p, '2025-11-10')].sort()).toEqual(['interim-extraction', 'programme-components:LIL']);
     expect(requestKey('closing-file', 'icne')).toBe('closing-file:icne');
+  });
+  it('received keys: a reply « pas encore établi » does not count until a document arrives', () => {
+    const s = { items: [item({ family: 'interim-extraction', object: '' }), item({ id: 'req2' })] };
+    const docDates = (key: string) => (key === 'programme-components:LIL' ? ['2026-02-06'] : []);
+    expect([...receivedRequests(s, p, '2025-11-10', docDates)]).toEqual(['interim-extraction']);
+    expect([...receivedRequests(s, p, addWorkingDays(cal, '2026-02-06', 1), docDates)].sort()).toEqual(['interim-extraction', 'programme-components:LIL']);
+    expect([...receivedRequests(s, p, '2025-11-10')].sort()).toEqual(['interim-extraction', 'programme-components:LIL']);
   });
   it('the earliest arrival over the requests of a key', () => {
     const s = { items: [item({ sentOn: '2026-02-23' }), item({ id: 'req2', sentOn: '2025-11-07' })] };

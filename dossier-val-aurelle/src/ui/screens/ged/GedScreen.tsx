@@ -78,11 +78,13 @@ export function GedScreen() {
   const act = useGame((s) => s.act);
   const view = useGedView();
   const urlTab = searchParams.get('onglet');
-  const tab: GedTab = isTab(urlTab) ? urlTab : view.tab;
+  // a link to a document (no ?onglet=) shows the document, even if the requests tab was the last one used
+  const tab: GedTab = isTab(urlTab) ? urlTab : docId !== undefined && view.tab === 'demandes' ? 'documents' : view.tab;
   const [unreadOnly, setUnreadOnly] = useState(false);
   useEffect(() => {
     if (isTab(urlTab) && urlTab !== view.tab) view.update({ tab: urlTab });
-  }, [urlTab]); // eslint-disable-line react-hooks/exhaustive-deps
+    else if (!isTab(urlTab) && docId !== undefined && view.tab === 'demandes') view.update({ tab: 'documents' });
+  }, [urlTab, docId]); // eslint-disable-line react-hooks/exhaustive-deps
   const selectTab = (t: GedTab) => {
     view.update({ tab: t });
     setSearchParams(t === 'documents' ? {} : { onglet: t }, { replace: true });
@@ -117,8 +119,9 @@ export function GedScreen() {
   // Opening a document marks it as read (once: markRead keeps the first date).
   const readOn = open ? states[open.id]?.readOn : undefined;
   useEffect(() => {
-    if (open && !readOn) act((s) => markRead(s, open.id));
-  }, [open, readOn, act]);
+    // a document hidden behind the requests tab is not read
+    if (open && tab !== 'demandes' && !readOn) act((s) => markRead(s, open.id));
+  }, [open, tab, readOn, act]);
 
   // '/' focuses the search box (outside text fields).
   const searchRef = useRef<HTMLInputElement>(null);

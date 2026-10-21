@@ -173,7 +173,7 @@ function RefLabel({ r }: { r: WorkRef }) {
       return <span>Demande de confirmation</span>;
     case 'finding':
       return (
-        <Link to="/constats" className="text-accent hover:underline">
+        <Link to={`/constats?constat=${encodeURIComponent(r.id)}`} className="text-accent hover:underline">
           Constat {r.id}
         </Link>
       );
@@ -190,7 +190,7 @@ function Worksheet({ def, e }: { def: ProcedureDef; e: Execution }) {
   const sortedDocs = useMemo(() => [...docs].sort((a, b) => a.title.localeCompare(b.title, 'fr')), [docs]);
   const t = w.sched.get(e.id);
   const status = executionStatus(e, t, game.clock.date);
-  const derivedAll = derivedRefs(e, def, game);
+  const derivedAll = derivedRefs(e, def, game, params, w.populationOf);
   const confirmations = derivedAll.filter((r) => r.kind === 'confirmation').length;
   const derived = derivedAll.filter((r) => r.kind !== 'confirmation');
   const completion = completionOf(e, def, status, w.completion);

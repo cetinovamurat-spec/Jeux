@@ -256,7 +256,7 @@ function Sheet({ cycleId }: { cycleId: string }) {
             })}
             {refs.findings.map((id) => (
               <li key={id}>
-                <Link to="/constats" className="text-accent hover:underline">
+                <Link to={`/constats?constat=${encodeURIComponent(id)}`} className="text-accent hover:underline">
                   Constat {id}
                 </Link>
               </li>

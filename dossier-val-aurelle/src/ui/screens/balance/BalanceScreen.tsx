@@ -131,9 +131,9 @@ export function BalanceScreen() {
         id: 'finding',
         header: <span className="sr-only">Constat</span>,
         width: '6.75rem',
-        cell: (r) => (
+        cell: (r, _i, active) => (
           <span className="opacity-0 transition-opacity focus-within:opacity-100 [[role=row]:hover_&]:opacity-100">
-            <NewFindingButton compact seed={{ cycle: cycleOfAccount(r.account, cycles), objects: [{ kind: 'account', id: r.account }], label: `Balance – compte ${r.account} ${r.label}` }} />
+            <NewFindingButton compact tabIndex={active ? 0 : -1} seed={{ cycle: cycleOfAccount(r.account, cycles), objects: [{ kind: 'account', id: r.account }], label: `Balance – compte ${r.account} ${r.label}` }} />
           </span>
         ),
       },

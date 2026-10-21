@@ -18,6 +18,8 @@ interface MenuState {
   cell: string;
   label: string;
   anchor: HTMLElement;
+  /** « Créer un constat… » on the row of the cell, when the table offers it. */
+  onFinding?: (() => void) | undefined;
 }
 
 interface TickingValue {
@@ -28,7 +30,7 @@ interface TickingValue {
   clickMark: string | null;
   menuCell: string | null;
   apply: (cell: string, markId: string | null) => void;
-  openMenu: (cell: string, label: string, anchor: HTMLElement) => void;
+  openMenu: (cell: string, label: string, anchor: HTMLElement, onFinding?: () => void) => void;
 }
 
 const TickingCtx = createContext<TickingValue | null>(null);
@@ -48,7 +50,7 @@ export function TickingProvider({ clickMark, onManageMarks, children }: { clickM
   const [menu, setMenu] = useState<MenuState | null>(null);
   const markById = useMemo(() => new Map(marks.map((m) => [m.id, m])), [marks]);
   const apply = useCallback((cell: string, markId: string | null) => act((s) => setTick(s, cell, markId)), [act]);
-  const openMenu = useCallback((cell: string, label: string, anchor: HTMLElement) => setMenu((m) => (m?.cell === cell ? null : { cell, label, anchor })), []);
+  const openMenu = useCallback((cell: string, label: string, anchor: HTMLElement, onFinding?: () => void) => setMenu((m) => (m?.cell === cell ? null : { cell, label, anchor, onFinding })), []);
   const close = useCallback(
     (refocus: boolean) => {
       if (refocus && menu?.anchor.isConnected) menu.anchor.focus();
@@ -86,6 +88,14 @@ export function TickingProvider({ clickMark, onManageMarks, children }: { clickM
               close(true);
               onManageMarks();
             }}
+            {...(menu.onFinding
+              ? {
+                  onFinding: () => {
+                    close(false);
+                    menu.onFinding?.();
+                  },
+                }
+              : {})}
           />,
           document.body,
         )}
@@ -119,7 +129,7 @@ function moveFocus(from: HTMLElement, [dr, dc]: [number, number]): void {
   best?.focus();
 }
 
-export function TickButton({ cell, label, row, col }: { cell: string; label: string; row: number; col: number }) {
+export function TickButton({ cell, label, row, col, onFinding }: { cell: string; label: string; row: number; col: number; onFinding?: (() => void) | undefined }) {
   const t = useTicking();
   const markId = t.ticks[cell];
   const mark = markId !== undefined ? t.markById.get(markId) : undefined;
@@ -137,7 +147,7 @@ export function TickButton({ cell, label, row, col }: { cell: string; label: str
       t.apply(cell, null);
     } else if (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10')) {
       e.preventDefault();
-      t.openMenu(cell, label, e.currentTarget);
+      t.openMenu(cell, label, e.currentTarget, onFinding);
     } else if (ARROWS[e.key]) {
       e.preventDefault();
       moveFocus(e.currentTarget, ARROWS[e.key]!);
@@ -156,11 +166,11 @@ export function TickButton({ cell, label, row, col }: { cell: string; label: str
       title={mark ? `${mark.symbol} ${mark.label}` : brush ? `Non pointé – cliquer pour appliquer « ${brush.label} »` : 'Non pointé – cliquer pour choisir une marque'}
       onClick={(e) => {
         if (brush && !e.shiftKey) t.apply(cell, markId === brush.id ? null : brush.id);
-        else t.openMenu(cell, label, e.currentTarget);
+        else t.openMenu(cell, label, e.currentTarget, onFinding);
       }}
       onContextMenu={(e) => {
         e.preventDefault();
-        t.openMenu(cell, label, e.currentTarget);
+        t.openMenu(cell, label, e.currentTarget, onFinding);
       }}
       onKeyDown={onKeyDown}
       className={cx(
@@ -185,6 +195,7 @@ function TickMenu({
   onChoose,
   onClose,
   onManage,
+  onFinding,
 }: {
   menu: MenuState;
   current: string | null;
@@ -192,6 +203,7 @@ function TickMenu({
   onChoose: (markId: string | null) => void;
   onClose: (refocus: boolean) => void;
   onManage: () => void;
+  onFinding?: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
@@ -292,6 +304,12 @@ function TickMenu({
         <span aria-hidden="true" className="w-6 shrink-0" />
         <span className="flex-1">Gérer les marques…</span>
       </button>
+      {onFinding && (
+        <button type="button" role="menuitem" tabIndex={-1} onClick={onFinding} className={item}>
+          <span aria-hidden="true" className="w-6 shrink-0" />
+          <span className="flex-1">Créer un constat sur la rubrique…</span>
+        </button>
+      )}
     </div>
   );
 }

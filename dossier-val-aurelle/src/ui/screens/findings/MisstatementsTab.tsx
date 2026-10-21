@@ -77,12 +77,11 @@ export function MisstatementsTab({ onOpen }: { onOpen: (id: string) => void }) {
           <EmptyState>Aucun constat au statut « constat » : le tableau se construit à partir des constats retenus (les questions et les points écartés n’y figurent pas).</EmptyState>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[56rem] text-xs">
+            <table className="w-full min-w-[44rem] text-xs">
               <caption className="sr-only">Tableau des anomalies : impacts dérivés des écritures proposées (surévaluation du chiffre présenté : positif)</caption>
               <thead className="bg-sunken text-muted">
                 <tr>
-                  <th scope="col" className="px-2 py-1.5 text-left font-semibold">Constat</th>
-                  <th scope="col" className="px-2 py-1.5 text-left font-semibold">Cycle</th>
+                  <th scope="col" className="px-2 py-1.5 text-left font-semibold">Constat et cycle</th>
                   <th scope="col" className="px-2 py-1.5 text-left font-semibold">Sens</th>
                   <th scope="col" className="px-2 py-1.5 text-right font-semibold">Résultat</th>
                   <th scope="col" className="px-2 py-1.5 text-right font-semibold">Capitaux propres</th>
@@ -99,8 +98,8 @@ export function MisstatementsTab({ onOpen }: { onOpen: (id: string) => void }) {
                       <button type="button" className="text-left text-accent underline-offset-2 hover:underline" onClick={() => onOpen(r.findingId)}>
                         <span className="font-mono">{r.findingId}</span> {r.title || 'Sans intitulé'}
                       </button>
+                      <span className="block text-muted">{cycleName(r.cycle)}</span>
                     </Cell>
-                    <Cell>{cycleName(r.cycle)}</Cell>
                     <Cell>{DIRECTION_LABELS[r.direction]}</Cell>
                     <Cell className="text-right">
                       <Amount cents={r.impact.result} />
@@ -132,7 +131,7 @@ export function MisstatementsTab({ onOpen }: { onOpen: (id: string) => void }) {
               </tbody>
               <tfoot className="font-semibold">
                 <tr>
-                  <th scope="row" colSpan={3} className="border-t border-line px-2 py-1 text-left">
+                  <th scope="row" colSpan={2} className="border-t border-line px-2 py-1 text-left">
                     Surévaluations du résultat
                   </th>
                   <td className="border-t border-line px-2 py-1 text-right">
@@ -141,7 +140,7 @@ export function MisstatementsTab({ onOpen }: { onOpen: (id: string) => void }) {
                   <td colSpan={5} className="border-t border-line" />
                 </tr>
                 <tr>
-                  <th scope="row" colSpan={3} className="px-2 py-1 text-left">
+                  <th scope="row" colSpan={2} className="px-2 py-1 text-left">
                     Sous-évaluations du résultat
                   </th>
                   <td className="px-2 py-1 text-right">
@@ -150,7 +149,7 @@ export function MisstatementsTab({ onOpen }: { onOpen: (id: string) => void }) {
                   <td colSpan={5} />
                 </tr>
                 <tr>
-                  <th scope="row" colSpan={3} className="px-2 py-1 text-left">
+                  <th scope="row" colSpan={2} className="px-2 py-1 text-left">
                     Cumul net (hors anomalies insignifiantes)
                   </th>
                   <td className="px-2 py-1 text-right">
@@ -170,7 +169,7 @@ export function MisstatementsTab({ onOpen }: { onOpen: (id: string) => void }) {
                 </tr>
                 {t.trivialTotal !== 0 && (
                   <tr className="font-normal text-muted">
-                    <th scope="row" colSpan={3} className="px-2 py-1 text-left font-normal">
+                    <th scope="row" colSpan={2} className="px-2 py-1 text-left font-normal">
                       Anomalies insignifiantes (listées, non cumulées)
                     </th>
                     <td className="px-2 py-1 text-right">

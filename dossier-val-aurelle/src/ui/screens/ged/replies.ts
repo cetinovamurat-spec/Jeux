@@ -196,15 +196,14 @@ export function useConfirmationRows(): ConfirmationRow[] {
   const c = useCase();
   const items = useGame((s) => s.game.confirmations.items);
   const date = useGame((s) => s.game.clock.date);
-  return useMemo(
-    () =>
-      items.map((item) => {
-        const reply = confirmationReply(c, item.thirdParty);
-        const replyOn = replyDate(reply);
-        return { item, reply, replyOn, state: confirmationStatus(c.params, item, replyOn, date) };
-      }),
-    [c, items, date],
-  );
+  return useMemo(() => {
+    const cal = workCalendar(c.params);
+    return items.map((item) => {
+      const reply = confirmationReply(c, item.thirdParty);
+      const replyOn = replyDate(reply);
+      return { item, reply, replyOn, state: confirmationStatus(c.params, item, replyOn, date, cal) };
+    });
+  }, [c, items, date]);
 }
 
 /**

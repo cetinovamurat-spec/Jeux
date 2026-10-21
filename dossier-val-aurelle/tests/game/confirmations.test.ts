@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   canPrepare,
   confirmationCandidates,
+  confirmationsOfExecution,
   confirmationsSchema,
   confirmationStatus,
   hoursCharged,
@@ -71,6 +72,12 @@ describe('actions', () => {
     const s = prepareConfirmation(host(), 'F0027', 'GIE', 'lea', p);
     expect(hoursCharged(s.confirmations, p)).toEqual([{ member: 'lea', hours: p.requests.confirmations.preparationHours, on: '2025-11-18' }]);
   });
+  it('a request prepared in a procedure is part of its hours: it is not charged a second time', () => {
+    const s = prepareConfirmation(host(), 'BDT', 'Banque des Territoires', 'lea', p, 'X1');
+    expect(s.confirmations.items).toEqual([{ thirdParty: 'BDT', preparedOn: '2025-11-18', by: 'lea', executionId: 'X1' }]);
+    expect(confirmationsSchema.parse(s.confirmations)).toEqual(s.confirmations);
+    expect(hoursCharged(s.confirmations, p)).toEqual([]);
+  });
 });
 
 describe('status in the tracker', () => {
@@ -113,6 +120,15 @@ describe('third parties proposed (populations built from the data)', () => {
     const order = cands.map((c) => POPULATION_ORDER.indexOf(c.population));
     expect([...order].sort((a, b) => a - b)).toEqual(order);
     for (const c of cands) expect(c.name, c.thirdParty).not.toBe(c.thirdParty);
+  });
+  it('a procedure counts the requests of its own populations, and those prepared in it', () => {
+    const popOf = (id: string) => cands.find((c) => c.thirdParty === id)?.population;
+    let s = prepareConfirmation(host(), 'BDT', 'Banque des Territoires', 'senior', p);
+    expect(confirmationsOfExecution(s.confirmations.items, p, 'X1', 'litigation', popOf)).toEqual([]);
+    expect(confirmationsOfExecution(s.confirmations.items, p, 'X2', 'lender-confirmations', popOf).map((x) => x.thirdParty)).toEqual(['BDT']);
+    s = prepareConfirmation(s, 'F0033', 'Avocat', 'senior', p, 'X1');
+    expect(confirmationsOfExecution(s.confirmations.items, p, 'X1', 'litigation', popOf).map((x) => x.thirdParty)).toEqual(['F0033']);
+    expect(confirmationsOfExecution(s.confirmations.items, p, 'X1', 'litigation').map((x) => x.thirdParty)).toEqual(['F0033']);
   });
   it('the procedures prepare their own populations', () => {
     expect(populationsOfProcedure(p, 'lender-confirmations')).toEqual(['lenders', 'banks']);

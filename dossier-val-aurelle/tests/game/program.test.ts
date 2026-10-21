@@ -6,6 +6,7 @@ import { hoursUsed } from '../../src/game/budget';
 import { workCalendar } from '../../src/game/calendar';
 import { conditionContext, evaluate, evaluateAll } from '../../src/game/conditions';
 import { EMPTY_QUERY } from '../../src/game/fec-query';
+import { prepareConfirmation } from '../../src/game/confirmations';
 import { deserialize, serialize } from '../../src/game/persistence';
 import { setRisk } from '../../src/game/planning';
 import {
@@ -235,6 +236,19 @@ describe('worksheets: documentation, completion, form check, review', () => {
     expect(item().ok).toBe(false);
     for (const c of cells.slice(0, Math.ceil(cells.length * 0.8))) s = setTick(s, c, 'certified');
     expect(item().ok).toBe(true);
+  });
+
+  it('counts only the confirmations of the procedure’s third parties', () => {
+    let s = launch(fresh(), 'litigation', 'senior');
+    const e = s.program.executions[0]!;
+    const populationOf = (id: string) => (id === 'BDT' ? ('lenders' as const) : id === 'F0033' ? ('lawyers' as const) : undefined);
+    const comp = () => completionOf(e, def('litigation'), 'delivered', { params, date: s.clock.date, state: s, answered: new Set(), populationOf }).items[1]!;
+    s = prepareConfirmation(s, 'BDT', 'Banque des Territoires', 'senior', params);
+    expect(comp()).toMatchObject({ ok: false, label: expect.stringContaining(': 0 ') });
+    expect(derivedRefs(e, def('litigation'), s, params, populationOf)).toEqual([]);
+    s = prepareConfirmation(s, 'F0033', 'Avocat', 'senior', params);
+    expect(comp().ok).toBe(true);
+    expect(derivedRefs(e, def('litigation'), s, params, populationOf)).toEqual([{ kind: 'confirmation', id: 'F0033' }]);
   });
 
   it('requires an update of the subsequent events review after the final', () => {

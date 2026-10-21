@@ -846,6 +846,50 @@
    }
   },
   {
+   "id": "rent-revision-recalc",
+   "cycle": "rentReceivables",
+   "title": "Recalcul des loyers 2025 au regard de la hausse autorisée",
+   "objective": "Mesurer, programme par programme, les loyers quittancés au-delà de la hausse autorisée et le trop-perçu à restituer aux locataires.",
+   "steps": [
+    "Obtenir la délibération du conseil sur la révision des loyers et la référence réglementaire de la hausse maximale.",
+    "Recalculer les loyers 2025 des logements conventionnés avec la hausse maximale et les rapprocher du quittancement.",
+    "Apprécier la dette de restitution envers les locataires."
+   ],
+   "assertions": [
+    "compliance",
+    "valuation"
+   ],
+   "risksAddressed": [
+    "rentReceivables:compliance",
+    "laws:rentRevision"
+   ],
+   "hours": {
+    "senior": 6.5,
+    "assistant": 8
+   },
+   "phases": [
+    "final"
+   ],
+   "requires": [
+    {
+     "kind": "vintage",
+     "vintage": "draftLedger"
+    }
+   ],
+   "output": {
+    "kind": "recalc",
+    "tool": "rent-revision"
+   },
+   "completion": [
+    {
+     "kind": "recalc"
+    }
+   ],
+   "effectiveFor": [
+    "A17"
+   ]
+  },
+  {
    "id": "subledger-reconciliation",
    "cycle": "rentReceivables",
    "title": "Rapprochement de l’auxiliaire des locataires avec la comptabilité générale",
@@ -926,6 +970,51 @@
    "effectiveFor": [
     "A07.c",
     "A15"
+   ]
+  },
+  {
+   "id": "tenant-balances-test",
+   "cycle": "rentReceivables",
+   "title": "Test des soldes des comptes de locataires",
+   "objective": "Vérifier sur un échantillon l’existence et la valeur des créances sur les locataires à la clôture.",
+   "steps": [
+    "Sélectionner un échantillon de comptes de locataires débiteurs au 31/12/2025.",
+    "Rapprocher chaque solde des quittances, des encaissements postérieurs et du dossier de recouvrement.",
+    "Relever les créances éteintes ou effacées et les dossiers en procédure."
+   ],
+   "assertions": [
+    "occurrence",
+    "valuation"
+   ],
+   "risksAddressed": [
+    "rentReceivables:occurrence",
+    "rentReceivables:valuation"
+   ],
+   "hours": {
+    "senior": 6,
+    "assistant": 7.5,
+    "intern": 8.5
+   },
+   "phases": [
+    "final"
+   ],
+   "requires": [
+    {
+     "kind": "vintage",
+     "vintage": "draftLedger"
+    }
+   ],
+   "output": {
+    "kind": "sample",
+    "population": "tenant-receivables"
+   },
+   "completion": [
+    {
+     "kind": "sample"
+    }
+   ],
+   "effectiveFor": [
+    "A07.b"
    ]
   },
   {
@@ -2218,7 +2307,8 @@
    "objective": "Vérifier les charges à payer de fin d’exercice et leur justification.",
    "steps": [
     "Obtenir l’état des charges à payer.",
-    "Rapprocher les montants significatifs des engagements et des factures reçues."
+    "Rapprocher les montants significatifs des engagements et des factures reçues.",
+    "Recalculer au prorata temporis les charges des contrats et conventions courant sur l’exercice."
    ],
    "assertions": [
     "completeness",
@@ -2243,8 +2333,8 @@
     }
    ],
    "output": {
-    "kind": "view",
-    "screen": "/grand-livre"
+    "kind": "recalc",
+    "tool": "prorata"
    },
    "completion": [],
    "effectiveFor": [

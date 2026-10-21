@@ -9,7 +9,7 @@ import type { Params } from '../scenario/params';
 import { nextWorkingDay, type WorkCalendar } from './calendar';
 import { upcomingConfirmations } from './confirmations';
 import { upcomingProgram } from './program';
-import { upcomingRequests } from './requests';
+import { answeredRequests, upcomingRequests } from './requests';
 import { log, type GameState } from './state';
 import { vintageDates } from './vintages';
 
@@ -35,7 +35,9 @@ export function upcomingEvents(s: GameState, ctx: UpcomingContext): UpcomingEven
   const out: UpcomingEvent[] = [];
   for (const p of ctx.params.game.calendar) out.push({ date: p.from, kind: 'period', label: p.label });
   const v = vintageDates(ctx.params);
-  out.push({ date: v.interimDelivered, kind: 'data', label: `Remise de l’extraction comptable au ${formatDateFr(v.cutoff)} (à défaut de demande préalable)`, to: '/balance' });
+  // the extraction obtained on request is not handed over a second time
+  if (!answeredRequests(s.requests, ctx.params, ctx.date).has(ctx.params.game.dataVintages.interim.request))
+    out.push({ date: v.interimDelivered, kind: 'data', label: `Remise de l’extraction comptable au ${formatDateFr(v.cutoff)} (à défaut de demande préalable)`, to: '/balance' });
   out.push({ date: v.draftLedger, kind: 'data', label: 'Balance et FEC définitifs 2025', to: '/balance' });
   out.push({ date: v.draftStatements, kind: 'data', label: 'Projet d’états financiers et d’annexe 2025', to: '/etats' });
   out.push(...upcomingProgram(s.program, ctx), ...upcomingRequests(s.requests, ctx), ...upcomingConfirmations(s.confirmations, ctx));

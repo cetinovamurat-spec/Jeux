@@ -1,9 +1,11 @@
 /** Derived data shared by the work screen: calendar, scheduling, launch and completion contexts. */
 import { useMemo } from 'react';
-import { useGedDocuments } from '../ged/replies';
+import { useGedDocuments, useRequestDocDates } from '../ged/replies';
 import type { ScheduledTask, WorkCalendar } from '../../../game/calendar';
 import { workCalendar } from '../../../game/calendar';
 import { conditionContext } from '../../../game/conditions';
+import { confirmationCandidates, type ConfirmationPopulation } from '../../../game/confirmations';
+import { receivedRequests } from '../../../game/requests';
 import { procedureProgress, scheduleExecutions, type CompletionContext, type LaunchContext } from '../../../game/program';
 import { useCase } from '../../app/context';
 import { useGame } from '../../app/store';
@@ -13,6 +15,8 @@ export interface WorkContext {
   sched: Map<string, ScheduledTask>;
   launch: LaunchContext;
   completion: CompletionContext;
+  /** Population of a third party proposed for confirmation. */
+  populationOf: (thirdParty: string) => ConfirmationPopulation | undefined;
 }
 
 export function useWorkContext(): WorkContext {
@@ -20,7 +24,12 @@ export function useWorkContext(): WorkContext {
   const params = c.params;
   const game = useGame((s) => s.game);
   const docs = useGedDocuments().available;
+  const requestDocDates = useRequestDocDates();
   const cal = useMemo(() => workCalendar(params), [params]);
+  const populationOf = useMemo(() => {
+    const m = new Map(confirmationCandidates(params, c.datasets).map((x) => [x.thirdParty, x.population]));
+    return (thirdParty: string) => m.get(thirdParty);
+  }, [params, c.datasets]);
   return useMemo(() => {
     const date = game.clock.date;
     const available = new Set(docs.map((d) => d.id));
@@ -38,9 +47,12 @@ export function useWorkContext(): WorkContext {
         date,
         state: game,
         answered: base.answered,
+        received: receivedRequests(game.requests, params, date, requestDocDates),
         ...(c.view.statements2025 ? { annexTables: c.annex().current } : {}),
         availableDocs: docs.map((d) => ({ id: d.id, category: d.category })),
+        populationOf,
       },
+      populationOf,
     };
-  }, [c, params, game, docs, cal]);
+  }, [c, params, game, docs, cal, populationOf, requestDocDates]);
 }

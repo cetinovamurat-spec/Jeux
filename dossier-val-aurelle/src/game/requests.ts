@@ -106,6 +106,24 @@ export function answeredRequests(s: RequestsState, params: Params, date: IsoDate
 }
 
 /**
+ * Keys of the requests whose documents have reached the auditor at the date:
+ * answered, and at least one of the documents served (dated `docDates(key)`)
+ * arrived; a reply « pas encore établi » does not count. A key without any
+ * document counts once answered (generic reply).
+ */
+export function receivedRequests(s: RequestsState, params: Params, date: IsoDate, docDates?: RequestDocDates): ReadonlySet<string> {
+  const cal = workCalendar(params);
+  const out = new Set<string>();
+  for (const it of s.items) {
+    const key = requestKey(it.family, it.object);
+    if (out.has(key) || answerDate(params, cal, it) > date) continue;
+    const dates = docDates?.(key) ?? [];
+    if (dates.length === 0 || dates.some((d) => arrivalDate(params, cal, it, d) <= date)) out.add(key);
+  }
+  return out;
+}
+
+/**
  * Arrival of the reply to a request key for a document dated `docDate`
  * (earliest over the requests of that key), or null when it was never asked.
  */

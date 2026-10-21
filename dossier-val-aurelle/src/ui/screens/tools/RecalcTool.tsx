@@ -96,7 +96,7 @@ function AssumptionInput({ def, value, onChange, scope, id }: { def: AssumptionD
       );
     case 'choice':
       return (
-        <Select id={id} value={String(value)} onChange={(e) => onChange(e.target.value)}>
+        <Select id={id} value={String(value)} onChange={(e) => onChange(e.target.value)} className="w-full min-w-0 max-w-[22rem]">
           {def.choices?.map((ch) => (
             <option key={ch.id} value={ch.id}>
               {ch.label}
@@ -282,7 +282,7 @@ export function RecalcTool({ executionId, tool, cycle }: { executionId: string |
   };
 
   return (
-    <div className="space-y-3">
+    <div className="min-w-0 space-y-3">
       <p className="text-sm">
         <span className="font-medium">{TOOL_DEFS[tool].label}</span> <span className="text-muted">– {TOOL_DEFS[tool].description}</span>
       </p>

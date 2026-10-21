@@ -44,7 +44,13 @@ export function ToolForOutput({ executionId, output }: { executionId: string; ou
     case 'requests':
       return <RequestList requests={o.requests} />;
     case 'confirmations':
-      return <ConfirmationsPanel populations={populationsOfProcedure(c.params, execution?.procedureId)} idPrefix={`conf-${executionId}`} />;
+      return (
+        <ConfirmationsPanel
+          populations={populationsOfProcedure(c.params, execution?.procedureId)}
+          idPrefix={`conf-${executionId}`}
+          {...(execution ? { execution: { id: execution.id, by: execution.assignee } } : {})}
+        />
+      );
     case 'view':
       return (
         <p className="text-sm">

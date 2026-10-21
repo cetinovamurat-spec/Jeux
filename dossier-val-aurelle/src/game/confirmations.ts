@@ -9,7 +9,7 @@
  * the game state owned by J4c.
  */
 import { z } from 'zod';
-import { addBusinessDays, type IsoDate } from '../engine/dates';
+import type { IsoDate } from '../engine/dates';
 import type { Cents } from '../engine/money';
 import { outstandingAt } from '../engine/subledgers/loans';
 import type { LoanScheduleLine } from '../engine/types';
@@ -17,7 +17,7 @@ import type { ScenarioDatasets } from '../scenario/datasets';
 import { loadParams, type Params } from '../scenario/params';
 import type { UpcomingContext, UpcomingEvent } from './advance';
 import type { HoursCharge } from './budget';
-import type { MemberId } from './calendar';
+import { addWorkingDays, workCalendar, type MemberId, type WorkCalendar } from './calendar';
 
 export interface ConfirmationItem {
   /** Third party (id of the confirmation populations). */
@@ -25,6 +25,8 @@ export interface ConfirmationItem {
   preparedOn: IsoDate;
   /** Member who prepares the request (senior by default). */
   by?: MemberId;
+  /** Execution of the programme the request was prepared in (its time is then part of the procedure). */
+  executionId?: string;
   remindedOn?: IsoDate;
 }
 
@@ -37,7 +39,15 @@ export function initialConfirmations(): ConfirmationsState {
 }
 
 export const confirmationsSchema = z.object({
-  items: z.array(z.object({ thirdParty: z.string(), preparedOn: z.string(), by: z.enum(['senior', 'lea', 'hugo', 'sofia']).optional(), remindedOn: z.string().optional() })),
+  items: z.array(
+    z.object({
+      thirdParty: z.string(),
+      preparedOn: z.string(),
+      by: z.enum(['senior', 'lea', 'hugo', 'sofia']).optional(),
+      executionId: z.string().optional(),
+      remindedOn: z.string().optional(),
+    }),
+  ),
 });
 
 /** Date of the automatic sending of the confirmation requests (first day of the calendar period). */
@@ -74,6 +84,26 @@ export const POPULATION_ORDER: readonly ConfirmationPopulation[] = ['lenders', '
 export function populationsOfProcedure(params: Params, procedureId: string | null | undefined): readonly ConfirmationPopulation[] {
   const p = procedureId ? params.requests.confirmations.procedurePopulations[procedureId] : undefined;
   return p && p.length ? POPULATION_ORDER.filter((x) => p.includes(x)) : POPULATION_ORDER;
+}
+
+/**
+ * Requests of an execution of a confirmation procedure: those prepared in it,
+ * and those whose third party belongs to one of its populations
+ * (`populationOf`: population of a third party, from the candidates).
+ */
+export function confirmationsOfExecution(
+  items: readonly ConfirmationItem[],
+  params: Params,
+  executionId: string,
+  procedureId: string,
+  populationOf?: (thirdParty: string) => ConfirmationPopulation | undefined,
+): ConfirmationItem[] {
+  const pops = populationsOfProcedure(params, procedureId);
+  return items.filter((it) => {
+    if (it.executionId === executionId) return true;
+    const pop = populationOf?.(it.thirdParty);
+    return pop !== undefined && pops.includes(pop);
+  });
 }
 
 /** Cycle of the work programme a population of third parties belongs to (findings created from the tracker). */
@@ -161,17 +191,17 @@ export type ConfirmationState = 'prepared' | 'notSent' | 'sent' | 'replied' | 'n
  * Status at the date: prepared (before the sending), sent (awaiting the
  * reply), replied (reply arrived on `replyOn`), no reply (the reply date
  * passed, or the usual delay of the third parties for one that never
- * replies). `replyOn` is the date of the third party's letter, or null when
- * it never replies.
+ * replies, in working days of the game calendar). `replyOn` is the date of
+ * the third party's letter, or null when it never replies.
  */
-export function confirmationStatus(params: Params, item: ConfirmationItem, replyOn: IsoDate | null, date: IsoDate): ConfirmationState {
+export function confirmationStatus(params: Params, item: ConfirmationItem, replyOn: IsoDate | null, date: IsoDate, cal: WorkCalendar = workCalendar(params)): ConfirmationState {
   const sending = sendingDate(params);
   if (item.preparedOn >= sending) return 'notSent';
   if (date < sending) return 'prepared';
   if (replyOn && replyOn <= date) return 'replied';
   if (replyOn) return 'sent';
   const max = params.game.responseDelaysBusinessDays['thirdPartyMax'] ?? 15;
-  return date > addBusinessDays(sending, max) ? 'noReply' : 'sent';
+  return date > addWorkingDays(cal, sending, max) ? 'noReply' : 'sent';
 }
 
 // ---------------------------------------------------------------------------
@@ -188,10 +218,15 @@ function withJournal<S extends ConfirmationHost>(s: S, kind: string, ref: string
   return s.journal ? { ...s, journal: [...s.journal, { on: s.clock.date, kind, ref, data: { title } }] } : s;
 }
 
-/** Prepares the confirmation request of a third party (before the sending date only). */
-export function prepareConfirmation<S extends ConfirmationHost>(s: S, thirdParty: string, label: string, by: MemberId = 'senior', params: Params = loadParams()): S {
+/**
+ * Prepares the confirmation request of a third party (before the sending date
+ * only). Prepared in an execution of the programme, its time is part of the
+ * procedure's hours; prepared from the GED, it is charged on its own.
+ */
+export function prepareConfirmation<S extends ConfirmationHost>(s: S, thirdParty: string, label: string, by: MemberId = 'senior', params: Params = loadParams(), executionId?: string): S {
   if (!canPrepare(params, s.clock.date) || s.confirmations.items.some((it) => it.thirdParty === thirdParty)) return s;
-  const next: S = { ...s, confirmations: { items: [...s.confirmations.items, { thirdParty, preparedOn: s.clock.date, ...(by !== 'senior' ? { by } : {}) }] } };
+  const item: ConfirmationItem = { thirdParty, preparedOn: s.clock.date, ...(by !== 'senior' ? { by } : {}), ...(executionId !== undefined ? { executionId } : {}) };
+  const next: S = { ...s, confirmations: { items: [...s.confirmations.items, item] } };
   return withJournal(next, 'confirmation', thirdParty, `Demande de confirmation préparée – ${label}`);
 }
 
@@ -226,12 +261,12 @@ export function upcomingConfirmations(s: ConfirmationsState, ctx: UpcomingContex
   ];
 }
 
-/** Hours charged by the preparation of the confirmation requests and the reminders. */
+/** Hours charged by the preparation of the confirmation requests (outside a procedure) and the reminders. */
 export function hoursCharged(s: ConfirmationsState, params: Params): HoursCharge[] {
   const cfg = params.requests.confirmations;
   const out: HoursCharge[] = [];
   for (const it of s.items) {
-    out.push({ member: it.by ?? 'senior', hours: cfg.preparationHours, on: it.preparedOn });
+    if (it.executionId === undefined) out.push({ member: it.by ?? 'senior', hours: cfg.preparationHours, on: it.preparedOn });
     if (it.remindedOn) out.push({ member: 'senior', hours: cfg.reminderHours, on: it.remindedOn });
   }
   return out;

@@ -21,6 +21,7 @@ import {
   type ConfirmationPopulation,
   type ConfirmationState,
 } from '../../../game/confirmations';
+import type { MemberId } from '../../../game/calendar';
 import type { Tone } from '../../../game/state';
 import { useCase } from '../../app/context';
 import { useGame } from '../../app/store';
@@ -43,7 +44,13 @@ function useCandidates(populations: readonly ConfirmationPopulation[]): Confirma
   return useMemo(() => all.filter((x) => populations.includes(x.population)), [all, populations]);
 }
 
-function Preparation({ populations, idPrefix }: { populations: readonly ConfirmationPopulation[]; idPrefix: string }) {
+/** Execution of the programme the panel is opened in: the requests are prepared by its assignee, within its hours. */
+export interface PanelExecution {
+  id: string;
+  by: MemberId;
+}
+
+function Preparation({ populations, idPrefix, execution }: { populations: readonly ConfirmationPopulation[]; idPrefix: string; execution?: PanelExecution | undefined }) {
   const c = useCase();
   const params = c.params;
   const act = useGame((s) => s.act);
@@ -54,7 +61,9 @@ function Preparation({ populations, idPrefix }: { populations: readonly Confirma
   return (
     <div className="space-y-3">
       <p className="text-sm text-muted">
-        Les demandes préparées partent automatiquement le {formatDateFr(sendingDate(params))} ; après cette date, seules des procédures alternatives restent possibles. Chaque demande préparée coûte {formatHours(params.requests.confirmations.preparationHours)} h.
+        Les demandes préparées partent automatiquement le {formatDateFr(sendingDate(params))} ; après cette date, seules des procédures alternatives restent possibles. {execution
+          ? 'Le temps de préparation est compris dans les heures de la procédure.'
+          : `Chaque demande préparée coûte ${formatHours(params.requests.confirmations.preparationHours)} h.`}
       </p>
       <p className="text-sm" aria-live="polite">
         {plural(n, 'demande préparée', 'demandes préparées')} sur {plural(candidates.length, 'tiers proposé', 'tiers proposés')}
@@ -97,7 +106,7 @@ function Preparation({ populations, idPrefix }: { populations: readonly Confirma
                           id={id}
                           type="checkbox"
                           checked={on}
-                          onChange={(e) => act((s) => (e.target.checked ? prepareConfirmation(s, x.thirdParty, x.name, 'senior', params) : withdrawConfirmation(s, x.thirdParty, params)))}
+                          onChange={(e) => act((s) => (e.target.checked ? prepareConfirmation(s, x.thirdParty, x.name, execution?.by ?? 'senior', params, execution?.id) : withdrawConfirmation(s, x.thirdParty, params)))}
                           className="accent-[var(--accent)]"
                         />
                       </td>
@@ -213,8 +222,8 @@ function Tracker({ populations }: { populations: readonly ConfirmationPopulation
 }
 
 /** Confirmations of the given populations (all of them by default): preparation before the sending, tracker after it. */
-export function ConfirmationsPanel({ populations = POPULATION_ORDER, idPrefix = 'conf' }: { populations?: readonly ConfirmationPopulation[]; idPrefix?: string }) {
+export function ConfirmationsPanel({ populations = POPULATION_ORDER, idPrefix = 'conf', execution }: { populations?: readonly ConfirmationPopulation[]; idPrefix?: string; execution?: PanelExecution }) {
   const c = useCase();
   const date = useGame((s) => s.game.clock.date);
-  return <div className={cx('min-w-0')}>{canPrepare(c.params, date) ? <Preparation populations={populations} idPrefix={idPrefix} /> : <Tracker populations={populations} />}</div>;
+  return <div className={cx('min-w-0')}>{canPrepare(c.params, date) ? <Preparation populations={populations} idPrefix={idPrefix} execution={execution} /> : <Tracker populations={populations} />}</div>;
 }

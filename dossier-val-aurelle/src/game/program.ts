@@ -18,6 +18,7 @@ import type { CompletionCriterion, ProcedureDef, ProfileId } from '../scenario/s
 import type { UpcomingContext, UpcomingEvent } from './advance';
 import { hoursUsed, type HoursCharge } from './budget';
 import { nextOnSiteDay, periodIdAt, schedule, type MemberId, type ScheduledTask, type WorkCalendar } from './calendar';
+import { confirmationsOfExecution, type ConfirmationPopulation } from './confirmations';
 import { evaluateAll, type ConditionContext, type ProcedureProgress } from './conditions';
 import type { FindingsState } from './findings';
 import { recordGaugeEvent } from './gauges';
@@ -472,15 +473,29 @@ export function reviewExecution(s: GameState, executionId: string, status: 'acce
 // references, completion, form check
 // ---------------------------------------------------------------------------
 
-/** References produced by the work of an execution (derived, never stored). */
-export function derivedRefs(e: Execution, def: ProcedureDef, s: Pick<GameState, 'samples' | 'recalcs' | 'requests' | 'savedQueries' | 'documents' | 'confirmations'>): WorkRef[] {
+/**
+ * References produced by the work of an execution (derived, never stored).
+ * `populationOf` (population of a third party) restricts the confirmations to
+ * the procedure's populations; without it, only those prepared in the
+ * execution are referenced.
+ */
+export function derivedRefs(
+  e: Execution,
+  def: ProcedureDef,
+  s: Pick<GameState, 'samples' | 'recalcs' | 'requests' | 'savedQueries' | 'documents' | 'confirmations'>,
+  params?: Params,
+  populationOf?: (thirdParty: string) => ConfirmationPopulation | undefined,
+): WorkRef[] {
   const refs: WorkRef[] = [];
   for (const x of s.samples.items) if (x.executionId === e.id) refs.push({ kind: 'sample', id: x.id });
   for (const x of s.recalcs.items) if (x.executionId === e.id) refs.push({ kind: 'recalc', id: x.id });
   const o = def.output;
   if (o.kind === 'requests')
     for (const r of s.requests.items) if (o.requests.some((q) => q.family === r.family && (q.object ?? '') === r.object)) refs.push({ kind: 'request', id: r.id });
-  if (o.kind === 'confirmations') for (const c of s.confirmations.items) refs.push({ kind: 'confirmation', id: c.thirdParty });
+  if (o.kind === 'confirmations') {
+    const items = params ? confirmationsOfExecution(s.confirmations.items, params, e.id, def.id, populationOf) : s.confirmations.items.filter((c) => c.executionId === e.id);
+    for (const c of items) refs.push({ kind: 'confirmation', id: c.thirdParty });
+  }
   if (o.kind === 'view' && o.screen === '/fec') for (const q of s.savedQueries) if (q.createdOn >= e.launchedOn) refs.push({ kind: 'query', id: q.id });
   if (o.kind === 'view' && o.screen === '/ged')
     for (const [docId, d] of Object.entries(s.documents)) if (d.annotations.some((a) => a.createdOn >= e.launchedOn)) refs.push({ kind: 'doc', id: docId });
@@ -493,10 +508,14 @@ export interface CompletionContext {
   state: Pick<GameState, 'ticks' | 'savedQueries' | 'samples' | 'recalcs' | 'requests' | 'confirmations' | 'documents'>;
   /** Requests answered at the date. */
   answered: ReadonlySet<string>;
+  /** Requests whose documents have arrived at the date, when known (requests criterion; `answered` otherwise). */
+  received?: ReadonlySet<string>;
   /** Tables of the annex (cells of the annex ticking), when known. */
   annexTables?: readonly AnnexTableShape[];
   /** Documents available at the date (read criterion), when known. */
   availableDocs?: readonly { id: string; category: string }[];
+  /** Population of a third party proposed for confirmation, when known (confirmations criterion). */
+  populationOf?: (thirdParty: string) => ConfirmationPopulation | undefined;
 }
 
 export interface CompletionItem {
@@ -583,11 +602,12 @@ function criterionItem(c: CompletionCriterion, e: Execution, def: ProcedureDef, 
       return { label: 'Recalcul effectué dans la procédure', ok: st.recalcs.items.some((x) => x.executionId === e.id) };
     case 'requests': {
       const reqs = def.output.kind === 'requests' ? def.output.requests : [];
-      const n = reqs.filter((r) => ctx.answered.has(r.object ? `${r.family}:${r.object}` : r.family)).length;
+      const got = ctx.received ?? ctx.answered;
+      const n = reqs.filter((r) => got.has(r.object ? `${r.family}:${r.object}` : r.family)).length;
       return { label: `Pièces demandées reçues : ${n}/${reqs.length}`, ok: reqs.length > 0 && n === reqs.length };
     }
     case 'confirmations': {
-      const n = st.confirmations.items.length;
+      const n = confirmationsOfExecution(st.confirmations.items, ctx.params, e.id, def.id, ctx.populationOf).length;
       return { label: `Demandes de confirmation préparées : ${n} (au moins ${c.min})`, ok: n >= c.min };
     }
     case 'read': {
