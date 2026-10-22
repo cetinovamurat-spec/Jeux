@@ -57,7 +57,7 @@ import { ANOMALIES } from '../scenario/anomalies/modules';
 import { impactOfLines, type CorrectionKey, type Impact } from '../scenario/anomalies/presented';
 import type { AnomalyId, Classification, CreditBasis, PartKey, Treatment } from '../scenario/anomalies/types';
 import type { FalseLead } from '../scenario/documents/false-leads';
-import type { DocumentModel, FalseLeadId } from '../scenario/documents/model';
+import { baseDocumentId, type DocumentModel, type FalseLeadId } from '../scenario/documents/model';
 import type { Params } from '../scenario/params';
 import { findingAmount, linksProjectedSample, meaningfulLines, type Evidence, type Finding } from './findings';
 import type { GameState } from './state';
@@ -87,7 +87,8 @@ function same(a: Obj, b: Obj): boolean {
 }
 
 const acct = (id: string): Obj => ({ kind: 'account', id });
-const docObj = (id: string): Obj => ({ kind: 'document', id });
+/** A later version of a reply (`<id>~YYYY-MM-DD`) is the document it updates. */
+const docObj = (id: string): Obj => ({ kind: 'document', id: baseDocumentId(id) });
 
 function hasAny(pool: readonly Obj[], o: Obj): boolean {
   return pool.some((x) => same(x, o));
@@ -361,7 +362,7 @@ function profileOf(f: Finding, index: number, input: MatchInput): Profile {
     direct: uniq([...named, ...entryAccounts.map(acct)]),
     linked: uniq(linked),
     inferred: uniq(inferred),
-    evidenceDocs: new Set(f.evidence.flatMap((e) => (e.kind === 'doc' ? [e.docId] : []))),
+    evidenceDocs: new Set(f.evidence.flatMap((e) => (e.kind === 'doc' ? [baseDocumentId(e.docId)] : []))),
     measures,
     projectable: linksProjectedSample(f.evidence, input.state?.samples),
   };

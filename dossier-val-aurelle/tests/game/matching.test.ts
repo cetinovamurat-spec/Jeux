@@ -531,6 +531,20 @@ describe('false leads', () => {
   });
 });
 
+describe('versioned replies', () => {
+  it('evidence linked from a later version of a reply (`<id>~date`) counts as the document it updates', () => {
+    const versioned = (e: Evidence): Evidence => (e.kind === 'doc' && e.docId === 'factures-peupliers' ? { ...e, docId: 'factures-peupliers~2026-02-23' } : e);
+    const strip = ({ findingId: _id, ...m }: ReturnType<typeof only>) => m;
+    const base = [EXPERT['A06']![0]!, F({ cycle: 'fixedAssets', treatments: ['adjust'], entry: dc('61521', '2135', 378_000), evidence: [d('factures-peupliers')] })];
+    for (const f of base) {
+      const v = { ...f, id: `${f.id}-v`, evidence: f.evidence.map(versioned) };
+      expect(v.evidence).not.toEqual(f.evidence);
+      expect(strip(only(v))).toEqual(strip(only(f)));
+    }
+    expect(only({ ...base[0]!, evidence: base[0]!.evidence.map(versioned) })).toMatchObject({ outcome: 'matched', partIds: ['A06'], evidenceOk: true });
+  });
+});
+
 describe('negative cases', () => {
   it('catch-all finding: several programmes and evidence of several anomalies — nothing', () => {
     const f = F({ cycle: 'crossCycle', objects: [prog('TIL'), prog('CLF'), prog('PEU')], natures: ['valuation', 'occurrence'], treatments: ['adjust'], entry: dc('6758', '2131', 1_000_000), evidence: [d('pv-reception-tilleuls'), d('actes-clos-fleuri'), d('factures-peupliers')] });
