@@ -23,7 +23,7 @@ export function useWorkContext(): WorkContext {
   const c = useCase();
   const params = c.params;
   const game = useGame((s) => s.game);
-  const docs = useGedDocuments().available;
+  const { available: docs, byId } = useGedDocuments();
   const requestDocDates = useRequestDocDates();
   const confirmationRows = useConfirmationRows();
   const cal = useMemo(() => workCalendar(params), [params]);
@@ -37,7 +37,8 @@ export function useWorkContext(): WorkContext {
     const confirmationStates = new Map(confirmationRows.map((r) => [r.item.thirdParty, r.state]));
     const base = conditionContext(game, params, date, {
       isDocumentAvailable: (id) => available.has(id),
-      documentTitle: (id) => c.documentsById.get(id)?.title,
+      // the replies built on demand have their own title
+      documentTitle: (id) => byId(id)?.title,
       procedureProgress: procedureProgress(game.program, cal, date),
     });
     return {
@@ -57,5 +58,5 @@ export function useWorkContext(): WorkContext {
       },
       populationOf,
     };
-  }, [c, params, game, docs, cal, populationOf, requestDocDates, confirmationRows]);
+  }, [c, params, game, docs, byId, cal, populationOf, requestDocDates, confirmationRows]);
 }

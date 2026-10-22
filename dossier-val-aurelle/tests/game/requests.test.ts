@@ -62,6 +62,18 @@ describe('catalogue', () => {
     expect(requestObjects(p, ds, 'sale-notary').map((o) => o.id)).toContain('CLF');
     expect(requestObjects(p, ds, 'entry-voucher')).toEqual([]);
   });
+  it('never proposes the auditor’s firm, nor a tender file for purchases that no commission awards (statutory contributions, water, co-ownership charges, bank services)', () => {
+    const ds = world().world.datasets as unknown as ScenarioDatasets;
+    const firm = ds.thirdParties.find((t) => t.name === p.game.firmName)!;
+    expect(firm).toBeDefined();
+    for (const f of p.requests.families.filter((x) => x.parameter === 'thirdParty')) expect(requestObjects(p, ds, f.id).map((o) => o.id), f.id).not.toContain(firm.id);
+    const tender = requestObjects(p, ds, 'supplier-tender').map((o) => o.id);
+    // CGLLS and ANCOLS, the water distribution service, the bank, the syndic
+    for (const id of ['F0028', 'F0029', 'F0002', 'F0040', 'F0045']) expect(tender, id).not.toContain(id);
+    for (const id of ['F0022', 'F0026', 'F0030']) expect(tender, id).toContain(id);
+    // the agreements are still asked from every third party of the client
+    expect(requestObjects(p, ds, 'third-party-agreements').map((o) => o.id)).toEqual(expect.arrayContaining(['F0028', 'F0029', 'F0040', 'BANK1']));
+  });
   it('validates the objects, FEC entries by their public number', () => {
     const ds = world().world.datasets as unknown as ScenarioDatasets;
     expect(isValidObject(p, ds, 'programme-components', 'ERA')).toBe(true);

@@ -11,6 +11,7 @@ import type { RecalcToolId } from '../../../game/recalcs';
 import type { ProcedureOutput } from '../../../scenario/schemas/procedures';
 import { useCase } from '../../app/context';
 import { useGame } from '../../app/store';
+import { CATEGORY_LABELS } from '../ged/labels';
 import { ConfirmationsPanel } from './ConfirmationsPanel';
 import { RecalcTool } from './RecalcTool';
 import { RequestList } from './RequestControls';
@@ -51,16 +52,35 @@ export function ToolForOutput({ executionId, output }: { executionId: string; ou
           {...(execution ? { execution: { id: execution.id, by: execution.assignee } } : {})}
         />
       );
-    case 'view':
+    case 'view': {
+      // the GED opens filtered on the first category the procedure examines (the others through its links)
+      const categories = o.screen === '/ged' ? (o.categories ?? []) : [];
+      const link = 'text-accent underline-offset-2 hover:underline';
       return (
         <p className="text-sm">
           Travail sur l’écran{' '}
-          <Link to={o.screen} className="text-accent underline-offset-2 hover:underline">
+          <Link to={categories[0] ? `/ged?categorie=${categories[0]}` : o.screen} className={link}>
             {SCREEN_LABELS[o.screen] ?? o.screen}
-          </Link>{' '}
+          </Link>
+          {categories.length > 0 && (
+            <>
+              {' '}
+              ({categories.length > 1 ? 'catégories' : 'catégorie'}{' '}
+              {categories.map((cat, i) => (
+                <span key={cat}>
+                  {i > 0 && ', '}
+                  <Link to={`/ged?categorie=${cat}`} className={link}>
+                    {CATEGORY_LABELS[cat]}
+                  </Link>
+                </span>
+              ))}
+              )
+            </>
+          )}{' '}
           : les requêtes enregistrées, les cases pointées et les pièces annotées sont rattachées à la feuille.
         </p>
       );
+    }
     case 'memo':
       return <p className="text-sm text-muted">Note de travail du cabinet : rédigez la conclusion et citez les pièces examinées dans la feuille.</p>;
     default:

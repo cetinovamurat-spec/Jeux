@@ -6,7 +6,7 @@ import { managerReceivable } from '../../impairment';
 import { anomalyImpact } from '../../anomalies/presented';
 import { DocBuilder, ENTITY_HEADER, date, ofProg, euro, euro0, fromEuros, keuro, meuro, person, progName, pts, tpName, type DocContext } from '../context';
 import type { DocumentModel } from '../model';
-import { confirmationReplyDate, entryByNumber, fecNumbers, fillBankStatement, fillConfirmationReply, bankStatementTitle } from '../replies';
+import { confirmationReplyDate, confirmationReplyTitle, entryByNumber, fecNumbers, fillBankStatement, fillConfirmationReply, bankStatementTitle } from '../replies';
 
 export function correspondenceDocuments(c: DocContext): DocumentModel[] {
   const docs: DocumentModel[] = [];
@@ -158,7 +158,7 @@ export function correspondenceDocuments(c: DocContext): DocumentModel[] {
   // commercial banks and Action Logement: replies without difference (noise)
   for (const id of ['BANK1', 'BANK2', 'BANK3', 'AL']) {
     const name = tpName(c, id);
-    const b = new DocBuilder({ id: `confirmation-${id.toLowerCase()}`, title: `Réponse de ${name} à la demande de confirmation`, category: 'thirdParty', date: reply(id), issuer: name, recipient: auditor, noise: true, availability: confirmation(id) });
+    const b = new DocBuilder({ id: `confirmation-${id.toLowerCase()}`, title: confirmationReplyTitle(name), category: 'thirdParty', date: reply(id), issuer: name, recipient: auditor, noise: true, availability: confirmation(id) });
     fillConfirmationReply(b, c, id);
     b.sign(name, 'Service des engagements', reply(id));
     docs.push(b.build());
@@ -190,7 +190,7 @@ export function correspondenceDocuments(c: DocContext): DocumentModel[] {
     // the general contractor of the Tilleuls confirms its balance, claims the additional works and disputes the penalties (consistent with the lawyer)
     const t = sp.tilleuls;
     const name = tpName(c, 'F0022');
-    const b = new DocBuilder({ id: 'confirmation-bertin-lagarde', title: `Réponse de ${name} à la demande de confirmation`, category: 'thirdParty', date: reply('F0022'), issuer: name, recipient: auditor, availability: confirmation('F0022') });
+    const b = new DocBuilder({ id: 'confirmation-bertin-lagarde', title: confirmationReplyTitle(name), category: 'thirdParty', date: reply('F0022'), issuer: name, recipient: auditor, availability: confirmation('F0022') });
     fillConfirmationReply(b, c, 'F0022');
     const ka = b.clue('A16', 'thirdParty', `L’entreprise générale réclame en outre ${euro0(fromEuros(t.os7Euros))} au titre de l’ordre de service n° 7, non réglés et non repris dans le solde.`, ['A16.a']);
     const kb = b.clue('A16', 'thirdParty', `L’entreprise conteste les pénalités de retard (${euro0(fromEuros(t.penaltiesEuros))}) retenues sur le décompte général et a saisi le tribunal.`, ['A16.b']);
@@ -217,7 +217,7 @@ export function correspondenceDocuments(c: DocContext): DocumentModel[] {
     ];
     for (const [id, tp, text] of managers) {
       const name = tpName(c, tp);
-      const b = new DocBuilder({ id, title: `Réponse de ${name} à la demande de confirmation`, category: 'thirdParty', date: reply(tp), issuer: name, recipient: auditor, availability: confirmation(tp) });
+      const b = new DocBuilder({ id, title: confirmationReplyTitle(name), category: 'thirdParty', date: reply(tp), issuer: name, recipient: auditor, availability: confirmation(tp) });
       const k11 = b.clue('A11', 'thirdParty', 'Le gestionnaire déclare ne rien devoir à l’organisme au titre de frais de gestion.');
       b.p(text, k11);
       b.sign(name, 'Le président', reply(tp));
@@ -226,7 +226,7 @@ export function correspondenceDocuments(c: DocContext): DocumentModel[] {
   }
   {
     const adv = sp.sisterAdvance;
-    const b = new DocBuilder({ id: 'confirmation-csh', title: `Réponse de ${tpName(c, 'COTEAUX_SEREIN')} à la demande de confirmation`, category: 'thirdParty', date: reply('COTEAUX_SEREIN'), issuer: tpName(c, 'COTEAUX_SEREIN'), recipient: auditor, availability: confirmation('COTEAUX_SEREIN') });
+    const b = new DocBuilder({ id: 'confirmation-csh', title: confirmationReplyTitle(tpName(c, 'COTEAUX_SEREIN')), category: 'thirdParty', date: reply('COTEAUX_SEREIN'), issuer: tpName(c, 'COTEAUX_SEREIN'), recipient: auditor, availability: confirmation('COTEAUX_SEREIN') });
     const k = b.clue('A12', 'thirdParty', `L’ESH sœur confirme une avance de ${meuro(fromEuros(adv.euros), 1)} sans intérêt, mobilisable jusqu’à ${meuro(fromEuros(adv.ceilingEuros), 1)}.`, ['A12.i', 'A12.ii']);
     b.p(`Nous confirmons devoir à ${c.params.scenario.entity.name}, au 31/12/2025, une avance en compte courant de ${euro0(fromEuros(adv.euros))}, sans intérêt, consentie en application de la convention du ${date(adv.conventionDate)}, qui prévoit des tirages jusqu’à ${euro0(fromEuros(adv.ceilingEuros))}.`, k);
     b.sign(person(c, 'sisterCeo').name, person(c, 'sisterCeo').role, reply('COTEAUX_SEREIN'));

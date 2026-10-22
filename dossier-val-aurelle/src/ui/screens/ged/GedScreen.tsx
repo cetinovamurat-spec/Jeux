@@ -5,11 +5,14 @@
  * mail received during the engagement (« Courrier reçu », most recent first,
  * unread marked); the requests and confirmations (plan J4 §8, §9). The
  * replies built on demand (generic replies, « sans écart » confirmations) are
- * listed with the scenario documents. `?onglet=courrier|demandes` opens a tab.
+ * listed with the scenario documents. `?onglet=courrier|demandes` opens a tab;
+ * `?categorie=<id>` (links of the worksheets) opens the documents filtered on
+ * a category.
  */
 import { useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router';
 import { buildDocumentIndex, listDocuments, searchWords } from '../../../game/documents';
+import type { DocumentCategory } from '../../../scenario/documents/model';
 import { markRead, type GameState } from '../../../game/state';
 import { useCase } from '../../app/context';
 import { useDesigner } from '../../app/hooks';
@@ -19,7 +22,7 @@ import { DocumentList } from './DocumentList';
 import { DocumentViewer } from './DocumentViewer';
 import { useGedView } from './gedStore';
 import { InboxList } from './InboxList';
-import { GED_TABS, plural, type GedTab } from './labels';
+import { CATEGORY_LABELS, GED_TABS, plural, type GedTab } from './labels';
 import { useGedDocuments, useReceivedMail } from './replies';
 import { RequestsTab } from './RequestsTab';
 
@@ -67,6 +70,10 @@ function isTab(v: string | null): v is GedTab {
   return v !== null && (GED_TABS as readonly string[]).includes(v);
 }
 
+function isCategory(v: string | null): v is DocumentCategory {
+  return v !== null && Object.hasOwn(CATEGORY_LABELS, v);
+}
+
 export function GedScreen() {
   const { docId } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -78,13 +85,19 @@ export function GedScreen() {
   const act = useGame((s) => s.act);
   const view = useGedView();
   const urlTab = searchParams.get('onglet');
-  // a link to a document (no ?onglet=) shows the document, even if the requests tab was the last one used
-  const tab: GedTab = isTab(urlTab) ? urlTab : docId !== undefined && view.tab === 'demandes' ? 'documents' : view.tab;
+  const urlCategory = searchParams.get('categorie');
+  // a link to a document (no ?onglet=) shows the document, even if the requests tab was the last one used; a link to a category shows the documents
+  const tab: GedTab = isTab(urlTab) ? urlTab : isCategory(urlCategory) ? 'documents' : docId !== undefined && view.tab === 'demandes' ? 'documents' : view.tab;
   const [unreadOnly, setUnreadOnly] = useState(false);
   useEffect(() => {
-    if (isTab(urlTab) && urlTab !== view.tab) view.update({ tab: urlTab });
-    else if (!isTab(urlTab) && docId !== undefined && view.tab === 'demandes') view.update({ tab: 'documents' });
-  }, [urlTab, docId]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (isTab(urlTab)) {
+      if (urlTab !== view.tab) view.update({ tab: urlTab });
+    } else if (isCategory(urlCategory) ? view.tab !== 'documents' : docId !== undefined && view.tab === 'demandes') view.update({ tab: 'documents' });
+  }, [urlTab, docId, urlCategory]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    // '?categorie=<id>': the list filtered on that category (the player may change the filter afterwards)
+    if (isCategory(urlCategory) && urlCategory !== view.category) view.update({ category: urlCategory });
+  }, [urlCategory]); // eslint-disable-line react-hooks/exhaustive-deps
   const selectTab = (t: GedTab) => {
     view.update({ tab: t });
     setSearchParams(t === 'documents' ? {} : { onglet: t }, { replace: true });

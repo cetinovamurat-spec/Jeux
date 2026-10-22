@@ -157,11 +157,29 @@ export function operationDocuments(c: DocContext): DocumentModel[] {
     docs.push(b.build());
   }
   {
+    // the entity's own revision file: the rate applied, then average rents per programme (the auditor chooses his own sample of bills)
     const rev = c.params.regulatory.rentRevision.byYear['2025']!;
-    const sample = c.cd.leases.filter((l) => l.regulated && l.start < '2024-01-01' && (!l.end || l.end > '2025-02-28')).filter((_, i) => i % 997 === 0).slice(0, 10);
-    const b = new DocBuilder({ id: 'quittances-echantillon', title: 'Quittances de décembre 2024 et de janvier 2025 – échantillon de logements conventionnés', category: 'accounting', date: '2025-01-31', issuer: `${ENTITY_HEADER(c)} – gestion locative`, availability: { kind: 'onRequest', family: 'closing-file', object: 'rent-revision', from: 'rentManager' } });
+    const kept = c.cd.leases.filter((l) => l.regulated && l.start < '2024-01-01' && (!l.end || l.end > '2025-02-28'));
+    const byProg = new Map<string, { n: number; y2024: number; y2025: number }>();
+    for (const l of kept) {
+      const t = byProg.get(l.programmeId) ?? { n: 0, y2024: 0, y2025: 0 };
+      byProg.set(l.programmeId, { n: t.n + 1, y2024: t.y2024 + l.rent.y2024, y2025: t.y2025 + l.rent.y2025 });
+    }
+    const b = new DocBuilder({ id: 'quittances-echantillon', title: 'Révision des loyers au 1er janvier 2025 – logements conventionnés', category: 'accounting', date: '2025-01-31', issuer: `${ENTITY_HEADER(c)} – gestion locative`, availability: { kind: 'onRequest', family: 'closing-file', object: 'rent-revision', from: 'rentManager' } });
     const k = b.clue('A17', 'management', `Les loyers des logements conventionnés augmentent de ${pts(rev.votedByBoardPct ?? 0)} au 1er janvier 2025.`);
-    b.table(['Bail', 'Programme', 'Loyer décembre 2024', 'Loyer janvier 2025', 'Variation'], sample.map((l) => ({ cells: [l.id, progName(c, l.programmeId), euro(l.rent.y2024), euro(l.rent.y2025), pct(l.rent.y2025 / l.rent.y2024 - 1, 2)], clue: k })), { align: ['left', 'left', 'right', 'right', 'right'] });
+    b.fields([
+      ['Hausse appliquée aux loyers des logements conventionnés au 1er janvier 2025', pts(rev.votedByBoardPct ?? 0), k],
+      ['Baux en cours en décembre 2024 et en janvier 2025', String(kept.length)],
+    ]);
+    b.table(
+      ['Programme', 'Baux', 'Loyer moyen décembre 2024', 'Loyer moyen janvier 2025', 'Variation'],
+      [...byProg.entries()]
+        .sort((x, y) => progName(c, x[0]).localeCompare(progName(c, y[0]), 'fr'))
+        .map(([p, t]) => ({ cells: [progName(c, p), String(t.n), euro(Math.round(t.y2024 / t.n)), euro(Math.round(t.y2025 / t.n)), pct(t.y2025 / t.y2024 - 1, 2)] })),
+      { align: ['left', 'right', 'right', 'right', 'right'] },
+    );
+    b.p('Loyers principaux mensuels hors charges, tels qu’appelés par le logiciel de gestion locative avant et après la révision annuelle.');
+    b.sign(rent.name, rent.role);
     docs.push(b.build());
   }
 

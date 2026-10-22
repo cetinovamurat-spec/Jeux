@@ -110,6 +110,27 @@ describe('recalculations: access, sources, storage', () => {
     expect(hoursCharged(s1.recalcs, p)).toEqual([{ member: 'senior', hours: p.sampling.recalcHours, on: '2026-03-02' }]);
     expect(clientAssumptions(p, 'pge', 'pge')).toEqual({ planVersion: 'daf' });
   });
+
+  it('a percentage typed in the French format is the client’s value: « 2,4 » equals 2.4, no source needed', () => {
+    const fr = (x: number) => x.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 6, useGrouping: false });
+    let checked = 0;
+    for (const [tool, scope] of [['icne', 'all'], ['impairment', 'tenants'], ['impairment', 'managers'], ['rent-revision', 'all']] as const) {
+      const client = clientAssumptions(p, tool, scope);
+      for (const [k, v] of Object.entries(client)) {
+        if (typeof v !== 'number') continue;
+        const as = (value: string | number) => ({ ...Object.fromEntries(Object.entries(client).map(([id, x]) => [id, { value: x, source: null }])), [k]: { value, source: null } });
+        expect(fr(v), `${tool} ${k}`).toContain(',');
+        expect(unsourcedChanges(p, tool, scope, as(fr(v))), `${tool} ${k} ${fr(v)}`).toEqual([]);
+        expect(unsourcedChanges(p, tool, scope, as(` ${fr(v)} `)), `${tool} ${k}`).toEqual([]);
+        expect(unsourcedChanges(p, tool, scope, as(fr(v + 0.1))), `${tool} ${k}`).toEqual([k]);
+        expect(unsourcedChanges(p, tool, scope, as('abc')), `${tool} ${k}`).toEqual([k]);
+        checked++;
+      }
+    }
+    expect(checked).toBeGreaterThanOrEqual(5);
+    // « 2,4 » is 2.4
+    expect(unsourcedChanges({ ...p, anomalies: { ...p.anomalies, A08: { ...p.anomalies.A08, flatRatePct: 2.4 } } }, 'icne', 'all', { method: { value: 'flat', source: null }, flatRatePct: { value: '2,4', source: null } })).toEqual([]);
+  });
   it('the tools never read the fields that betray the key', () => {
     for (const f of ['src/game/recalcs.ts', 'src/game/samples.ts']) {
       const text = readFileSync(resolve(import.meta.dirname, '../..', f), 'utf8').replace(/\/\*\*[\s\S]*?\*\//g, '');

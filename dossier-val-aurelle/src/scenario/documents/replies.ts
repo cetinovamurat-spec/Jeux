@@ -53,13 +53,15 @@ function onRequest(family: string, object: string, from: Interlocutor): Availabi
   return { kind: 'onRequest', family, object, from };
 }
 
-/** « de » elided before a vowel or a mute h: « d’entretien des espaces verts », « de travaux ». */
+/** « de » elided before a vowel or a mute h: « d’entretien des espaces verts », « d’octobre 2025 », « de travaux ». */
 function de(text: string): string {
   return /^[aeiouyhàâäéèêëîïôöùûüœæ]/i.test(text) ? `d’${text}` : `de ${text}`;
 }
 
+type Article = 'le' | 'la' | 'l’' | 'les';
+
 /** First words of the names that take the definite article (institutions, and companies named by a common noun). */
-const DEFINITE: Readonly<Record<string, 'le' | 'la' | 'l’' | 'les'>> = {
+const DEFINITE: Readonly<Record<string, Article>> = {
   État: 'l’',
   Agence: 'l’',
   Association: 'l’',
@@ -78,7 +80,22 @@ const DEFINITE: Readonly<Record<string, 'le' | 'la' | 'l’' | 'les'>> = {
   GIE: 'le',
   Communes: 'les',
 };
-const OF_ARTICLE = { le: 'du ', la: 'de la ', 'l’': 'de l’', les: 'des ' } as const;
+const OF_ARTICLE: Readonly<Record<Article, string>> = { le: 'du ', la: 'de la ', 'l’': 'de l’', les: 'des ' };
+const TO_ARTICLE: Readonly<Record<Article, string>> = { le: 'au ', la: 'à la ', 'l’': 'à l’', les: 'aux ' };
+
+/**
+ * Article of a third party's name: its own leading article (« Les Jardiniers
+ * du Val » → les, « Jardiniers du Val »), the definite article of the
+ * institutions and of the companies named by a common noun, or none (proper
+ * names, persons, names opening with « L’ »).
+ */
+function articleOf(name: string): { article: Article; rest: string } | null {
+  const lead = /^(Les|Le|La) (.+)$/.exec(name);
+  if (lead) return { article: lead[1]!.toLowerCase() as Article, rest: lead[2]! };
+  if (/^L[’']/.test(name)) return null;
+  const article = DEFINITE[name.split(/[\s’']/)[0]!];
+  return article ? { article, rest: name } : null;
+}
 
 /**
  * « de » + name of a third party, with the article of the institutions and
@@ -86,11 +103,14 @@ const OF_ARTICLE = { le: 'du ', la: 'de la ', 'l’': 'de l’', les: 'des ' } a
  * communal…, des Jardiniers du Val, d’Énergies du Val, de Me Hélène Leclerc.
  */
 export function ofName(name: string): string {
-  const lead = /^(Les|Le|La) (.+)$/.exec(name);
-  if (lead) return `${OF_ARTICLE[lead[1]!.toLowerCase() as 'les' | 'le' | 'la']}${lead[2]}`;
-  if (/^L[’']/.test(name)) return `de ${name}`;
-  const article = DEFINITE[name.split(/[\s’']/)[0]!];
-  return article ? `${OF_ARTICLE[article]}${name}` : de(name);
+  const a = articleOf(name);
+  return a ? `${OF_ARTICLE[a.article]}${a.rest}` : de(name);
+}
+
+/** « à » + name of a third party, with the same articles: à l’État, au Département, aux Jardiniers du Val, à Bâti-Rénov Est. */
+export function toName(name: string): string {
+  const a = articleOf(name);
+  return a ? `${TO_ARTICLE[a.article]}${a.rest}` : `à ${name}`;
 }
 
 /** Title of a third party’s reply to a confirmation request; a name with an apposition (« Me X, notaire ») is closed by a comma. */
@@ -313,7 +333,7 @@ export function rentRollLeases(c: DocContext, pid: string, month: string): Lease
 
 export function rentRollTitle(c: DocContext, pid: string, month: string): string {
   const software = `${month}-01` >= c.params.scenario.users.migrationDate ? 'LOGIGES 2' : 'LOGIGES';
-  return `Quittancement de ${monthLabel(month)} – ${progName(c, pid)} (extrait ${software})`;
+  return `Quittancement ${de(monthLabel(month))} – ${progName(c, pid)} (extrait ${software})`;
 }
 
 export function fillRentRoll(b: DocBuilder, c: DocContext, pid: string, month: string, clueOf?: (l: Lease) => string | undefined): void {
@@ -438,7 +458,7 @@ export function bankRows(c: DocContext, month: string): BankRow[] {
 }
 
 export function bankStatementTitle(month: string): string {
-  return `Relevé bancaire de ${monthLabel(month)} – compte principal`;
+  return `Relevé bancaire ${de(monthLabel(month))} – compte principal`;
 }
 
 /**
@@ -593,19 +613,43 @@ const CATEGORY_LABELS: Readonly<Record<string, string>> = {
   espaces_verts: 'entretien des espaces verts',
   nettoyage: 'nettoyage des parties communes',
   contrats_entretien: 'entretien et maintenance des équipements techniques',
+  assurances: 'prestations d’assurance',
+  honoraires: 'prestations intellectuelles',
+  informatique: 'maintenance et hébergement des applications informatiques',
+  telecom: 'services de télécommunications',
+  annonces: 'insertion des annonces légales et des avis d’appel d’offres',
+  locations: 'location de véhicules et de copieurs',
+  fournitures: 'fournitures de bureau et petits équipements',
+  recouvrement_amiable: 'recouvrement amiable des créances d’ex-locataires',
+  actes_contentieux: 'actes et procédures de recouvrement contentieux',
+  autres_services: 'prestations de services',
 };
 
 /**
  * Purchase categories that no commission awards: statutory contributions of
- * the HLM bodies, co-ownership charges called by the syndic, bank services.
- * Their suppliers have no tender file, and their agreements no contractual
- * clause (nature only).
+ * the HLM bodies, water of the public distribution service, co-ownership
+ * charges called by the syndic, bank services. Their suppliers have no tender
+ * file, and their agreements no contractual clause (nature only).
  */
 export const NOT_AWARDED: Readonly<Record<string, string>> = {
-  cglls: 'Cotisation réglementaire due par les organismes d’habitations à loyer modéré, sans contrat',
+  cglls: 'Cotisation réglementaire des organismes de logement social, sans contrat',
+  eau: 'Abonnement au service public de distribution de l’eau, facturé au tarif du service',
   syndic: 'Charges de copropriété appelées par le syndic désigné par l’assemblée générale des copropriétaires',
   banque: 'Convention de compte et conditions tarifaires des services bancaires',
 };
+
+/** Purchase categories of building works (the other awarded categories are services). */
+const WORKS_CATEGORIES: ReadonlySet<string> = new Set(['investissement', 'entretien', 'gros_entretien', 'gros_entretien_pge']);
+/** Technical services of the buildings (operation, maintenance, cleaning). */
+const TECHNICAL_CATEGORIES: ReadonlySet<string> = new Set(['chauffage', 'electricite_pc', 'ascenseurs', 'espaces_verts', 'nettoyage', 'contrats_entretien']);
+
+/** Unsuccessful bidders of the trade, when the supplier has fewer than three competitors among the third parties. */
+function tenderFillers(category: string): readonly string[] {
+  if (WORKS_CATEGORIES.has(category)) return ['Groupe Habitat Services', 'Entreprise Duval Bâtiment', 'Rénovation Marnaise SAS'];
+  if (TECHNICAL_CATEGORIES.has(category)) return ['Groupe Habitat Services', 'Est Multiservices Immobiliers', 'Champagne Maintenance Technique'];
+  if (category === 'assurances') return ['Mutuelle Aurelloise d’Assurances', 'Garantie Habitat Assurances', 'Groupe Assurances Champenoises'];
+  return ['Prestaservices Champagne', 'Est Services Collectivités', 'Groupe Services Marne'];
+}
 
 const mainCategories = new WeakMap<readonly Invoice[], Map<string, string>>();
 
@@ -645,19 +689,18 @@ function supplierTender(c: DocContext, id: string, asOf: IsoDate): DocumentModel
   const first = c.pd.invoices.filter((i) => i.supplierId === id).map((i) => i.invoiceDate).sort()[0] ?? asOf;
   const award = addDays(first, -45);
   const rng = createRng(`tender:${id}`);
-  // never the auditor's own firm among the bidders
+  // competitors of the same trade, never the auditor's own firm
   const others = c.pd.thirdParties.filter((t) => t.kind === 'supplier' && t.id !== id && t.name !== c.params.game.firmName && supplierCategory(c, t.id) === cat).map((t) => t.name);
-  const fillers = ['Groupe Habitat Services', 'Entreprise Duval Bâtiment', 'Rénovation Marnaise SAS'];
   const bidders = [name, ...rng.shuffle(others).slice(0, 3)];
-  for (const f of fillers) if (bidders.length < 4 && !bidders.includes(f)) bidders.push(f);
+  for (const f of tenderFillers(cat)) if (bidders.length < 4 && !bidders.includes(f)) bidders.push(f);
   const factors = [1, ...[0, 1, 2].map(() => 1 + rng.uniform(0.03, 0.2))].sort((a, b) => a - b);
   const s = slug(name);
-  const b = new DocBuilder({ id: `marche-${s}`, title: `Rapport d’analyse des offres – marché ${de(CATEGORY_LABELS[cat] ?? 'prestations')} attribué à ${name}`, category: 'contracts', date: award, issuer: `${ENTITY_HEADER(c)} – commission d’appel d’offres`, availability: onRequest('supplier-tender', id, 'assetDirector') });
+  const b = new DocBuilder({ id: `marche-${s}`, title: `Rapport d’analyse des offres – marché ${de(CATEGORY_LABELS[cat] ?? 'prestations de services')} attribué ${toName(name)}`, category: 'contracts', date: award, issuer: `${ENTITY_HEADER(c)} – commission d’appel d’offres`, availability: onRequest('supplier-tender', id, 'assetDirector') });
   b.table(['Candidat', 'Offre (base annuelle)', 'Classement'], bidders.map((x, i) => [x, euro0(Math.round(base * factors[i]!)), String(i + 1)]), { align: ['left', 'right', 'right'] });
   b.p('La commission (directeur général, directrice administrative et financière, un administrateur) retient l’offre économiquement la plus avantageuse.');
   const ceo = person(c, 'ceo');
   b.sign(ceo.name, `${ceo.role}, président de la commission`, award);
-  const d = new DocBuilder({ id: `declarations-interets-${s}`, title: `Déclarations d’absence de conflit d’intérêts – commission d’appel d’offres (marché ${name})`, category: 'contracts', date: award, issuer: ENTITY_HEADER(c), availability: onRequest('supplier-tender', id, 'assetDirector') });
+  const d = new DocBuilder({ id: `declarations-interets-${s}`, title: `Déclarations d’absence de conflit d’intérêts – commission d’appel d’offres (marché attribué ${toName(name)})`, category: 'contracts', date: award, issuer: ENTITY_HEADER(c), availability: onRequest('supplier-tender', id, 'assetDirector') });
   d.p('Les membres de la commission déclarent n’avoir aucun lien de parenté ni intérêt personnel avec les candidats au marché.');
   d.sign(ceo.name, ceo.role, award);
   d.sign(person(c, 'cfo').name, person(c, 'cfo').role, award);
@@ -688,14 +731,19 @@ function saleNotary(c: DocContext, pid: string, asOf: IsoDate, update = false): 
 /**
  * Agreements in force with a third party, as known at `asOf` (date of the
  * request): loans signed, financing decisions and their receipts, sales
- * entrusted to the notary, invoicing of the year — up to that date, and up
- * to the year end once it is past.
+ * entrusted to the notary and deeds signed, invoicing of the year — up to
+ * that date, and up to the year end once it is past. Statutory
+ * contributions, public services, co-ownership charges and bank services
+ * state their nature only (no contractual clause); the lawyer's fee agreement
+ * has no notice period.
  */
 function agreements(c: DocContext, id: string, asOf: IsoDate): DocumentModel {
   const tp = thirdParty(c, id);
   const name = tpName(c, id);
   const at = asOf < YEAR_END ? asOf : YEAR_END;
-  const b = new DocBuilder({ id: `conventions-${slug(name)}`, title: `Conventions et contrats en vigueur – ${name}`, category: 'contracts', date: asOf, issuer: ENTITY_HEADER(c), recipient: name, availability: onRequest('third-party-agreements', id, 'cfo') });
+  // a name shared by two third parties (a bank lender and supplier, a funder and lender) keeps one document each
+  const shared = c.pd.thirdParties.some((t) => t.id !== id && t.name === name);
+  const b = new DocBuilder({ id: `conventions-${slug(name)}${shared ? `-${slug(id)}` : ''}`, title: `Conventions et contrats en vigueur – ${name}`, category: 'contracts', date: asOf, issuer: ENTITY_HEADER(c), recipient: name, availability: onRequest('third-party-agreements', id, 'cfo') });
   const kind = tp?.kind ?? 'other';
   if (kind === 'lender') {
     const loans = c.pd.loans.filter((l) => l.lenderId === id && l.startDate <= asOf);
@@ -709,9 +757,13 @@ function agreements(c: DocContext, id: string, asOf: IsoDate): DocumentModel {
     if (subs.length) b.table(['Décision', 'Programme', 'Montant accordé', `Versé au ${date(at)}`], subs.map((s) => [date(s.decisionDate), progName(c, s.programmeId), euro0(s.amount), euro0(s.receipts.filter((r) => r.date <= at).reduce((a, r) => a + r.amount, 0))]), { title: 'Décisions de financement', align: ['left', 'left', 'right', 'right'] });
     else b.p('Relations régies par les dispositions réglementaires générales ; aucune convention particulière de financement en cours.');
   } else if (kind === 'notary') {
+    // a sale is entrusted with its promise; the deeds signed after the request are not known yet
     const sales = c.pd.sales.filter((s) => s.notaryId === id && s.deedDate >= '2024-01-01' && s.promiseDate <= asOf);
     b.p('Lettre de mission pour la rédaction des actes de vente de logements aux locataires : honoraires à la charge des acquéreurs, versement du prix à l’organisme dans les jours suivant la signature des actes.');
-    b.fields([['Ventes confiées depuis 2024', String(sales.length)]]);
+    b.fields([
+      ['Ventes confiées depuis 2024', String(sales.length)],
+      [`dont actes signés au ${date(asOf)}`, String(sales.filter((s) => s.deedDate <= asOf).length)],
+    ]);
   } else {
     const known = c.pd.invoices.filter((i) => i.supplierId === id && i.invoiceDate <= at);
     const inv = known.filter((i) => i.invoiceDate.startsWith('2025'));
@@ -719,8 +771,11 @@ function agreements(c: DocContext, id: string, asOf: IsoDate): DocumentModel {
     const cat = supplierCategory(c, id);
     const nature = NOT_AWARDED[cat];
     if (nature) {
-      // statutory contributions, co-ownership charges, bank services: no contract of the entity, no contractual clause
+      // statutory contributions, public service, co-ownership charges, bank services: no contract of the entity, no contractual clause
       b.fields([['Nature', nature], invoiced]);
+    } else if (kind === 'lawyer') {
+      b.p('Convention d’honoraires : honoraires au temps passé, facturés à l’avancement des dossiers ; le dossier peut être retiré à l’avocat à tout moment, les diligences accomplies restant dues.');
+      b.fields([invoiced]);
     } else {
       const first = known.map((i) => i.invoiceDate).sort()[0];
       const terms = inv.length ? Math.round(inv.reduce((s, i) => s + (Date.parse(i.dueDate) - Date.parse(i.invoiceDate)) / 86_400_000, 0) / inv.length) : 30;
@@ -1047,7 +1102,7 @@ export function fillConfirmationReply(b: DocBuilder, c: DocContext, thirdPartyId
       return;
     case 'notary': {
       const held = c.pd.sales.filter((s) => s.notaryId === thirdPartyId && s.deedDate <= YEAR_END && s.paymentDate > YEAR_END).reduce((s, x) => s + x.price, 0);
-      b.p(held ? `Au 31/12/2025, nous détenions pour le compte de ${entity} la somme de ${euro0(held)}, versée depuis.` : `Au 31/12/2025, aucune somme n’était détenue ni due pour le compte de ${entity}.`);
+      b.p(held ? `Au 31/12/2025, nous détenions pour le compte ${ofName(entity)} la somme de ${euro0(held)}, versée depuis.` : `Au 31/12/2025, aucune somme n’était détenue ni due pour le compte ${ofName(entity)}.`);
       return;
     }
     case 'publicBody': {

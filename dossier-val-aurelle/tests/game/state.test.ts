@@ -1,5 +1,6 @@
 /** Game state actions, persistence and calendar (pure). */
 import { describe, expect, it } from 'vitest';
+import { hoursUsed } from '../../src/game/budget';
 import { periodAt } from '../../src/game/clock';
 import { EMPTY_QUERY } from '../../src/game/fec-query';
 import { cleanOrphans, deserialize, serialize } from '../../src/game/persistence';
@@ -18,6 +19,7 @@ import {
   toggleEvidence,
   updateTickMark,
   SCHEMA_VERSION,
+  type GameState,
 } from '../../src/game/state';
 import { loadParams } from '../../src/scenario/params';
 
@@ -123,6 +125,23 @@ describe('game state', () => {
     expect(r.state.planning.riskFactors).toEqual([]);
     // nothing left to clean: unchanged
     expect(cleanOrphans(r.state, params, known)).toEqual({ state: r.state, removed: [] });
+  });
+  it('the samples, recalculations and confirmations of a worksheet removed as an orphan stay, charged on their own', () => {
+    const params = loadParams();
+    const s0 = fresh();
+    const s: GameState = {
+      ...s0,
+      program: { planned: [], executions: [{ id: 'x2', procedureId: 'procedure-retiree', assignee: 'senior', hours: 4, launchedOn: '2025-11-03', conclusion: null, comment: '', refs: [], review: { status: 'pending' } }] },
+      samples: { items: [{ id: 'smp1', executionId: 'x2', population: 'maintenance-charges', method: 'random', seed: 's1', parameters: {}, items: [], drawnOn: '2025-11-03' }] },
+      recalcs: { items: [{ id: 'rc1', executionId: 'x2', tool: 'rent-revision', scope: 'all', assumptions: {}, summary: { computed: 0, recorded: 0 }, on: '2025-11-03' }] },
+      confirmations: { items: [{ thirdParty: 'BDT', preparedOn: '2025-11-03', executionId: 'x2' }] },
+    };
+    const r = cleanOrphans(s, params, () => true);
+    expect(r.state.program.executions).toEqual([]);
+    expect(r.state.samples.items.map((x) => x.executionId)).toEqual([null]);
+    expect(r.state.recalcs.items.map((x) => x.executionId)).toEqual([null]);
+    expect(r.state.confirmations.items).toEqual([{ thirdParty: 'BDT', preparedOn: '2025-11-03' }]);
+    expect(hoursUsed(r.state, params).team).toBe(params.sampling.drawHours + params.sampling.recalcHours + params.requests.confirmations.preparationHours);
   });
   it('restarts a J3 game (schema 1) at the beginning of the engagement, keeping settings, tick marks and saved queries', () => {
     const v1 = {

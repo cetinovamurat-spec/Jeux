@@ -213,6 +213,27 @@ describe('executions: launch, scheduling, delivery', () => {
     const started = launch(fresh(), 'board-minutes', 'senior');
     expect(cancelExecution(started, started.program.executions[0]!.id, cal)).toBe(started);
   });
+
+  it('the samples, recalculations and confirmations made in a cancelled execution stay, outside any procedure: their own hours are charged', () => {
+    let s = launch(fresh(), 'rent-controls', 'lea');
+    const id = s.program.executions[0]!.id;
+    const procedureHours = hoursUsed(s, params).team;
+    s = {
+      ...s,
+      samples: { items: [{ id: 'smp1', executionId: id, population: 'maintenance-charges', method: 'random', seed: 's1', parameters: {}, items: [], drawnOn: s.clock.date }] },
+      recalcs: { items: [{ id: 'rc1', executionId: id, tool: 'rent-revision', scope: 'all', assumptions: {}, summary: { computed: 0, recorded: 0 }, on: s.clock.date }] },
+    };
+    s = prepareConfirmation(s, 'BDT', 'Banque des Territoires', 'senior', params, id);
+    // within the procedure: part of its hours
+    expect(hoursUsed(s, params).team).toBe(procedureHours);
+    s = cancelExecution(s, id, cal, params);
+    expect(s.samples.items.map((x) => x.executionId)).toEqual([null]);
+    expect(s.recalcs.items.map((x) => x.executionId)).toEqual([null]);
+    expect(s.confirmations.items.map((x) => 'executionId' in x)).toEqual([false]);
+    const own = params.sampling.drawHours + params.sampling.recalcHours + params.requests.confirmations.preparationHours;
+    expect(own).toBeGreaterThan(0);
+    expect(hoursUsed(s, params).team).toBe(own);
+  });
 });
 
 describe('worksheets: documentation, completion, form check, review', () => {

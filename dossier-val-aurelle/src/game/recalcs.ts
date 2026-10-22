@@ -30,6 +30,7 @@ import { programmeLabel } from '../scenario/documents/request-labels';
 import { tenantAllowance, type ImpairmentMethod } from '../scenario/impairment';
 import type { Params } from '../scenario/params';
 import type { HoursCharge } from './budget';
+import { parseDecimal } from './ledger';
 
 export type RecalcToolId = 'depreciation' | 'icne' | 'impairment' | 'pge' | 'rent-revision' | 'prorata';
 export const RECALC_TOOLS: readonly RecalcToolId[] = ['depreciation', 'icne', 'impairment', 'pge', 'rent-revision', 'prorata'];
@@ -518,9 +519,26 @@ export function runRecalc(tool: RecalcToolId, scope: string, assumptions: Record
 export function unsourcedChanges(params: Params, tool: RecalcToolId, scope: string, assumptions: Record<string, { value: string | number; source: string | null }>): string[] {
   if (tool === 'prorata') return [];
   const client = clientAssumptions(params, tool, scope);
+  const defs = assumptionDefs(tool, scope);
   return Object.entries(assumptions)
-    .filter(([k, v]) => String(v.value) !== String(client[k] ?? '') && !v.source)
+    .filter(([k, v]) => !v.source && !sameAssumption(defs.find((d) => d.id === k), v.value, client[k] ?? ''))
     .map(([k]) => k);
+}
+
+/** Number typed in the French format (« 2,4 »), or null when the value is not a number. */
+function decimalOf(v: string | number): number | null {
+  if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+  const x = parseDecimal(v);
+  return x !== null && Number.isFinite(x) ? x : null;
+}
+
+/** Whether a value is the client's: percentages and amounts compare as numbers (« 2,4 » is the client's 2.4). */
+function sameAssumption(def: AssumptionDef | undefined, value: string | number, client: string | number): boolean {
+  if (def?.kind === 'percent' || def?.kind === 'amount') {
+    const [a, b] = [decimalOf(value), decimalOf(client)];
+    if (a !== null && b !== null) return a === b;
+  }
+  return String(value) === String(client);
 }
 
 // ---------------------------------------------------------------------------

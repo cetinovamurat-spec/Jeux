@@ -9,14 +9,16 @@ import { loadParams } from '../../scenario/params';
 
 const AUTOSAVE_KEY = 'val-aurelle:autosave';
 
-/** What happened to the saved game at load (shown once on the desk). */
-export type LoadNotice = 'restarted' | 'contentChanged' | null;
-let loadNotice: LoadNotice = null;
-export function takeLoadNotice(): LoadNotice {
-  const n = loadNotice;
-  loadNotice = null;
-  return n;
+/** What happened to the saved game at load (shown on the desk until closed). */
+export interface LoadNotice {
+  /** The save was in an older format: the engagement restarted. */
+  restarted: boolean;
+  /** The save was made with other content (generated world, content version or parameters). */
+  contentChanged: boolean;
+  /** References of the save the current content no longer knows, removed (French, one line per kind). */
+  removed: readonly string[];
 }
+let loadNotice: LoadNotice | null = null;
 
 function load(): GameState {
   const fresh = initialState(loadParams());
@@ -25,8 +27,8 @@ function load(): GameState {
     if (!text) return fresh;
     const r = deserialize(text, fresh);
     if (!r.ok) return fresh;
-    if (r.migratedFrom !== undefined) loadNotice = 'restarted';
-    else if (r.contentChanged) loadNotice = 'contentChanged';
+    if (r.migratedFrom !== undefined) loadNotice = { restarted: true, contentChanged: false, removed: [] };
+    else if (r.contentChanged) loadNotice = { restarted: false, contentChanged: true, removed: [] };
     return r.state;
   } catch {
     return fresh;
@@ -45,6 +47,19 @@ export const useGame = create<Store>((set) => ({
   act: (f) => set((st) => ({ game: f(st.game) })),
   reset: () => set({ game: initialState(loadParams()) }),
 }));
+
+/** Notice of the load (not saved): set by the load, completed by the cleaning of the orphan references (orphans.ts). */
+export const useLoadNotice = create<{ notice: LoadNotice | null }>(() => ({ notice: loadNotice }));
+
+export function dismissLoadNotice(): void {
+  useLoadNotice.setState({ notice: null });
+}
+
+/** Adds the references removed from the save to the notice (the content has changed). */
+export function reportRemovedReferences(lines: readonly string[]): void {
+  if (lines.length === 0) return;
+  useLoadNotice.setState(({ notice }) => ({ notice: { restarted: notice?.restarted ?? false, contentChanged: true, removed: [...(notice?.removed ?? []), ...lines] } }));
+}
 
 const AUTOSAVE_DELAY_MS = 400;
 let timer: ReturnType<typeof setTimeout> | null = null;

@@ -431,8 +431,29 @@ export function cancelExecution(s: GameState, executionId: string, cal: WorkCale
   if (!e) return s;
   const t = scheduleExecutions(s.program, cal).get(executionId);
   if (t && t.start !== null && t.start <= s.clock.date && t.end !== null) return s;
-  const next = withProgram(s, { ...s.program, executions: s.program.executions.filter((x) => x.id !== executionId) });
+  const next = detachExecutionWork(withProgram(s, { ...s.program, executions: s.program.executions.filter((x) => x.id !== executionId) }), executionId);
   return log({ ...next, gauges: withdrawExecution(next.gauges, executionId) }, 'execution', e.procedureId, { action: 'cancel', title: `« ${procTitle(params, e.procedureId)} » : lancement annulé` });
+}
+
+/**
+ * The samples, recalculations and confirmation requests made in the worksheet
+ * of a cancelled (or removed) execution stay, outside any procedure: their own
+ * hours are then charged (they were part of the procedure's hours).
+ */
+export function detachExecutionWork(s: GameState, executionId: string): GameState {
+  const samples = s.samples.items.some((x) => x.executionId === executionId) ? { ...s.samples, items: s.samples.items.map((x) => (x.executionId === executionId ? { ...x, executionId: null } : x)) } : s.samples;
+  const recalcs = s.recalcs.items.some((x) => x.executionId === executionId) ? { ...s.recalcs, items: s.recalcs.items.map((x) => (x.executionId === executionId ? { ...x, executionId: null } : x)) } : s.recalcs;
+  const confirmations = s.confirmations.items.some((x) => x.executionId === executionId)
+    ? {
+        ...s.confirmations,
+        items: s.confirmations.items.map((x): ConfirmationItem => {
+          if (x.executionId !== executionId) return x;
+          const { executionId: _cancelled, ...rest } = x;
+          return rest;
+        }),
+      }
+    : s.confirmations;
+  return samples === s.samples && recalcs === s.recalcs && confirmations === s.confirmations ? s : { ...s, samples, recalcs, confirmations };
 }
 
 function withExecution(s: GameState, id: string, f: (e: Execution) => Execution): GameState {

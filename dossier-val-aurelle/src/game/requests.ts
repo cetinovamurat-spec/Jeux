@@ -15,7 +15,7 @@ import { z } from 'zod';
 import { formatDateFr, type IsoDate } from '../engine/dates';
 import type { ScenarioDatasets } from '../scenario/datasets';
 import { requestKey } from '../scenario/documents/model';
-import { hasTenderFile } from '../scenario/documents/replies';
+import { hasTenderFile, ofName } from '../scenario/documents/replies';
 import { programmeLabel, requestLabel } from '../scenario/documents/request-labels';
 import { loadParams, type Params } from '../scenario/params';
 import type { RequestFamily } from '../scenario/schemas/requests';
@@ -407,7 +407,7 @@ export function upcomingRequests(s: RequestsState, ctx: UpcomingContext & { requ
     const who = ctx.params.documents.people[interlocutorOf(ctx.params, it.family, it.object)];
     if (due > ctx.date && !seen.has(`${key}|${due}`)) {
       seen.add(`${key}|${due}`);
-      out.push({ date: due, kind: 'answer', label: `Réponse attendue${who ? ` de ${who.name}` : ''} : ${label}`, to: '/ged?onglet=demandes' });
+      out.push({ date: due, kind: 'answer', label: `Réponse attendue${who ? ` ${ofName(who.name)}` : ''} : ${label}`, to: '/ged?onglet=demandes' });
     }
     for (const d of ctx.requestDocDates?.(key) ?? []) {
       const on = arrivalDate(ctx.params, ctx.cal, it, d);

@@ -23,6 +23,7 @@ import { CaseData } from './case';
 import { CaseProvider } from './context';
 import { DataGate } from './DataGate';
 import { useCaseLoader } from './dossier';
+import { cleanLoadedSave } from './orphans';
 import { DesignerOnly, NotFound, RootError, ScreenError } from './RouteStates';
 import { Shell } from './Shell';
 import { useGame } from './store';
@@ -110,6 +111,10 @@ export function App() {
     return () => window.removeEventListener('hashchange', onHashChange);
   }, [act]);
   const data = useMemo(() => (state.status === 'ready' ? new CaseData(state.payload, loadParams()) : null), [state]);
+  useEffect(() => {
+    // references of the save the current content no longer knows (listed on the desk)
+    if (data) cleanLoadedSave(data);
+  }, [data]);
   if (state.status === 'error')
     return (
       <div role="alert" className="p-8 text-ko">

@@ -2,14 +2,13 @@
  * Bureau (route '/'): home of the senior auditor — partner's welcome message,
  * engagement card, agenda, gauges, team and budget, activity, shortcuts.
  */
-import { useState } from 'react';
 import { Link } from 'react-router';
 import { formatDateFr } from '../../../engine/dates';
 import { vintageDates } from '../../../game/vintages';
 import { useCase } from '../../app/context';
 import { useDesigner } from '../../app/hooks';
 import { NAV } from '../../app/routes';
-import { takeLoadNotice, useGame } from '../../app/store';
+import { dismissLoadNotice, useGame, useLoadNotice } from '../../app/store';
 import { Badge, Button, Card, Kbd, PageHeader } from '../../components/ui';
 import { ActivityCard } from './ActivityCard';
 import { AgendaCard } from './AgendaCard';
@@ -206,19 +205,31 @@ export function DeskScreen() {
   const c = useCase();
   const designer = useDesigner();
   const { entity, years } = c.params.scenario;
-  const [notice, setNotice] = useState(() => takeLoadNotice());
+  const notice = useLoadNotice((s) => s.notice);
 
   return (
     <div className="@container">
       <PageHeader title="Bureau" description={`${entity.name} – commissariat aux comptes, exercice clos le ${formatDateFr(`${years.current}-12-31`)}`} />
       {notice && (
         <div role="status" className="mb-4 flex items-start gap-3 rounded-lg border border-warn/40 bg-warn/10 px-4 py-2 text-sm">
-          <p className="flex-1">
-            {notice === 'restarted'
-              ? 'Votre partie précédente a été enregistrée dans un format antérieur : la mission reprend au début de la planification. Vos réglages, vos marques de pointage et vos requêtes enregistrées sont conservés.'
-              : 'Le dossier a changé depuis votre dernière sauvegarde : certaines références de vos travaux peuvent ne plus exister.'}
-          </p>
-          <Button variant="ghost" className="px-1.5 py-0 text-xs" onClick={() => setNotice(null)}>
+          <div className="flex-1">
+            {notice.restarted && <p>Votre partie précédente a été enregistrée dans un format antérieur : la mission reprend au début de la planification. Vos réglages, vos marques de pointage et vos requêtes enregistrées sont conservés.</p>}
+            {notice.contentChanged && (
+              <p className={notice.restarted ? 'mt-1' : undefined}>
+                {notice.removed.length > 0
+                  ? 'Le dossier a changé depuis votre dernière sauvegarde : les références de vos travaux qui n’existent plus ont été retirées.'
+                  : 'Le dossier a changé depuis votre dernière sauvegarde : vos travaux ne contenaient aucune référence devenue sans objet.'}
+              </p>
+            )}
+            {notice.removed.length > 0 && (
+              <ul className="mt-1 list-disc pl-5">
+                {notice.removed.map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <Button variant="ghost" className="px-1.5 py-0 text-xs" onClick={dismissLoadNotice}>
             Fermer
           </Button>
         </div>

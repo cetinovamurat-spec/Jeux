@@ -7,11 +7,15 @@
  * date, a scenario object is answered like its neighbours (date, issuer,
  * number and shape of the documents, content as of the request; clues only
  * tagged) and its pieces established later are never listed; the
+ * agreements of a third party are established as of the request, and the
+ * bodies whose purchases are not awarded have neither tender file nor
+ * contractual clause; the closing-file catalogue names no anomaly file and
+ * mostly answers with transmittals; the titles are correct French; the
  * confirmation replies are split by third party and the silent third party
  * never replies.
  */
 import { describe, expect, it } from 'vitest';
-import { formatDateFr as date } from '../../src/engine/dates';
+import { formatDateFr as date, type IsoDate } from '../../src/engine/dates';
 import { addWorkingDays, workCalendar } from '../../src/game/calendar';
 import { confirmationCandidates } from '../../src/game/confirmations';
 import { delayDays, interlocutorOf, requestObjects } from '../../src/game/requests';
@@ -31,7 +35,8 @@ import {
   scenarioConfirmations,
   scenarioRequestKeys,
 } from '../../src/scenario/documents';
-import { CLOSING_TRANSMITTALS, fecNumbers } from '../../src/scenario/documents/replies';
+import { bankStatementTitle, CLOSING_TRANSMITTALS, confirmationReplyTitle, fecNumbers, hasTenderFile, NOT_AWARDED, ofName, rentRollTitle, toName } from '../../src/scenario/documents/replies';
+import { euro, euro0 } from '../../src/scenario/documents/context';
 import type { Block, DocumentModel } from '../../src/scenario/documents/model';
 import { correctionKey, documents } from '../helpers/scenario';
 import { params, world } from '../helpers/world';
@@ -46,6 +51,9 @@ const FINAL_END = p.game.calendar.find((x) => x.id === 'final')!.to;
 const byKey = scenarioRequestKeys(set.documents);
 const numbers2025 = new Set(fecNumbers(key.presented.world.ledgers.current).values());
 const numbers2024 = new Set(fecNumbers(key.presented.world.ledgers.prior).values());
+
+/** « de » or « à » not contracted before an article, « de » not elided before a vowel or a mute h. */
+const BAD_FRENCH = /(?:^|\s)(?:de|à) (?:le|les) |(?:^|\s)de [aeiouyhàâäéèêëîïôöùûüœæ]/i;
 
 function validObject(family: string, object: string): boolean {
   const f = p.requests.families.find((x) => x.id === family);
@@ -184,6 +192,17 @@ describe('generic replies', () => {
       }
     expect(n).toBeGreaterThan(40);
   });
+  it('their titles are written in correct French: « de » and « à » elided or contracted before a name or a month', () => {
+    const titles = [...generic, ...updated].flatMap((g) => g.docs.map((d) => d.title));
+    for (const m of ['2025-04', '2025-08', '2025-10', '2025-12']) titles.push(...genericReplies(ctx, 'programme-rent-roll', `LIL:${m}`, '2025-11-18').map((d) => d.title), ...genericReplies(ctx, 'bank-statements', m, '2025-11-18').map((d) => d.title));
+    for (const t of titles) expect(t).not.toMatch(BAD_FRENCH);
+    expect(bankStatementTitle('2025-10')).toBe('Relevé bancaire d’octobre 2025 – compte principal');
+    expect(rentRollTitle(ctx, 'LIL', '2025-08')).toMatch(/^Quittancement d’août 2025 – /);
+    expect(rentRollTitle(ctx, 'LIL', '2025-12')).toMatch(/^Quittancement de décembre 2025 – /);
+    // the tender reports of the trades whose label opens with a vowel, and of the names with an article
+    expect(titles.some((t) => /^Rapport d’analyse des offres – marché d’entretien des espaces verts attribué aux Jardiniers du Val$/.test(t))).toBe(true);
+    expect(titles.some((t) => /^Rapport d’analyse des offres – marché de prestations d’assurance attribué à la Mutuelle Assurance des Bailleurs$/.test(t))).toBe(true);
+  });
   it('the scenario documents of the families of fixed dates look like their neighbours (same title pattern)', () => {
     const cfl = byKey.get('programme-rent-roll:CLF:2025-12')![0]!.title.replace(/ – .*$/, '');
     expect(genericReplies(ctx, 'programme-rent-roll', 'LIL:2025-12', '2025-11-18')[0]!.title.replace(/ – .*$/, '')).toBe(cfl);
@@ -290,6 +309,117 @@ describe('scenario objects of the families answered as of the request date (plan
   });
 });
 
+describe('agreements and tender files of a third party (generic replies)', () => {
+  const ASKED = '2025-11-17';
+  const FINAL = p.game.calendar.find((x) => x.id === 'final')!.from;
+  const YEAR_END = '2025-12-31';
+  const agreementsOf = (id: string, asOf: IsoDate) => genericReplies(ctx, 'third-party-agreements', id, asOf)[0]!;
+  const fieldsOf = (d: DocumentModel) => new Map(d.blocks.flatMap((b) => (b.kind === 'fields' ? b.rows.map((r) => [r.label, r.value] as const) : [])));
+  const tableOf = (d: DocumentModel) => d.blocks.find((b): b is Extract<Block, { kind: 'table' }> => b.kind === 'table')!;
+  const datesIn = (d: DocumentModel) => [...JSON.stringify(d.blocks).matchAll(/(\d{2})\/(\d{2})\/(\d{4})/g)].map((m) => `${m[3]}-${m[2]}-${m[1]}`);
+  const genericAgreements = requestObjects(p, ds, 'third-party-agreements').filter((o) => !byKey.has(requestKey('third-party-agreements', o.id)));
+
+  it('a funder’s agreements show the decisions and receipts known on the request date (up to the year end)', () => {
+    // a receipt of the Région falls between the request and the year end: the test bites
+    expect(ds.subsidies.some((s) => s.grantorId === 'REGION' && s.receipts.some((r) => r.date > ASKED && r.date <= YEAR_END))).toBe(true);
+    for (const [asOf, at] of [[ASKED, ASKED], [FINAL, YEAR_END]] as const) {
+      const t = tableOf(agreementsOf('REGION', asOf));
+      expect(t.columns[3], asOf).toBe(`Versé au ${date(at)}`);
+      const subs = ds.subsidies.filter((s) => s.grantorId === 'REGION' && s.decisionDate <= asOf);
+      expect(t.rows.map((r) => r.cells[3]), asOf).toEqual(subs.map((s) => euro0(s.receipts.filter((r) => r.date <= at).reduce((a, r) => a + r.amount, 0))));
+    }
+  });
+  it('a supplier’s agreements show the invoicing of 2025 known on the request date', () => {
+    const of2025 = ds.invoices.filter((i) => i.supplierId === 'F0022' && i.invoiceDate.startsWith('2025'));
+    const known = of2025.filter((i) => i.invoiceDate <= ASKED);
+    expect(known.length).toBeLessThan(of2025.length);
+    expect(fieldsOf(agreementsOf('F0022', ASKED)).get(`Facturation 2025 (au ${date(ASKED)})`)).toBe(`${known.length} factures – ${euro(known.reduce((s, i) => s + i.total, 0))}`);
+    expect(fieldsOf(agreementsOf('F0022', FINAL)).get(`Facturation 2025 (au ${date(YEAR_END)})`)).toBe(`${of2025.length} factures – ${euro(of2025.reduce((s, i) => s + i.total, 0))}`);
+  });
+  it('a notary’s agreements count the sales whose promise is signed and the deeds signed by the request date', () => {
+    const sales = (asOf: IsoDate) => ds.sales.filter((s) => s.notaryId === 'NOTAIRE_GIRARD' && s.deedDate >= '2024-01-01' && s.promiseDate <= asOf);
+    // the promises of December (Le Clos Fleuri) are not known in November
+    expect(sales(ASKED).length).toBeLessThan(sales(FINAL).length);
+    for (const asOf of [ASKED, FINAL]) {
+      const f = fieldsOf(agreementsOf('NOTAIRE_GIRARD', asOf));
+      expect(f.get('Ventes confiées depuis 2024'), asOf).toBe(String(sales(asOf).length));
+      expect(f.get(`dont actes signés au ${date(asOf)}`), asOf).toBe(String(sales(asOf).filter((s) => s.deedDate <= asOf).length));
+    }
+  });
+  it('no agreement mentions a date after the request; each third party has its own document', () => {
+    expect(genericAgreements.length).toBeGreaterThan(50);
+    const ids = new Set<string>();
+    for (const o of genericAgreements) {
+      const d = agreementsOf(o.id, ASKED);
+      expect(d.date).toBe(ASKED);
+      for (const x of datesIn(d)) expect(x <= ASKED, `${d.id} : ${x}`).toBe(true);
+      expect(ids.has(d.id), d.id).toBe(false);
+      ids.add(d.id);
+    }
+  });
+  it('statutory contributions, public services, co-ownership charges and bank services have no contractual clause; the lawyer’s fee agreement no notice period', () => {
+    const clause = /résiliation|préavis|révision annuelle des prix/i;
+    for (const id of ['F0028', 'F0029', 'F0002', 'F0040', 'F0045']) {
+      const d = agreementsOf(id, FINAL);
+      expect(Object.values(NOT_AWARDED), id).toContain(fieldsOf(d).get('Nature'));
+      expect(JSON.stringify(d.blocks), id).not.toMatch(clause);
+    }
+    expect(fieldsOf(agreementsOf('F0028', FINAL)).get('Nature')).toBe(NOT_AWARDED['cglls']);
+    expect(JSON.stringify(agreementsOf('F0033', FINAL).blocks)).not.toMatch(clause);
+    // an ordinary supplier keeps its contract
+    expect(JSON.stringify(agreementsOf('F0005', FINAL).blocks)).toMatch(clause);
+  });
+  it('a tender file ranks bidders of the trade, never the auditor’s firm nor a body whose purchases are not awarded', () => {
+    const tenders = requestObjects(p, ds, 'supplier-tender').filter((o) => !byKey.has(requestKey('supplier-tender', o.id)));
+    expect(tenders.length).toBeGreaterThan(30);
+    for (const o of tenders) {
+      const [report] = genericReplies(ctx, 'supplier-tender', o.id, ASKED);
+      const bidders = tableOf(report!).rows.map((r) => r.cells[0]!);
+      expect(bidders[0], o.id).toBe(o.label);
+      expect(new Set(bidders).size, o.id).toBe(4);
+      expect(bidders, o.id).not.toContain(p.game.firmName);
+      for (const b of bidders) {
+        const tp = ds.thirdParties.find((t) => t.name === b && t.kind === 'supplier');
+        if (tp) expect(hasTenderFile(ds.invoices, tp.id), `${o.id} → ${b}`).toBe(true);
+      }
+    }
+    // no building company bids for the insurance
+    expect(JSON.stringify(genericReplies(ctx, 'supplier-tender', 'F0026', ASKED)[0]!.blocks)).not.toMatch(/Bâtiment|Rénovation/);
+  });
+});
+
+describe('closing-file catalogue (plan J4 §8 and §10)', () => {
+  const objects = p.requests.families.find((x) => x.id === 'closing-file')!.objects!;
+  const START = p.game.startDate;
+
+  it('one neutral label per type of file: no list of contents, no period, no sample, no subject of an anomaly', () => {
+    const months = /janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre/i;
+    const subjects = /gardien|surendettement|prestataire|réclamation|quittances?\b|statistique|anru|avenant|arrêté|caducité|financeur|groupe|conseil|échéance|échantillon|reprise|locataires partis|ex-locataire/i;
+    expect(new Set(objects.map((o) => o.label)).size).toBe(objects.length);
+    for (const o of objects) {
+      expect(o.label, o.id).not.toMatch(/[():;]/);
+      expect(o.label, o.id).not.toMatch(months);
+      expect(o.label, o.id).not.toMatch(subjects);
+    }
+  });
+  it('the files that hold pieces of the scenario are a minority; every other one is answered by a transmittal without clue', () => {
+    const scenario = objects.filter((o) => byKey.has(requestKey('closing-file', o.id)));
+    expect(scenario.length * 2).toBeLessThan(objects.length);
+    for (const o of objects.filter((x) => !scenario.includes(x))) {
+      const docs = answer('closing-file', o.id, START);
+      expect(docs.length, o.id).toBeGreaterThan(0);
+      expect(docs.flatMap((d) => d.clues), o.id).toEqual([]);
+      expect(docs.map((d) => d.title).join(), o.id).toContain(o.label);
+    }
+  });
+  it('the rent sample is the auditor’s: the rent rolls of December 2024 and January 2025 can be asked for every programme', () => {
+    const rolls = requestObjects(p, ds, 'programme-rent-roll').map((o) => o.id);
+    const programmes = [...new Set(rolls.map((id) => id.split(':')[0]!))];
+    expect(programmes.length).toBeGreaterThan(20);
+    for (const pid of programmes) expect(rolls, pid).toEqual(expect.arrayContaining([`${pid}:2024-12`, `${pid}:2025-01`]));
+  });
+});
+
 describe('confirmations', () => {
   const replies = scenarioConfirmations(set.documents);
   const candidates = confirmationCandidates(p, ds);
@@ -316,6 +446,33 @@ describe('confirmations', () => {
       expect(JSON.stringify(r), c.thirdParty).not.toMatch(/NaN|undefined|Infinity/);
       expect(r.date > p.documents.calendar['confirmationsSent']!, c.thirdParty).toBe(true);
     }
+  });
+  it('the generic replies are titled in correct French: de l’État, du Département, d’Énergies du Val, de Me X, notaire,', () => {
+    expect(ofName('État')).toBe('de l’État');
+    expect(ofName('Région')).toBe('de la Région');
+    expect(ofName('Département')).toBe('du Département');
+    expect(ofName('Communes du territoire')).toBe('des Communes du territoire');
+    expect(ofName('Centre communal d’action sociale')).toBe('du Centre communal d’action sociale');
+    expect(ofName('Association Habitat & Insertion')).toBe('de l’Association Habitat & Insertion');
+    expect(ofName('Action Logement Services')).toBe('d’Action Logement Services');
+    expect(ofName('Énergies du Val')).toBe('d’Énergies du Val');
+    expect(ofName('Les Jardiniers du Val')).toBe('des Jardiniers du Val');
+    expect(ofName('Le Courrier de la Marne')).toBe('du Courrier de la Marne');
+    expect(ofName('Bâti-Rénov Est')).toBe('de Bâti-Rénov Est');
+    expect(toName('État')).toBe('à l’État');
+    expect(toName('Le Courrier de la Marne')).toBe('au Courrier de la Marne');
+    expect(toName('Les Jardiniers du Val')).toBe('aux Jardiniers du Val');
+    expect(toName('Mutuelle Assurance des Bailleurs')).toBe('à la Mutuelle Assurance des Bailleurs');
+    expect(toName('Bâti-Rénov Est')).toBe('à Bâti-Rénov Est');
+    expect(confirmationReplyTitle('Me Hélène Leclerc, notaire')).toBe('Réponse de Me Hélène Leclerc, notaire, à la demande de confirmation');
+    let n = 0;
+    for (const c of candidates) {
+      const r = replies.has(c.thirdParty) ? null : genericConfirmationReply(ctx, c.thirdParty);
+      if (!r) continue;
+      expect(r.title, c.thirdParty).not.toMatch(BAD_FRENCH);
+      n++;
+    }
+    expect(n).toBeGreaterThan(5);
   });
   it('no document says that a reminder had no effect (the reminder is a player action)', () => {
     for (const d of set.documents) expect(JSON.stringify(d), d.id).not.toMatch(/sans effet/i);

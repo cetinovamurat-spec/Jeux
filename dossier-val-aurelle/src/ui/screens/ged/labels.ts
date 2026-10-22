@@ -4,6 +4,7 @@ import type { DocumentSort, DocumentStatusFilter } from '../../../game/documents
 import type { ClueSource } from '../../../scenario/documents';
 import type { Availability, DocumentCategory } from '../../../scenario/documents/model';
 import type { Params } from '../../../scenario/params';
+import { ofName } from '../../../scenario/documents/replies';
 
 export const CATEGORY_ORDER: readonly DocumentCategory[] = ['permanent', 'governance', 'accounting', 'contracts', 'mail', 'internal', 'thirdParty'];
 
@@ -65,7 +66,7 @@ export function availabilityText(a: Availability, docDate: string, params: Param
       return `Reçu en cours de mission, disponible à partir du ${formatDateFr(a.from)}.`;
     case 'onRequest': {
       const p = params.documents.people[a.from];
-      const what = `« ${a.request} »${p ? `, auprès de ${p.name} (${p.role})` : ''}`;
+      const what = `« ${a.request} »${p ? `, auprès ${ofName(p.name)} (${p.role})` : ''}`;
       if (a.rebuiltOnRequest) return `Version de référence : la pièce est établie à la date de chaque demande ${what}, avec les données connues à cette date.`;
       return `Communiqué uniquement sur demande précise : ${what}${a.asOf ? ` (établi pour la demande du ${formatDateFr(a.asOf)})` : ''}.`;
     }

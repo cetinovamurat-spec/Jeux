@@ -9,7 +9,7 @@ import { confirmationsSchema } from './confirmations';
 import { findingsSchema } from './findings';
 import { gaugesSchema } from './gauges';
 import { planningSchema } from './planning';
-import { programSchema } from './program';
+import { detachExecutionWork, programSchema } from './program';
 import { recalcsSchema } from './recalcs';
 import { requestsSchema } from './requests';
 import { samplesSchema } from './samples';
@@ -216,16 +216,16 @@ export function cleanOrphans(s: GameState, params: Params, isKnownDocument: (id:
   count(Object.keys(s.documents).length - Object.keys(documents).length, (n) => `Pièces : ${plural(n, 'lecture ou annotation d’une pièce qui n’existe plus retirée', 'lectures ou annotations de pièces qui n’existent plus retirées')}.`);
 
   if (removed.length === 0) return { state: s, removed };
-  return {
-    state: {
-      ...s,
-      documents,
-      planning: { ...s.planning, riskFactors },
-      program: { planned, executions },
-      worksheets: { ...s.worksheets, master },
-      requests: { ...s.requests, items: requests },
-      findings: { ...s.findings, items: findings },
-    },
-    removed,
+  let state: GameState = {
+    ...s,
+    documents,
+    planning: { ...s.planning, riskFactors },
+    program: { planned, executions },
+    worksheets: { ...s.worksheets, master },
+    requests: { ...s.requests, items: requests },
+    findings: { ...s.findings, items: findings },
   };
+  // the samples, recalculations and confirmations of a removed worksheet stay, charged on their own
+  for (const e of s.program.executions) if (!procedures.has(e.procedureId)) state = detachExecutionWork(state, e.id);
+  return { state, removed };
 }
