@@ -5,7 +5,9 @@
  * and cycles parameters.
  */
 import { describe, expect, it } from 'vitest';
-import { RECALC_TOOLS } from '../../src/game/recalcs';
+import { executionReach } from '../../src/game/program';
+import { RECALC_TOOLS, TOOL_DEFS } from '../../src/game/recalcs';
+import { initialState } from '../../src/game/state';
 import { POPULATIONS } from '../../src/game/samples';
 import { PART_KEYS } from '../../src/scenario/anomalies/modules';
 import { ANOMALY_IDS } from '../../src/scenario/anomalies/types';
@@ -211,6 +213,35 @@ describe('procedure library: contract ids and references', () => {
       expect(text, p.id).not.toMatch(/\d[\d  ]*(?:,\d+)?\s?(?:€|k€|M€)/);
       for (const n of programmes) expect(text.includes(n), `${p.id} cite ${n}`).toBe(false);
     }
+  });
+});
+
+describe('procedure library: real work and scope of the delegated work (plan J4 §7.1, §7.3)', () => {
+  it('gives every procedure a completion criterion tied to real work', () => {
+    for (const p of lib.procedures) expect(p.completion.length, p.id).toBeGreaterThan(0);
+    // a recalculation procedure requires its recalculation, a sample procedure its sample
+    for (const p of lib.procedures.filter((x) => x.output.kind === 'recalc')) expect(p.completion.some((c) => c.kind === 'recalc'), p.id).toBe(true);
+    for (const p of lib.procedures.filter((x) => x.output.kind === 'sample')) expect(p.completion.some((c) => c.kind === 'sample'), p.id).toBe(true);
+  });
+
+  it('names the categories of documents every GED view examines', () => {
+    for (const p of lib.procedures) if (p.output.kind === 'view' && p.output.screen === '/ged') expect(p.output.categories?.length, p.id).toBeGreaterThan(0);
+  });
+
+  it('limits a delegated reading of the board minutes to the governance documents', () => {
+    const e = { id: 'e1', procedureId: 'board-minutes', assignee: 'lea' as const, hours: 1, launchedOn: '2025-11-17', conclusion: null, comment: '', refs: [], review: { status: 'pending' as const } };
+    const reach = executionReach(e, byId.get('board-minutes')!, { params, state: initialState(params) });
+    const reached = documents().documents.filter(reach);
+    expect(reached.length).toBeGreaterThan(0);
+    for (const d of reached) expect(d.category, d.id).toBe('governance');
+    // nor does a recalculation reach the GED
+    const recalc = executionReach({ ...e, procedureId: 'depreciation-recalc' }, byId.get('depreciation-recalc')!, { params, state: initialState(params) });
+    expect(documents().documents.filter(recalc)).toEqual([]);
+  });
+
+  it('words the procedures and the recalculation tools as checks, never as an excess already established', () => {
+    const texts = [...lib.procedures.flatMap((p) => [p.objective, ...p.steps]), ...RECALC_TOOLS.map((t) => TOOL_DEFS[t].description)];
+    for (const t of texts) expect(t).not.toMatch(/trop-perçu|dette de restitution|au-delà de la hausse autorisée/i);
   });
 });
 

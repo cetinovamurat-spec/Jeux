@@ -4,7 +4,8 @@
  * the table of misstatements and, in designer mode only, the matching to the
  * correction key. `?constat=<id>` opens a finding, `?onglet=tableau` the table.
  * Findings are also created in context from the other screens
- * (NewFindingButton).
+ * (NewFindingButton). The unsaved edits of the form are kept in memory when
+ * switching tab or finding (findingsStore).
  */
 import { useEffect, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router';
@@ -17,7 +18,7 @@ import { Amount } from '../../components/Amount';
 import { Badge, Button, Card, cx, EmptyState, PageHeader, Select, tabPanelId, Tabs } from '../../components/ui';
 import { DesignerMatchingPanel } from './DesignerMatching';
 import { FindingForm } from './FindingForm';
-import { useFindingsView, type FindingsTab } from './findingsStore';
+import { useFindingDrafts, useFindingsView, type FindingsTab } from './findingsStore';
 import { plural, STATUS_LABELS, STATUS_TONES } from './labels';
 import { MisstatementsTab } from './MisstatementsTab';
 
@@ -31,6 +32,9 @@ export function FindingsScreen() {
   const view = useFindingsView();
   const findings = useGame((s) => s.game.findings.items);
   const date = useGame((s) => s.game.clock.date);
+  // ids with unsaved edits (a string: the screen does not re-render on every keystroke of the form)
+  const unsavedKeys = useFindingDrafts((s) => Object.keys(s.drafts).join(' '));
+  const unsaved = useMemo(() => new Set(unsavedKeys.split(' ')), [unsavedKeys]);
 
   // links from the other screens: '?constat=<id>', '?onglet=tableau|concepteur'
   const urlId = search.get('constat');
@@ -103,7 +107,7 @@ export function FindingsScreen() {
           <div className="space-y-3">
             {pending.length > 0 ? (
               <p role="status" className="rounded-md border border-warn/50 bg-warn/10 px-3 py-2 text-sm text-warn">
-                Le final est terminé : {plural(pending.length, 'question encore ouverte devient un point en suspens', 'questions encore ouvertes deviennent des points en suspens')}. Instruisez-les (constat, écarté ou clos) avant la synthèse.
+                Le final est terminé : {plural(pending.length, 'question encore ouverte devient un point en suspens', 'questions encore ouvertes deviennent des points en suspens')}. Instruisez-les avant la synthèse : « Constat » s’il y a une anomalie à reporter, sinon « Écarté » (après examen) ou « Clos » (point réglé).
               </p>
             ) : (
               questions > 0 && (
@@ -166,6 +170,7 @@ export function FindingsScreen() {
                               <span>{formatDateFr(f.createdOn)}</span>
                               {f.escalatedToPartnerOn && <span className="text-accent">remonté à l’associée</span>}
                               {pending.includes(f) && <span className="text-warn">point en suspens</span>}
+                              {unsaved.has(f.id) && <span className="text-warn">modifications non enregistrées</span>}
                             </span>
                           </button>
                         </li>
@@ -178,13 +183,13 @@ export function FindingsScreen() {
                 {view.selected === 'new' ? (
                   <Card title="Nouveau constat">
                     <div className="px-3 py-3">
-                      <FindingForm key="new" initial={draftFromSeed({}, params, 'finding')} onDone={(id) => (id ? open(id) : view.update({ selected: null }))} />
+                      <FindingForm key="new" draftKey="new" initial={draftFromSeed({}, params, 'finding')} onDone={(id) => (id ? open(id) : view.update({ selected: null }))} />
                     </div>
                   </Card>
                 ) : selected ? (
                   <Card title={<>Constat <span className="font-mono">{selected.id}</span></>}>
                     <div className="px-3 py-3">
-                      <FindingForm key={selected.id} findingId={selected.id} initial={draftOf(selected)} onDone={(id) => view.update({ selected: id })} />
+                      <FindingForm key={selected.id} findingId={selected.id} draftKey={selected.id} initial={draftOf(selected)} onDone={(id) => view.update({ selected: id })} />
                     </div>
                   </Card>
                 ) : (

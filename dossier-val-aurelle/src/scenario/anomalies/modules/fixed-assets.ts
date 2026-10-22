@@ -24,7 +24,7 @@ export const A01: AnomalyModule = {
       signature: { cycle: 'fixedAssets', objects: [prog('TIL'), acct('2313'), acct('2312'), doc('pv-reception-tilleuls')], natures: ['classification', 'valuation'] },
       treatment: 'adjust',
       cycles: ['fixedAssets'],
-      keyObjects: [acct('2313'), acct('2312'), doc('pv-reception-tilleuls'), doc('fiche-operation-tilleuls'), doc('registre-composants-tilleuls'), doc('invitation-inauguration-tilleuls'), doc('quittancement-programmes'), doc('tableau-immobilisations')],
+      keyObjects: [acct('2313'), acct('2312'), doc('pv-reception-tilleuls'), doc('fiche-operation-tilleuls'), doc('registre-composants-tilleuls'), doc('invitation-inauguration-tilleuls')],
       creditBasis: ['result', 'reclassified'],
     },
   ],

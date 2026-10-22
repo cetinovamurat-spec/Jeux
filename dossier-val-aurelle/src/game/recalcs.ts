@@ -94,7 +94,7 @@ export const TOOL_DEFS: Readonly<Record<RecalcToolId, RecalcToolDef>> = {
   icne: { id: 'icne', label: 'Intérêts courus non échus par prêt', description: 'Intérêts courus au 31/12/2025, prêt par prêt, depuis la dernière échéance.', scope: 'lender' },
   impairment: { id: 'impairment', label: 'Dépréciation des créances', description: 'Dépréciation des créances locatives ou des redevances des gestionnaires au 31/12/2025, selon la méthode retenue.', scope: 'receivables' },
   pge: { id: 'pge', label: 'Provision pour gros entretien', description: 'Provision au 31/12/2025 selon la version du plan pluriannuel d’entretien retenue.', scope: 'single' },
-  'rent-revision': { id: 'rent-revision', label: 'Révision des loyers', description: 'Loyers 2025 des logements conventionnés au-delà de la hausse autorisée (trop-perçu à restituer).', scope: 'rents' },
+  'rent-revision': { id: 'rent-revision', label: 'Révision des loyers', description: 'Loyers 2025 des logements conventionnés recalculés avec la hausse maximale retenue.', scope: 'rents' },
   prorata: { id: 'prorata', label: 'Prorata temporis', description: 'Montant annuel rapporté à une période (jours exacts / 365).', scope: 'single' },
 };
 

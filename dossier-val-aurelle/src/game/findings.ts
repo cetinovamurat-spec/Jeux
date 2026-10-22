@@ -210,7 +210,11 @@ export function findingAmount(f: Pick<Finding, 'proposedEntry'>): number {
   return entryTotals(f.proposedEntry).debit;
 }
 
-/** Lines that carry an amount (empty lines of the form are dropped). */
+/**
+ * Lines with an account and an amount: what is saved, matched and shown in the
+ * table (empty lines of the form are dropped; a line with an amount and no
+ * account is reported by draftErrors). The form computes its totals on them.
+ */
 export function meaningfulLines(lines: readonly ProposedLine[]): ProposedLine[] {
   return lines.filter((l) => l.account && (l.debit !== 0 || l.credit !== 0)).map((l) => ({ account: l.account, debit: l.debit, credit: l.credit, ...(l.aux ? { aux: l.aux } : {}) }));
 }
@@ -219,9 +223,9 @@ function cycleIds(params: Params): Set<string> {
   return new Set(params.cycles.cycles.map((c) => c.id));
 }
 
-/** A sample drawn otherwise than on specific items is projected on its population. */
-function projectedSample(seed: FindingSeed, samples?: { items: readonly { id: string; method: string }[] }): boolean {
-  return (seed.evidence ?? []).some((e) => {
+/** The evidence links a sample drawn otherwise than on specific items: its misstatement is projected on the population (form, matching). */
+export function linksProjectedSample(evidence: readonly Evidence[], samples?: { items: readonly { id: string; method: string }[] }): boolean {
+  return evidence.some((e) => {
     if (e.kind !== 'sample') return false;
     const x = samples?.items.find((it) => it.id === e.id);
     return x !== undefined && x.method !== 'specific';
@@ -236,7 +240,7 @@ export function draftFromSeed(seed: FindingSeed, params: Params, statusOf: Findi
     cycle: seed.cycle && cycleIds(params).has(seed.cycle) ? seed.cycle : 'crossCycle',
     objects: normaliseObjects(seed.objects ?? [], max),
     natures: [],
-    classification: projectedSample(seed, samples) ? 'projected' : 'factual',
+    classification: linksProjectedSample(seed.evidence ?? [], samples) ? 'projected' : 'factual',
     treatments: [],
     proposedEntry: [],
     disclosureFix: null,
@@ -278,6 +282,9 @@ export function draftErrors(d: FindingDraft, ctx: DraftCheckContext): string[] {
   if (!cycleIds(params).has(d.cycle)) errors.push('Choisissez le cycle du constat.');
   if (d.objects.length > m.maxObjects) errors.push(`${m.maxObjects} objets au plus.`);
   if (d.natures.length > m.maxNatures) errors.push(`${m.maxNatures} natures au plus.`);
+  d.proposedEntry.forEach((l, i) => {
+    if (!l.account && (l.debit || l.credit)) errors.push(`Ligne ${i + 1} : compte manquant.`);
+  });
   const lines = meaningfulLines(d.proposedEntry);
   for (const l of lines) {
     if (!ctx.accounts.has(l.account)) errors.push(`Le compte ${l.account} n’existe pas dans le plan de comptes.`);

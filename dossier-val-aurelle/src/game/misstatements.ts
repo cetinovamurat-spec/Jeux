@@ -36,7 +36,7 @@ export interface MisstatementRow {
   direction: 'over' | 'under' | 'none';
   /** Proposed entry present (otherwise the finding is not quantified). */
   quantified: boolean;
-  /** At or below the player's clearly trivial threshold: listed, not cumulated. */
+  /** At or below the player's clearly trivial threshold on the result, on equity and on the amount of the entry: listed, not cumulated. */
   belowTrivial: boolean;
   /** At or above the player's materiality on the result or on equity. */
   individuallySignificant: boolean;
@@ -97,7 +97,7 @@ export interface MisstatementContext {
   planning: PlanningState;
 }
 
-/** Findings that enter the table: status « constat ». */
+/** Findings that enter the table: status « constat » (« écarté » and « clos » are points settled with nothing to report, as in the matching). */
 export function tableFindings(findings: readonly Finding[]): Finding[] {
   return findings.filter((f) => f.status === 'finding');
 }
@@ -113,7 +113,8 @@ export function misstatementTable(findings: readonly Finding[], ctx: Misstatemen
     const lines = meaningfulLines(f.proposedEntry);
     const impact = impactOfLines(presented, lines, fx);
     const amount = findingAmount({ proposedEntry: lines });
-    const magnitude = impact.result !== 0 || impact.equity !== 0 ? Math.max(Math.abs(impact.result), Math.abs(impact.equity)) : amount;
+    // the amount of the entry counts too: a balance-sheet misstatement stays out of « insignifiante » when its entry also has a small result effect
+    const magnitude = Math.max(Math.abs(impact.result), Math.abs(impact.equity), amount);
     return {
       findingId: f.id,
       title: f.title,

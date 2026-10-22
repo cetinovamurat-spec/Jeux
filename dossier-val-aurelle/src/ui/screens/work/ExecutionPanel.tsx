@@ -9,7 +9,6 @@ import { useGedDocuments } from '../ged/replies';
 import { Link } from 'react-router';
 import { formatDateFr } from '../../../engine/dates';
 import type { MemberId } from '../../../game/calendar';
-import { availabilityContext, isAvailable } from '../../../game/documents';
 import {
   addExecutionRef,
   allowedMembers,
@@ -119,7 +118,8 @@ function LaunchForm({ def }: { def: ProcedureDef }) {
   );
 }
 
-function RefLabel({ r }: { r: WorkRef }) {
+/** A reference of the worksheet; `docTitle` resolves the scenario documents and the replies built on demand. */
+function RefLabel({ r, docTitle }: { r: WorkRef; docTitle: (id: string) => string | undefined }) {
   const c = useCase();
   const queries = useGame((s) => s.game.savedQueries);
   const requests = useGame((s) => s.game.requests.items);
@@ -129,7 +129,7 @@ function RefLabel({ r }: { r: WorkRef }) {
     case 'doc':
       return (
         <Link to={`/ged/${encodeURIComponent(r.id)}`} className="text-accent hover:underline">
-          {c.documentsById.get(r.id)?.title ?? r.id}
+          {docTitle(r.id) ?? r.id}
           {r.block !== undefined ? ` – bloc ${r.block + 1}` : ''}
         </Link>
       );
@@ -186,7 +186,9 @@ function Worksheet({ def, e }: { def: ProcedureDef; e: Execution }) {
   const game = useGame((s) => s.game);
   const act = useGame((s) => s.act);
   const w = useWorkContext();
-  const docs = useGedDocuments().available;
+  const { available: docs, byId } = useGedDocuments();
+  const docTitle = (id: string) => byId(id)?.title;
+  const designer = useGame((s) => s.game.settings.designer);
   const sortedDocs = useMemo(() => [...docs].sort((a, b) => a.title.localeCompare(b.title, 'fr')), [docs]);
   const t = w.sched.get(e.id);
   const status = executionStatus(e, t, game.clock.date);
@@ -195,11 +197,8 @@ function Worksheet({ def, e }: { def: ProcedureDef; e: Execution }) {
   const derived = derivedAll.filter((r) => r.kind !== 'confirmation');
   const completion = completionOf(e, def, status, w.completion);
   const issues = formCheck(e, status, [...derivedAll, ...e.refs]);
-  const delegated = useMemo(() => {
-    if (!t?.end) return null;
-    const ctx = availabilityContext(game, params, t.end);
-    return delegatedWorksheet(e, def, status, c.documents, (d) => isAvailable(d, ctx));
-  }, [e, def, status, c, game, params, t]);
+  // what the delegated member's work reached, among the documents available at the game date
+  const delegated = useMemo(() => delegatedWorksheet(e, def, status, w.completion, docs), [e, def, status, w.completion, docs]);
   const [conclusion, setConclusion] = useState(e.conclusion ?? '');
   const [comment, setComment] = useState(e.comment);
   const [docRef, setDocRef] = useState('');
@@ -229,7 +228,8 @@ function Worksheet({ def, e }: { def: ProcedureDef; e: Execution }) {
           </div>
         </dl>
         {t?.start && status === 'waiting' && <p className="mt-1 text-xs text-muted">Début des travaux le {formatDateFr(t.start)} (selon la présence sur site et la file de travail de l’intervenant).</p>}
-        {status === 'waiting' && (
+        {status === 'unfinishable' && <p className="mt-1 text-xs text-warn">L’intervenant ne sera plus sur site avant la fin des travaux : annulez le lancement pour confier la procédure à un autre membre de l’équipe.</p>}
+        {(status === 'waiting' || status === 'unfinishable') && (
           <Button variant="ghost" className="mt-1 px-1.5 py-0 text-xs" onClick={() => act((s) => cancelExecution(s, e.id, w.cal, params))}>
             Annuler le lancement
           </Button>
@@ -241,22 +241,39 @@ function Worksheet({ def, e }: { def: ProcedureDef; e: Execution }) {
       </Section>
       {delegated && (
         <Section title={`Travail préparé par ${memberShort(params, delegated.preparer)}`} id={`${id}-delegated`}>
-          {delegated.points.length === 0 ? (
-            <p className="text-sm">Aucun point relevé. Conclusion proposée : satisfaisant.</p>
+          {delegated.pending === 'work' ? (
+            <p className="text-sm text-muted">Les travaux de la procédure ne sont pas achevés (voir « Achèvement ») : {memberShort(params, delegated.preparer)} ne propose pas encore de conclusion.</p>
           ) : (
             <div className="text-sm">
-              <p>Points relevés pour votre examen :</p>
-              <ul className="mt-1 list-disc space-y-0.5 pl-5">
-                {delegated.points.map((p) => (
-                  <li key={p.docId}>
-                    <Link to={`/ged/${encodeURIComponent(p.docId)}`} className="text-accent hover:underline">
-                      {p.title}
-                    </Link>
-                    {p.blocks.length > 0 && <span className="text-xs text-muted"> – {p.blocks.map((b) => `bloc ${b + 1}`).join(', ')}</span>}
-                  </li>
-                ))}
-              </ul>
-              <p className="mt-1 text-xs text-muted">Conclusion proposée : anomalies ou exceptions relevées, à examiner.</p>
+              {delegated.points.length + delegated.work.length === 0 ? (
+                <p>Aucun point relevé dans les pièces et les travaux de la procédure.</p>
+              ) : (
+                <>
+                  <p>Points relevés pour votre examen :</p>
+                  <ul className="mt-1 list-disc space-y-0.5 pl-5">
+                    {delegated.points.map((p) => (
+                      <li key={p.docId}>
+                        <Link to={`/ged/${encodeURIComponent(p.docId)}`} className="text-accent hover:underline">
+                          {p.title}
+                        </Link>
+                        {designer && p.blocks.length > 0 && <span className="text-xs text-muted"> – {p.blocks.map((b) => `bloc ${b + 1}`).join(', ')} (mode concepteur)</span>}
+                      </li>
+                    ))}
+                    {delegated.work.map((x) => (
+                      <li key={`${x.kind}-${x.id}`}>
+                        <RefLabel r={x} docTitle={docTitle} /> : {x.kind === 'sample' ? 'exceptions relevées sur des éléments de l’échantillon' : 'écart avec le montant comptabilisé'}
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+              <p className="mt-1 text-xs text-muted">
+                {delegated.proposed === null
+                  ? 'Réponses aux demandes de confirmation attendues : pas encore de conclusion proposée.'
+                  : delegated.proposed === 'exceptions'
+                    ? 'Conclusion proposée : anomalies ou exceptions relevées, à examiner.'
+                    : 'Conclusion proposée : satisfaisant.'}
+              </p>
             </div>
           )}
         </Section>
@@ -293,7 +310,7 @@ function Worksheet({ def, e }: { def: ProcedureDef; e: Execution }) {
           <ul className="space-y-0.5 text-sm">
             {confirmations > 0 && (
               <li>
-                <Link to="/ged" className="text-accent hover:underline">
+                <Link to="/ged?onglet=demandes" className="text-accent hover:underline">
                   Demandes de confirmation préparées : {confirmations}
                 </Link>{' '}
                 <span className="text-xs text-muted">(produites par la procédure)</span>
@@ -301,12 +318,12 @@ function Worksheet({ def, e }: { def: ProcedureDef; e: Execution }) {
             )}
             {derived.map((r) => (
               <li key={`d-${r.kind}-${r.id}`}>
-                <RefLabel r={r} /> <span className="text-xs text-muted">(produite par la procédure)</span>
+                <RefLabel r={r} docTitle={docTitle} /> <span className="text-xs text-muted">(produite par la procédure)</span>
               </li>
             ))}
             {e.refs.map((r) => (
               <li key={`p-${r.kind}-${r.id}-${r.kind === 'doc' ? (r.block ?? '') : ''}`} className="flex items-center gap-2">
-                <RefLabel r={r} />
+                <RefLabel r={r} docTitle={docTitle} />
                 <Button variant="ghost" className="px-1 py-0 text-xs" aria-label="Retirer la référence" onClick={() => act((s) => removeExecutionRef(s, e.id, r))}>
                   Retirer
                 </Button>

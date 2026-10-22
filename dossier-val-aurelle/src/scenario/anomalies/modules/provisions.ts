@@ -90,7 +90,7 @@ export const A07: AnomalyModule = {
       signature: { cycle: 'rentReceivables', objects: [acct('4111'), acct('4191'), doc('balance-agee-locataires')], natures: ['presentation', 'classification'] },
       treatment: 'reclassify',
       cycles: ['rentReceivables', 'provisions'],
-      keyObjects: [acct('4191'), doc('balance-agee-locataires')],
+      keyObjects: [acct('4191')],
       creditBasis: ['reclassified'],
     },
   ],

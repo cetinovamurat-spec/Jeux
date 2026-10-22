@@ -1,10 +1,12 @@
 /**
- * Replies built on demand on the main thread (plan J4 §8.3, §9): the generic
- * replies to the requests sent about objects without a scenario document, and
- * the « sans écart » replies of the third parties without a scenario reply,
- * cached per case. The hooks merge them with the scenario documents for the
- * GED, the mail received and the tools; they never read the correction key
- * beyond what the document templates read.
+ * Replies built on demand on the main thread (plan J4 §8.2-8.4, §9): the
+ * documents answering each request sent (scenario/documents → requestReply:
+ * built on the date of the request for the families dated on it, the
+ * scenario's objects included, otherwise the scenario documents or the
+ * generic replies), and the « sans écart » replies of the third parties
+ * without a scenario reply, cached per case. The hooks merge them with the
+ * scenario documents for the GED, the mail received and the tools; they never
+ * read the correction key beyond what the document templates read.
  */
 import { useMemo } from 'react';
 import type { IsoDate } from '../../../engine/dates';
@@ -12,7 +14,7 @@ import { workCalendar } from '../../../game/calendar';
 import { confirmationStatus, type ConfirmationItem, type ConfirmationState } from '../../../game/confirmations';
 import { isAvailable, receivedOn, type AvailabilityContext } from '../../../game/documents';
 import { requestKey, requestStatus, type RequestItem, type RequestStatus } from '../../../game/requests';
-import { genericConfirmationReply, genericReplies, scenarioConfirmations, scenarioRequestKeys, type DocContext, type DocumentModel } from '../../../scenario/documents';
+import { builtForEveryObject, genericConfirmationReply, requestReply, scenarioConfirmations, scenarioRequestKeys, type DocContext, type DocumentModel } from '../../../scenario/documents';
 import type { CaseData } from '../../app/case';
 import { useCase } from '../../app/context';
 import { useAvailability, useAvailableDocuments } from '../../app/hooks';
@@ -22,7 +24,7 @@ interface ReplyCache {
   ctx?: DocContext;
   byKey: ReadonlyMap<string, readonly DocumentModel[]>;
   confirmations: ReadonlyMap<string, DocumentModel>;
-  generic: Map<string, readonly DocumentModel[]>;
+  replies: Map<string, readonly DocumentModel[]>;
   genericConfirmations: Map<string, DocumentModel | null>;
 }
 
@@ -32,7 +34,7 @@ const caches = new WeakMap<object, ReplyCache>();
 function cacheOf(c: CaseData): ReplyCache {
   let x = caches.get(c.payload);
   if (!x) {
-    x = { byKey: scenarioRequestKeys(c.documents), confirmations: scenarioConfirmations(c.documents), generic: new Map(), genericConfirmations: new Map() };
+    x = { byKey: scenarioRequestKeys(c.documents), confirmations: scenarioConfirmations(c.documents), replies: new Map(), genericConfirmations: new Map() };
     caches.set(c.payload, x);
   }
   return x;
@@ -43,22 +45,26 @@ function docContext(c: CaseData, x: ReplyCache): DocContext {
 }
 
 /**
- * Documents answering a request: the scenario's, or the generic replies built
- * from the presented data as known at `asOf` (date of the first request of
- * the key).
+ * Documents listed in the reply to a request (scenario/documents →
+ * requestReply), `firstSentOn` being the date of the first request of its
+ * key: the documents built for it, and the scenario documents of its key it
+ * lists (the same objects as the catalogue's).
  */
-export function requestDocuments(c: CaseData, family: string, object: string, asOf: IsoDate): readonly DocumentModel[] {
+export function requestDocuments(c: CaseData, item: Pick<RequestItem, 'family' | 'object' | 'sentOn'>, firstSentOn: IsoDate): readonly DocumentModel[] {
   const x = cacheOf(c);
-  const key = requestKey(family, object);
-  const scenario = x.byKey.get(key);
-  if (scenario) return scenario;
-  const k = `${key}|${asOf}`;
-  let g = x.generic.get(k);
-  if (!g) {
-    g = genericReplies(docContext(c, x), family, object, asOf);
-    x.generic.set(k, g);
+  const key = requestKey(item.family, item.object);
+  const k = `${key}|${item.sentOn}|${firstSentOn}`;
+  let docs = x.replies.get(k);
+  if (!docs) {
+    docs = requestReply(docContext(c, x), x.byKey.get(key) ?? [], item.family, item.object, item.sentOn, firstSentOn);
+    x.replies.set(k, docs);
   }
-  return g;
+  return docs;
+}
+
+/** The document was built for a request or a confirmation (not a catalogue document, though it may share the id of a reference version). */
+function isBuilt(c: CaseData, d: DocumentModel): boolean {
+  return c.documentsById.get(d.id) !== d;
 }
 
 /** Reply of a third party to a confirmation request: the scenario's, a « sans écart » reply, or null when it never replies. */
@@ -75,18 +81,18 @@ export function replyDate(reply: DocumentModel | null): IsoDate | null {
   return reply && reply.availability.kind === 'confirmation' ? reply.availability.arrives : null;
 }
 
-/** First request of every key (the generic replies are built as known at its date). */
-export function firstRequests(items: readonly RequestItem[]): Map<string, RequestItem> {
-  const m = new Map<string, RequestItem>();
+/** Date of the first request of every key (replies of the families not dated on the request are built as known at it). */
+export function firstRequestDates(items: readonly RequestItem[]): Map<string, IsoDate> {
+  const m = new Map<string, IsoDate>();
   for (const it of items) {
     const k = requestKey(it.family, it.object);
     const f = m.get(k);
-    if (!f || it.sentOn < f.sentOn) m.set(k, it);
+    if (f === undefined || it.sentOn < f) m.set(k, it.sentOn);
   }
   return m;
 }
 
-/** Generic replies of the requests sent and of the confirmations prepared (whatever their availability). */
+/** Replies built for the requests sent (every version) and for the confirmations prepared, whatever their availability. */
 export function useBuiltReplies(): readonly DocumentModel[] {
   const c = useCase();
   const requests = useGame((s) => s.game.requests.items);
@@ -94,10 +100,8 @@ export function useBuiltReplies(): readonly DocumentModel[] {
   return useMemo(() => {
     const x = cacheOf(c);
     const out = new Map<string, DocumentModel>();
-    for (const it of firstRequests(requests).values()) {
-      if (x.byKey.has(requestKey(it.family, it.object))) continue;
-      for (const d of requestDocuments(c, it.family, it.object, it.sentOn)) out.set(d.id, d);
-    }
+    const first = firstRequestDates(requests);
+    for (const it of requests) for (const d of requestDocuments(c, it, first.get(requestKey(it.family, it.object))!)) if (isBuilt(c, d) && !out.has(d.id)) out.set(d.id, d);
     for (const it of confirmations) {
       if (x.confirmations.has(it.thirdParty)) continue;
       const d = confirmationReply(c, it.thirdParty);
@@ -116,7 +120,11 @@ export interface GedDocuments {
   ctx: AvailabilityContext;
 }
 
-/** Documents of the GED at the game date (scenario documents and replies built on demand). */
+/**
+ * Documents of the GED at the game date (scenario documents and replies built
+ * on demand). A reply built for a request replaces the catalogue's reference
+ * version of the same id (scenario replies rebuilt on each request).
+ */
 export function useGedDocuments(): GedDocuments {
   const c = useCase();
   const scenario = useAvailableDocuments();
@@ -125,7 +133,7 @@ export function useGedDocuments(): GedDocuments {
   return useMemo(() => {
     const replies = built.filter((d) => isAvailable(d, ctx));
     const extra = new Map(built.map((d) => [d.id, d]));
-    return { available: [...scenario, ...replies], replies, byId: (id: string) => c.documentsById.get(id) ?? extra.get(id), ctx };
+    return { available: [...scenario.filter((d) => !extra.has(d.id)), ...replies], replies, byId: (id: string) => extra.get(id) ?? c.documentsById.get(id), ctx };
   }, [c, scenario, built, ctx]);
 }
 
@@ -162,11 +170,10 @@ export function useRequestRows(): RequestRow[] {
   const date = useGame((s) => s.game.clock.date);
   const cal = useMemo(() => workCalendar(c.params), [c]);
   return useMemo(() => {
-    const first = firstRequests(items);
+    const first = firstRequestDates(items);
     return items
       .map((item) => {
-        const f = first.get(requestKey(item.family, item.object))!;
-        const docs = requestDocuments(c, item.family, item.object, f.sentOn);
+        const docs = requestDocuments(c, item, first.get(requestKey(item.family, item.object))!);
         return { item, docs, status: requestStatus(c.params, cal, item, docs.map((d) => ({ id: d.id, date: d.date })), date) };
       })
       .reverse();
@@ -207,16 +214,23 @@ export function useConfirmationRows(): ConfirmationRow[] {
 }
 
 /**
- * Dates of the documents answering a request key (scenario or generic), to
- * announce the documents served later in the agenda (game/requests.ts →
- * upcomingRequests, `requestDocDates`).
+ * Dates of the documents answering a request key, to announce the documents
+ * served after the answer in the agenda (game/requests.ts → upcomingRequests,
+ * `requestDocDates`) and to tell a reply « pas encore établi » from a reply
+ * received (receivedRequests). Only the families answered by documents of
+ * fixed dates have some: those built for every object list no document
+ * established after the request (a scenario piece established later arrives
+ * as mail, unannounced).
  */
 export function useRequestDocDates(): (key: string) => readonly IsoDate[] {
   const c = useCase();
   const items = useGame((s) => s.game.requests.items);
   return useMemo(() => {
     const m = new Map<string, IsoDate[]>();
-    for (const [k, it] of firstRequests(items)) m.set(k, requestDocuments(c, it.family, it.object, it.sentOn).map((d) => d.date));
+    for (const [k, first] of firstRequestDates(items)) {
+      const it = items.find((x) => x.sentOn === first && requestKey(x.family, x.object) === k)!;
+      m.set(k, builtForEveryObject(it.family) ? [] : requestDocuments(c, it, first).map((d) => d.date));
+    }
     return (key: string) => m.get(key) ?? [];
   }, [c, items]);
 }

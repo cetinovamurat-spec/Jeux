@@ -17,7 +17,7 @@ import { describe, expect, it } from 'vitest';
 import { formatDateFr, type IsoDate } from '../../src/engine/dates';
 import { workCalendar } from '../../src/game/calendar';
 import { periodAt } from '../../src/game/clock';
-import { arrivalDate } from '../../src/game/requests';
+import { answerDate, arrivalDate } from '../../src/game/requests';
 import { inExtraction, vintageDates } from '../../src/game/vintages';
 import { ANOMALIES } from '../../src/scenario/anomalies/modules';
 import type { DocumentModel } from '../../src/scenario/documents/model';
@@ -53,7 +53,9 @@ function obtainable(d: DocumentModel): Source | null {
       // a request about an entry of the final ledger can only be sent once the ledger is received
       const entryOnly = a.family === 'entry-voucher' && !(a.object ?? '').startsWith('2024:');
       const sentOn = entryOnly ? vintages.draftLedger : start;
-      const on = arrivalDate(P, cal, { id: 'x', family: a.family ?? '', object: a.object ?? '', sentOn, difficulty: 'senior' }, d.date);
+      const item = { id: 'x', family: a.family ?? '', object: a.object ?? '', sentOn, difficulty: 'senior' as const };
+      // a reply rebuilt on each request is established on the date of the request: it comes with the answer
+      const on = a.rebuiltOnRequest ? answerDate(P, cal, item) : arrivalDate(P, cal, item, d.date);
       return { what: d.id, mode: 'demande', on };
     }
     case 'conditional':
@@ -136,12 +138,13 @@ describe('observability of every part (plan J4 §20)', () => {
     expect(src('A11').what).toBe('balance et FEC définitifs');
   });
 
-  it('the annex docs/j4-observabilite.md lists every part with its first date', () => {
+  it('the annex docs/j4-observabilite.md lists every part with its first element, mode and date', () => {
     const text = readFileSync(resolve(import.meta.dirname, '../../docs/j4-observabilite.md'), 'utf8');
     for (const r of rows) {
       const line = text.split('\n').find((l) => l.startsWith(`| ${r.part} |`));
       expect(line, r.part).toBeDefined();
-      expect(line, r.part).toContain(formatDateFr(r.first.on));
+      const cells = line!.split('|').map((x) => x.trim());
+      expect(cells.slice(2, 5), r.part).toEqual([r.first.what, r.first.mode, formatDateFr(r.first.on)]);
     }
   });
 });

@@ -1,6 +1,6 @@
 /** Derived data shared by the work screen: calendar, scheduling, launch and completion contexts. */
 import { useMemo } from 'react';
-import { useGedDocuments, useRequestDocDates } from '../ged/replies';
+import { useConfirmationRows, useGedDocuments, useRequestDocDates } from '../ged/replies';
 import type { ScheduledTask, WorkCalendar } from '../../../game/calendar';
 import { workCalendar } from '../../../game/calendar';
 import { conditionContext } from '../../../game/conditions';
@@ -25,6 +25,7 @@ export function useWorkContext(): WorkContext {
   const game = useGame((s) => s.game);
   const docs = useGedDocuments().available;
   const requestDocDates = useRequestDocDates();
+  const confirmationRows = useConfirmationRows();
   const cal = useMemo(() => workCalendar(params), [params]);
   const populationOf = useMemo(() => {
     const m = new Map(confirmationCandidates(params, c.datasets).map((x) => [x.thirdParty, x.population]));
@@ -33,6 +34,7 @@ export function useWorkContext(): WorkContext {
   return useMemo(() => {
     const date = game.clock.date;
     const available = new Set(docs.map((d) => d.id));
+    const confirmationStates = new Map(confirmationRows.map((r) => [r.item.thirdParty, r.state]));
     const base = conditionContext(game, params, date, {
       isDocumentAvailable: (id) => available.has(id),
       documentTitle: (id) => c.documentsById.get(id)?.title,
@@ -51,8 +53,9 @@ export function useWorkContext(): WorkContext {
         ...(c.view.statements2025 ? { annexTables: c.annex().current } : {}),
         availableDocs: docs.map((d) => ({ id: d.id, category: d.category })),
         populationOf,
+        confirmationState: (item) => confirmationStates.get(item.thirdParty) ?? 'prepared',
       },
       populationOf,
     };
-  }, [c, params, game, docs, cal, populationOf, requestDocDates]);
+  }, [c, params, game, docs, cal, populationOf, requestDocDates, confirmationRows]);
 }

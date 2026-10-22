@@ -104,7 +104,7 @@ export const A18: AnomalyModule = {
       signature: { cycle: 'debtTreasury', objects: [acct('471'), acct('1631'), tp('BDT'), doc('confirmation-bdt')], natures: ['classification', 'completeness'] },
       treatment: 'reclassify',
       cycles: ['debtTreasury'],
-      keyObjects: [acct('471'), acct('1631'), doc('detail-comptes-attente'), doc('releve-bancaire-2025-12')],
+      keyObjects: [acct('471'), acct('1631'), doc('detail-comptes-attente')],
       creditBasis: ['reclassified'],
     },
   ],

@@ -3,17 +3,36 @@
  * document given on request answers an existing (family, object) with the
  * right interlocutor and reaches the auditor before the end of the final;
  * every request of the scenario unlocks a document; every other object gets a
- * generic reply without clue; the confirmation replies are split by third
- * party and the silent third party never replies.
+ * generic reply without clue; in the families answered as of the request
+ * date, a scenario object is answered like its neighbours (date, issuer,
+ * number and shape of the documents, content as of the request; clues only
+ * tagged) and its pieces established later are never listed; the
+ * confirmation replies are split by third party and the silent third party
+ * never replies.
  */
 import { describe, expect, it } from 'vitest';
+import { formatDateFr as date } from '../../src/engine/dates';
 import { addWorkingDays, workCalendar } from '../../src/game/calendar';
 import { confirmationCandidates } from '../../src/game/confirmations';
 import { delayDays, interlocutorOf, requestObjects } from '../../src/game/requests';
 import type { ScenarioDatasets } from '../../src/scenario/datasets';
-import { genericConfirmationReply, genericReplies, makeContext, onRequestKeys, requestKey, scenarioConfirmations, scenarioRequestKeys } from '../../src/scenario/documents';
+import {
+  baseDocumentId,
+  builtForEveryObject,
+  genericConfirmationReply,
+  genericReplies,
+  isRebuiltOnRequest,
+  makeContext,
+  onRequestKeys,
+  REQUEST_DATED_FAMILIES,
+  requestKey,
+  requestReply,
+  SCENARIO_REPLIES,
+  scenarioConfirmations,
+  scenarioRequestKeys,
+} from '../../src/scenario/documents';
 import { CLOSING_TRANSMITTALS, fecNumbers } from '../../src/scenario/documents/replies';
-import type { DocumentModel } from '../../src/scenario/documents/model';
+import type { Block, DocumentModel } from '../../src/scenario/documents/model';
 import { correctionKey, documents } from '../helpers/scenario';
 import { params, world } from '../helpers/world';
 
@@ -38,9 +57,9 @@ function validObject(family: string, object: string): boolean {
   return requestObjects(p, ds, family).some((o) => o.id === object);
 }
 
-/** Documents answering a request key: the scenario's, or the generic replies. */
-function answer(family: string, object: string, asOf = '2026-02-23'): readonly DocumentModel[] {
-  return byKey.get(requestKey(family, object)) ?? genericReplies(ctx, family, object, asOf);
+/** Documents listed in the reply to a request sent on `sentOn` (the first one of its key unless `first` says otherwise). */
+function answer(family: string, object: string, sentOn = '2026-02-23', first = sentOn): readonly DocumentModel[] {
+  return requestReply(ctx, byKey.get(requestKey(family, object)) ?? [], family, object, sentOn, first);
 }
 
 describe('documents given on request', () => {
@@ -63,6 +82,15 @@ describe('documents given on request', () => {
       const a = d.availability as Extract<DocumentModel['availability'], { kind: 'onRequest' }>;
       const at = addWorkingDays(cal, d.date, delayDays(p, a.family!, a.object ?? ''));
       expect(at <= FINAL_END, `${d.id} : ${at}`).toBe(true);
+    }
+  });
+  it('the replies rebuilt on each request keep a reference version in the catalogue, with the ids the anomalies name', () => {
+    const refs = onRequest.filter(isRebuiltOnRequest);
+    expect(refs.map((d) => d.id).sort()).toEqual(['bons-commande-erables', 'bons-commande-peupliers', 'facture-pac-erables', 'factures-peupliers', 'os7-tilleuls', 'pv-reception-tilleuls']);
+    for (const d of refs) {
+      const [k] = onRequestKeys(d.availability);
+      expect(SCENARIO_REPLIES[k!], d.id).toBeDefined();
+      expect(answer((d.availability as { family: string }).family, k!.split(':')[1]!, '2025-11-04').map((x) => x.id), d.id).toContain(d.id);
     }
   });
   it('the label of the request never names an anomaly', () => {
@@ -118,6 +146,7 @@ describe('generic replies', () => {
   };
   const generic: { family: string; object: string; docs: DocumentModel[] }[] = [];
   for (const f of p.requests.families) for (const o of objectsOf(f.id)) if (!byKey.has(requestKey(f.id, o))) generic.push({ family: f.id, object: o, docs: genericReplies(ctx, f.id, o, '2025-11-18') });
+  const updated = generic.filter((g) => REQUEST_DATED_FAMILIES.has(g.family)).map((g) => ({ ...g, docs: genericReplies(ctx, g.family, g.object, '2026-02-23', true) }));
 
   it('every other object of every family gets a reply: a reply never signals « nothing here »', () => {
     expect(generic.length).toBeGreaterThan(100);
@@ -134,14 +163,28 @@ describe('generic replies', () => {
       }
     }
   });
-  it('ids are unique across the objects', () => {
-    const ids = generic.flatMap((g) => g.docs.map((d) => d.id));
+  it('ids are unique across the objects, and across the versions of the replies dated on the request', () => {
+    const ids = [...generic, ...updated].flatMap((g) => g.docs.map((d) => d.id));
     expect(new Set(ids).size).toBe(ids.length);
+    expect(updated.length).toBeGreaterThan(20);
+    for (const g of updated) for (const d of g.docs) expect(generic.find((x) => x.family === g.family && x.object === g.object)!.docs.map((x) => x.id), d.id).toContain(baseDocumentId(d.id));
   });
-  it('the scenario documents look like their neighbours (same title pattern)', () => {
-    const peu = byKey.get('programme-invoices:PEU')!.map((d) => d.title.replace(/ – .*$/, ''));
-    const lil = genericReplies(ctx, 'programme-invoices', 'LIL', '2025-11-18').map((d) => d.title.replace(/ – .*$/, ''));
-    expect(peu.sort()).toEqual(lil.sort());
+  it('the content of a reply dated on the request is as known on that date', () => {
+    const asOf = '2025-11-17';
+    const dates = (d: DocumentModel) => d.blocks.flatMap((b) => (b.kind === 'table' ? b.rows.flatMap((r) => r.cells) : b.kind === 'fields' ? b.rows.map((r) => r.value) : [])).flatMap((t) => [...t.matchAll(/(\d{2})\/(\d{2})\/(\d{4})/g)].map((m) => `${m[3]}-${m[2]}-${m[1]}`));
+    let n = 0;
+    for (const f of REQUEST_DATED_FAMILIES)
+      for (const o of objectsOf(f)) {
+        for (const d of genericReplies(ctx, f, o, asOf)) {
+          expect(d.date, d.id).toBe(asOf);
+          // no date after the request, except the planned delivery of an operation in progress
+          for (const x of dates(d)) if (!JSON.stringify(d.blocks).includes(`livraison prévue le ${x.slice(8, 10)}/${x.slice(5, 7)}/${x.slice(0, 4)}`)) expect(x <= asOf, `${d.id} : ${x}`).toBe(true);
+          n++;
+        }
+      }
+    expect(n).toBeGreaterThan(40);
+  });
+  it('the scenario documents of the families of fixed dates look like their neighbours (same title pattern)', () => {
     const cfl = byKey.get('programme-rent-roll:CLF:2025-12')![0]!.title.replace(/ – .*$/, '');
     expect(genericReplies(ctx, 'programme-rent-roll', 'LIL:2025-12', '2025-11-18')[0]!.title.replace(/ – .*$/, '')).toBe(cfl);
   });
@@ -153,6 +196,97 @@ describe('generic replies', () => {
         if (doc) expect(doc.date, x.title).toBe(x.date);
       }
     }
+  });
+});
+
+describe('scenario objects of the families answered as of the request date (plan J4 §8.2)', () => {
+  const START = p.game.startDate;
+  const INTERIM = p.game.calendar.find((x) => x.id === 'interim')!.from;
+  const FINAL = p.game.calendar.find((x) => x.id === 'final')!.from;
+  const neighbourOf = (family: string, object: string) => requestObjects(p, ds, family).find((o) => o.id !== object && !byKey.has(requestKey(family, o.id)))!.id;
+  const tables = (d: DocumentModel) => d.blocks.filter((b): b is Extract<Block, { kind: 'table' }> => b.kind === 'table');
+  const untagged = (d: DocumentModel) => JSON.stringify(d.blocks).replace(/,"clue":"[^"]*"/g, '');
+
+  it('every scenario object of these families is answered by its own version of the family’s documents', () => {
+    const keys = [...byKey.keys()].filter((k) => [...REQUEST_DATED_FAMILIES].some((f) => k.startsWith(`${f}:`)));
+    expect(keys.sort()).toEqual(['operation-acceptance:TIL', 'operation-orders:TIL', 'programme-invoices:ERA', 'programme-invoices:PEU', 'sale-notary:CLF']);
+    for (const k of keys) if (k !== 'sale-notary:CLF') expect(SCENARIO_REPLIES[k], k).toBeDefined();
+  });
+
+  for (const key of Object.keys(SCENARIO_REPLIES)) {
+    const [family, object] = key.split(':') as [string, string];
+    it(`${key}: same date, issuer, category, number and shape of documents as a neighbour; clues tagged only`, () => {
+      const n = neighbourOf(family, object);
+      for (const asOf of [START, INTERIM, FINAL]) {
+        const mine = answer(family, object, asOf);
+        const theirs = answer(family, n, asOf);
+        expect(mine.length, `${key} ${asOf}`).toBe(theirs.length);
+        mine.forEach((d, i) => {
+          const o = theirs[i]!;
+          expect([d.date, d.issuer, d.category, d.title.replace(/ – .*$/, '')], `${d.id} ${asOf}`).toEqual([o.date, o.issuer, o.category, o.title.replace(/ – .*$/, '')]);
+          expect(d.date).toBe(asOf);
+          expect(tables(d).map((t) => t.columns), d.id).toEqual(tables(o).map((t) => t.columns));
+          expect(d.availability, d.id).toMatchObject({ kind: 'onRequest', family, object, asOf });
+          expect(isRebuiltOnRequest(d), d.id).toBe(false);
+        });
+        // the clues are there from the first request of the engagement
+        expect(mine.flatMap((d) => d.clues).length, `${key} ${asOf}`).toBeGreaterThan(0);
+      }
+    });
+  }
+
+  it('programme invoices: the scenario’s rows are the family’s rows on the request date, only tagged', () => {
+    for (const pid of ['PEU', 'ERA'])
+      for (const asOf of [START, FINAL]) {
+        const mine = answer('programme-invoices', pid, asOf);
+        const generic = genericReplies(ctx, 'programme-invoices', pid, asOf);
+        expect(mine.map(untagged), `${pid} ${asOf}`).toEqual(generic.map(untagged));
+      }
+    // the invoices of the whole year at the final, not up to a date of the scenario
+    const peu = answer('programme-invoices', 'PEU', FINAL)[0]!;
+    expect(tables(peu)[0]!.rows.length).toBeGreaterThan(tables(answer('programme-invoices', 'PEU', START)[0]!)[0]!.rows.length);
+  });
+
+  it('Les Tilleuls: the orders and the acceptance are one document each, like every operation; the reception is a row', () => {
+    expect(answer('operation-orders', 'TIL', START).map((d) => d.id)).toEqual(['os7-tilleuls']);
+    const acc = answer('operation-acceptance', 'TIL', START)[0]!;
+    expect(acc.id).toBe('pv-reception-tilleuls');
+    const row = tables(acc)[0]!.rows.find((r) => r.clue)!;
+    expect(row.cells[3]).toContain(date(p.scenario.specific.tilleuls.receptionDate));
+    expect(tables(acc)[0]!.rows.length).toBe(tables(genericReplies(ctx, 'operation-acceptance', 'TIL', START)[0]!)[0]!.rows.length);
+  });
+
+  it('a later request gets updated documents beside the first ones; the first keep the ids the anomalies name', () => {
+    const first = answer('programme-invoices', 'PEU', START);
+    const later = answer('programme-invoices', 'PEU', FINAL, START);
+    expect(first.map((d) => d.id)).toEqual(['factures-peupliers', 'bons-commande-peupliers']);
+    expect(later.map((d) => d.id)).toEqual([`factures-peupliers~${FINAL}`, `bons-commande-peupliers~${FINAL}`]);
+    expect(later.map((d) => baseDocumentId(d.id))).toEqual(first.map((d) => d.id));
+    for (const d of later) for (const c of d.clues) expect(c.documentId).toBe(d.id);
+    const coq = answer('sale-notary', 'COQ', FINAL, START);
+    expect(coq.map((d) => d.id)).toEqual([`ventes-coquelicots~${FINAL}`]);
+    // a family of fixed dates is answered by the same documents
+    expect(answer('closing-file', 'pge', FINAL, START).map((d) => d.id)).toEqual(answer('closing-file', 'pge', START).map((d) => d.id));
+  });
+
+  it('a scenario piece established after the request is never listed: it arrives as mail; existing on the request date, it is attached', () => {
+    const cf = p.scenario.specific.closFleuri2026;
+    const before = answer('sale-notary', 'CLF', INTERIM);
+    expect(before.map((d) => d.id)).toEqual(['ventes-clos-fleuri']);
+    expect(before.map((d) => d.date)).toEqual(answer('sale-notary', neighbourOf('sale-notary', 'CLF'), INTERIM).map((d) => d.date));
+    // the promises of December are not in the table of November
+    expect(JSON.stringify(before[0]!.blocks)).not.toContain(date(cf.promiseDate));
+    const after = answer('sale-notary', 'CLF', FINAL);
+    expect(after.map((d) => d.id)).toEqual(['ventes-clos-fleuri', 'promesses-clos-fleuri', 'levee-condition-clos-fleuri']);
+    // the supporting document of the entry of A11: the voucher like any entry; the note of the CFO (27/02/2026) only once it exists
+    const a11 = [...byKey.keys()].find((k) => k.startsWith('entry-voucher:'))!;
+    const object = a11.slice('entry-voucher:'.length);
+    const note = byKey.get(a11)![0]!;
+    const early = answer('entry-voucher', object, '2026-02-09');
+    expect(early.map((d) => d.id)).toEqual([`piece-${object.replace(':', '-').toLowerCase()}`]);
+    expect(answer('entry-voucher', object, addWorkingDays(cal, note.date, 1)).map((d) => d.id)).toEqual([early[0]!.id, note.id]);
+    expect(builtForEveryObject('entry-voucher')).toBe(true);
+    expect(builtForEveryObject('closing-file')).toBe(false);
   });
 });
 

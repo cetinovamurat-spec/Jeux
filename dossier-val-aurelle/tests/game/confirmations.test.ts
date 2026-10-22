@@ -60,13 +60,22 @@ describe('actions', () => {
     const s = prepareConfirmation(host(), 'ACCUEIL_HORIZONS', 'Accueil Horizons', 'senior', p);
     expect(remindConfirmation(s, 'ACCUEIL_HORIZONS', 'Accueil Horizons', p)).toBe(s);
     const r = remindConfirmation({ ...s, clock: { date: '2026-02-10' } }, 'ACCUEIL_HORIZONS', 'Accueil Horizons', p);
-    expect(r.confirmations.items[0]!.remindedOn).toBe('2026-02-10');
+    expect(r.confirmations.items[0]!.reminders).toEqual(['2026-02-10']);
     expect(r.journal.at(-1)).toMatchObject({ kind: 'confirmationReminder', ref: 'ACCUEIL_HORIZONS' });
     expect(confirmationStatus(p, r.confirmations.items[0]!, null, '2026-03-02')).toBe('noReply');
     expect(hoursCharged(r.confirmations, p)).toEqual([
       { member: 'senior', hours: p.requests.confirmations.preparationHours, on: '2025-11-18' },
       { member: 'senior', hours: p.requests.confirmations.reminderHours, on: '2026-02-10' },
     ]);
+  });
+  it('every reminder is charged, one a day at most; a save holding the last one only is read as a list of one', () => {
+    let s = prepareConfirmation(host(), 'ACCUEIL_HORIZONS', 'Accueil Horizons', 'senior', p);
+    for (const d of ['2026-02-10', '2026-02-10', '2026-02-17', '2026-02-24']) s = remindConfirmation({ ...s, clock: { date: d } }, 'ACCUEIL_HORIZONS', 'Accueil Horizons', p);
+    expect(s.confirmations.items[0]!.reminders).toEqual(['2026-02-10', '2026-02-17', '2026-02-24']);
+    expect(s.journal.filter((j) => j.kind === 'confirmationReminder')).toHaveLength(3);
+    expect(hoursCharged(s.confirmations, p).filter((h) => h.hours === p.requests.confirmations.reminderHours)).toHaveLength(3);
+    expect(confirmationsSchema.parse(s.confirmations)).toEqual(s.confirmations);
+    expect(confirmationsSchema.parse({ items: [{ thirdParty: 'BDT', preparedOn: '2025-11-18', remindedOn: '2026-02-10' }] }).items).toEqual([{ thirdParty: 'BDT', preparedOn: '2025-11-18', reminders: ['2026-02-10'] }]);
   });
   it('the hours of the preparation are charged to the member who prepares it', () => {
     const s = prepareConfirmation(host(), 'F0027', 'GIE', 'lea', p);
@@ -114,6 +123,26 @@ describe('third parties proposed (populations built from the data)', () => {
     expect(of('funders')).toContain('DEPARTEMENT');
     expect(of('suppliers')).toEqual(expect.arrayContaining(['F0027', 'F0022', 'F0015']));
     expect(of('debtors')).toEqual(expect.arrayContaining(['ACCUEIL_HORIZONS', 'HABITAT_INSERTION', 'CCAS_AURELLE', 'COTEAUX_SEREIN']));
+  });
+  it('the selection figures are those known at the data vintage in force; none before the extraction', () => {
+    const cutoff = p.game.dataVintages.interim.cutoff;
+    const interim = confirmationCandidates(p, ds, cutoff);
+    const none = confirmationCandidates(p, ds, null);
+    const ids = (cs: typeof cands) => cs.map((c) => c.thirdParty).sort();
+    // the same third parties are proposed whatever the vintage
+    expect(ids(interim)).toEqual(ids(cands));
+    expect(ids(none)).toEqual(ids(cands));
+    for (const c of none) expect(c.amount, c.thirdParty).toBeNull();
+    // no invoice dated after the cutoff in the volume of a supplier
+    const f22 = interim.find((c) => c.thirdParty === 'F0022')!;
+    const known = ds.invoices.filter((i) => i.supplierId === 'F0022' && i.invoiceDate.startsWith('2025') && i.invoiceDate <= cutoff).reduce((s, i) => s + i.total, 0);
+    expect(f22.amount).toBe(known);
+    const late = ds.invoices.filter((i) => i.supplierId === 'F0022' && i.invoiceDate > cutoff && i.invoiceDate.startsWith('2025'));
+    expect(late.length).toBeGreaterThan(0);
+    expect(f22.amount).toBeLessThan(cands.find((c) => c.thirdParty === 'F0022')!.amount!);
+    // a population is ordered by the figure shown
+    const sup = interim.filter((c) => c.population === 'suppliers').map((c) => c.amount ?? 0);
+    expect([...sup].sort((a, b) => b - a)).toEqual(sup);
   });
   it('one candidate per third party, in the order of the populations', () => {
     expect(new Set(cands.map((c) => c.thirdParty)).size).toBe(cands.length);

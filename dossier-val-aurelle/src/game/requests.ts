@@ -6,18 +6,23 @@
  * days of the game calendar, times the difficulty factor), and a document is
  * never handed over before it exists — before its date the reply is « pas
  * encore établi », and the document is served automatically at its date plus
- * the delay. Section of the game state owned by J4c.
+ * the delay. Which documents a request lists (established on the request date
+ * for some families, the scenario's pieces established later being mail) is
+ * the as-of rule of scenario/documents/replies.ts. Section of the game state
+ * owned by J4c.
  */
 import { z } from 'zod';
 import { formatDateFr, type IsoDate } from '../engine/dates';
 import type { ScenarioDatasets } from '../scenario/datasets';
 import { requestKey } from '../scenario/documents/model';
+import { hasTenderFile } from '../scenario/documents/replies';
 import { programmeLabel, requestLabel } from '../scenario/documents/request-labels';
 import { loadParams, type Params } from '../scenario/params';
 import type { RequestFamily } from '../scenario/schemas/requests';
 import type { UpcomingContext, UpcomingEvent } from './advance';
 import type { HoursCharge } from './budget';
 import { addWorkingDays, workCalendar, type WorkCalendar } from './calendar';
+import { periodAt } from './clock';
 import { recordGaugeEvent, type GaugesState } from './gauges';
 
 export type RequestDifficulty = 'assistant' | 'senior' | 'manager';
@@ -29,8 +34,8 @@ export interface RequestItem {
   /** Object of the request (programme, third party, 'YYYY:EcritureNum', month…), '' when the family has none. */
   object: string;
   sentOn: IsoDate;
-  /** Last reminder. */
-  remindedOn?: IsoDate;
+  /** Dates of the reminders, oldest first (each one is charged). */
+  reminders?: IsoDate[];
   /** Difficulty of the game when the request was sent (delay factor of the interlocutors). */
   difficulty?: RequestDifficulty;
 }
@@ -43,18 +48,36 @@ export function initialRequests(): RequestsState {
   return { items: [] };
 }
 
+/**
+ * Reminders of a saved item: the list, or the single `remindedOn` of the
+ * saves made before the reminders were listed (read as a list of one).
+ */
+export function readReminders<T extends { reminders?: string[] | undefined; remindedOn?: string | undefined }>(item: T): Omit<T, 'remindedOn' | 'reminders'> & { reminders?: string[] } {
+  const { remindedOn, reminders, ...rest } = item;
+  const list = reminders ?? (remindedOn !== undefined ? [remindedOn] : undefined);
+  return list ? { ...rest, reminders: list } : rest;
+}
+
 export const requestsSchema = z.object({
   items: z.array(
-    z.object({
-      id: z.string(),
-      family: z.string(),
-      object: z.string(),
-      sentOn: z.string(),
-      remindedOn: z.string().optional(),
-      difficulty: z.enum(['assistant', 'senior', 'manager']).optional(),
-    }),
+    z
+      .object({
+        id: z.string(),
+        family: z.string(),
+        object: z.string(),
+        sentOn: z.string(),
+        reminders: z.array(z.string()).optional(),
+        remindedOn: z.string().optional(),
+        difficulty: z.enum(['assistant', 'senior', 'manager']).optional(),
+      })
+      .transform(readReminders),
   ),
 });
+
+/** Date of the last reminder of a request or a confirmation, if any. */
+export function lastReminder(item: { reminders?: readonly IsoDate[] }): IsoDate | undefined {
+  return item.reminders?.[item.reminders.length - 1];
+}
 
 export { requestKey };
 
@@ -85,12 +108,14 @@ export function answerDate(params: Params, cal: WorkCalendar, item: RequestItem)
 }
 
 /**
- * Date a document dated `docDate` answering the request reaches the auditor:
- * the interlocutor's delay counted from the request, or from the date of the
- * document when it does not exist yet.
+ * Date a document dated `docDate` answering the request reaches the auditor
+ * (plan J4 §8.4): with the answer when it exists by then (established before
+ * the request, or between the request and the answer), otherwise the
+ * interlocutor's delay counted from the date of the document.
  */
 export function arrivalDate(params: Params, cal: WorkCalendar, item: RequestItem, docDate: IsoDate): IsoDate {
-  return addWorkingDays(cal, docDate > item.sentOn ? docDate : item.sentOn, delayDays(params, item.family, item.object, item.difficulty));
+  const due = answerDate(params, cal, item);
+  return docDate <= due ? due : addWorkingDays(cal, docDate, delayDays(params, item.family, item.object, item.difficulty));
 }
 
 /**
@@ -126,18 +151,22 @@ export function receivedRequests(s: RequestsState, params: Params, date: IsoDate
 /**
  * Arrival of the reply to a request key for a document dated `docDate`
  * (earliest over the requests of that key), or null when it was never asked.
+ * `docDate` null: a document established on the date of each request, which
+ * comes with the answer; `sentOn`: a version built for the requests sent that
+ * day, which only they serve.
  */
-export function requestArrivals(s: RequestsState, params: Params): (key: string, docDate: IsoDate) => IsoDate | null {
+export function requestArrivals(s: RequestsState, params: Params): (key: string, docDate: IsoDate | null, sentOn?: IsoDate) => IsoDate | null {
   const cal = workCalendar(params);
   const byKey = new Map<string, RequestItem[]>();
   for (const it of s.items) {
     const k = requestKey(it.family, it.object);
     byKey.set(k, [...(byKey.get(k) ?? []), it]);
   }
-  return (key, docDate) => {
+  return (key, docDate, sentOn) => {
     let best: IsoDate | null = null;
     for (const it of byKey.get(key) ?? []) {
-      const d = arrivalDate(params, cal, it, docDate);
+      if (sentOn !== undefined && it.sentOn !== sentOn) continue;
+      const d = docDate === null ? answerDate(params, cal, it) : arrivalDate(params, cal, it, docDate);
       if (best === null || d < best) best = d;
     }
     return best;
@@ -217,10 +246,12 @@ export function requestObjects(params: Params, ds: ScenarioDatasets, family: str
       return (f.objects ?? []).map((o) => ({ id: o.id, label: o.label }));
     case 'thirdParty': {
       const kinds = new Set(f.thirdPartyKinds ?? []);
-      let tps = ds.thirdParties.filter((t) => kinds.size === 0 || kinds.has(t.kind));
+      // never the auditor's own firm (its engagement letter is in the permanent file)
+      let tps = ds.thirdParties.filter((t) => (kinds.size === 0 || kinds.has(t.kind)) && t.name !== params.game.firmName);
       if (family === 'supplier-tender') {
+        // suppliers invoiced since 2024 whose purchases are awarded after competition (no statutory contribution, co-ownership charges nor bank services)
         const invoiced = new Set(ds.invoices.filter((i) => i.invoiceDate >= '2024-01-01').map((i) => i.supplierId));
-        tps = tps.filter((t) => invoiced.has(t.id));
+        tps = tps.filter((t) => invoiced.has(t.id) && hasTenderFile(ds.invoices, t.id));
       }
       return tps.map((t) => ({ id: t.id, label: t.name })).sort((a, b) => a.label.localeCompare(b.label, 'fr'));
     }
@@ -293,17 +324,39 @@ export interface RequestHost {
 }
 
 /**
+ * Phase of the engagement at a date: the calendar period in progress, or the
+ * last one ended (off site, between two periods).
+ */
+function phaseAt(params: Params, date: IsoDate): string {
+  const p = periodAt(params.game.calendar, date);
+  return p.current?.id ?? p.previous?.id ?? '';
+}
+
+/**
+ * Earlier request of the same family and object sent in the same phase of
+ * the engagement as `date` (asking again then is a duplicate; at a later
+ * visit, the documents built on the request date are updated), if any.
+ */
+export function duplicateOf(items: readonly RequestItem[], family: string, object: string, date: IsoDate, params: Params): RequestItem | undefined {
+  const key = requestKey(family, object);
+  const phase = phaseAt(params, date);
+  return items.find((it) => requestKey(it.family, it.object) === key && phaseAt(params, it.sentOn) === phase);
+}
+
+/**
  * Sends a document request (family × object) at the game date; the answer
  * arrives later (interlocutor delay, date of the document). Cost: a quarter
  * of an hour of the senior (hoursCharged). A duplicate request (same family
- * and object) is recorded as a gauge event for J5 ('duplicateRequest'), and so
- * is a request about a cycle assessed at low risk without any finding on it
+ * and object already asked in the same phase of the engagement: asking again
+ * at a later visit updates the documents built on the request date) is
+ * recorded as a gauge event for J5 ('duplicateRequest'), and so is a request
+ * about a cycle assessed at low risk without any finding on it
  * ('unrelatedRequest').
  */
 export function sendRequest<S extends RequestHost>(s: S, family: string, object: string, params: Params = loadParams()): S {
   const date = s.clock.date;
   const key = requestKey(family, object);
-  const duplicate = s.requests.items.some((it) => requestKey(it.family, it.object) === key);
+  const duplicate = duplicateOf(s.requests.items, family, object, date, params) !== undefined;
   const item: RequestItem = { id: `req${s.requests.items.length + 1}`, family, object, sentOn: date, ...(s.difficulty ? { difficulty: s.difficulty } : {}) };
   let next: S = { ...s, requests: { items: [...s.requests.items, item] } };
   if (next.gauges) {
@@ -317,12 +370,12 @@ export function sendRequest<S extends RequestHost>(s: S, family: string, object:
   return next;
 }
 
-/** Reminds the interlocutor of a request (journal; the reply itself keeps its date). */
+/** Reminds the interlocutor of a request, once a day at most (journal, cost; the reply itself keeps its date). */
 export function remindRequest<S extends RequestHost>(s: S, id: string, params: Params = loadParams()): S {
   const it = s.requests.items.find((x) => x.id === id);
-  if (!it) return s;
   const date = s.clock.date;
-  let next: S = { ...s, requests: { items: s.requests.items.map((x) => (x.id === id ? { ...x, remindedOn: date } : x)) } };
+  if (!it || lastReminder(it) === date) return s;
+  let next: S = { ...s, requests: { items: s.requests.items.map((x) => (x.id === id ? { ...x, reminders: [...(x.reminders ?? []), date] } : x)) } };
   if (next.journal) next = { ...next, journal: [...next.journal, { on: date, kind: 'requestReminder', ref: requestKey(it.family, it.object), data: { title: `Relance – ${requestLabel(params, it.family, it.object)}` } }] };
   return next;
 }
@@ -366,12 +419,12 @@ export function upcomingRequests(s: RequestsState, ctx: UpcomingContext & { requ
   return out;
 }
 
-/** Hours charged to the budget by the document requests and their reminders (time of the senior). */
+/** Hours charged to the budget by the document requests and each of their reminders (time of the senior). */
 export function hoursCharged(s: RequestsState, params: Params): HoursCharge[] {
   const out: HoursCharge[] = [];
   for (const it of s.items) {
     out.push({ member: 'senior', hours: params.requests.costHours.request, on: it.sentOn });
-    if (it.remindedOn) out.push({ member: 'senior', hours: params.requests.costHours.reminder, on: it.remindedOn });
+    for (const on of it.reminders ?? []) out.push({ member: 'senior', hours: params.requests.costHours.reminder, on });
   }
   return out;
 }

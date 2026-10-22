@@ -29,28 +29,9 @@ import { useGame } from '../../app/store';
 import { Badge, Button, Card, Checkbox, cx, Select, TextInput } from '../../components/ui';
 import { Field } from './Field';
 import { formatPct } from './labels';
-import { decimalText, parseDecimal, usePlanningView, type MaterialityDraft } from './planningStore';
+import { decimalText, draftFrom, emptyDraft, parseDecimal, usePlanningView } from './planningStore';
 
 const VINTAGE_ORDER: readonly MaterialityVintage[] = ['certified2024', 'interim', 'draft2025'];
-
-function emptyDraft(vintage: MaterialityVintage): MaterialityDraft {
-  return { base: '', vintage, pct: '', rounding: 1000, planningPct: '', trivialPct: '', specific: false, specificPct: '', factors: [], comment: '' };
-}
-
-function draftFrom(c: MaterialityChoice, vintage: MaterialityVintage): MaterialityDraft {
-  return {
-    base: c.base,
-    vintage,
-    pct: decimalText(c.pct),
-    rounding: 1000,
-    planningPct: decimalText(c.planningPct),
-    trivialPct: decimalText(c.trivialPct),
-    specific: c.specificPct !== null,
-    specificPct: c.specificPct === null ? '' : decimalText(c.specificPct),
-    factors: c.factors,
-    comment: c.comment,
-  };
-}
 
 function Money({ cents }: { cents: number }) {
   return <span className="num whitespace-nowrap">{formatEuro(cents, 0)}</span>;
@@ -98,10 +79,11 @@ export function MaterialityTab() {
   useEffect(() => {
     if (draft && draft.vintage && inputs[draft.vintage]) return;
     const v = latestVintage(inputs);
-    setDraft(current ? draftFrom(current, v) : emptyDraft(v));
-  }, [draft, inputs, current, setDraft]);
+    const units = params.planning.thresholds.roundingEuros;
+    setDraft(current ? draftFrom(current, v, units) : emptyDraft(v, units));
+  }, [draft, inputs, current, setDraft, params]);
 
-  const d = draft ?? emptyDraft(latestVintage(inputs));
+  const d = draft ?? emptyDraft(latestVintage(inputs), params.planning.thresholds.roundingEuros);
   const vintage = d.vintage && inputs[d.vintage] ? d.vintage : latestVintage(inputs);
   const input = inputs[vintage]!;
   const amounts = useMemo(() => new Map(params.planning.bases.map((b) => [b.id, baseAmount(b, input)])), [params, input]);

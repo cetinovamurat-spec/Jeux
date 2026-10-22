@@ -9,6 +9,7 @@
  */
 import { useMemo, useState } from 'react';
 import { formatDateFr } from '../../../engine/dates';
+import { parseDecimal } from '../../../game/ledger';
 import {
   assumptionBlocked,
   assumptionDefs,
@@ -60,6 +61,22 @@ function sourceRequest(tool: RecalcToolId, scope: string): { family: string; obj
   }
 }
 
+/**
+ * Value of an assumption as the rules take it: a percentage typed in the
+ * French format (« 2,4 ») becomes a number; a text that is not a number is
+ * kept as typed (invalid).
+ */
+function normalized(def: AssumptionDef | undefined, v: string | number): string | number {
+  if (def?.kind !== 'percent' || typeof v === 'number') return v;
+  const x = parseDecimal(v);
+  return x !== null && Number.isFinite(x) ? x : v;
+}
+
+/** Whether two values of an assumption are the same (« 2,4 » is the client's 2.4). */
+function sameValue(def: AssumptionDef, a: string | number | undefined, b: string | number | undefined): boolean {
+  return String(normalized(def, a ?? '')) === String(normalized(def, b ?? ''));
+}
+
 function valueText(def: AssumptionDef, v: string | number): string {
   if (v === '' || v === undefined) return '—';
   switch (def.kind) {
@@ -90,7 +107,14 @@ function AssumptionInput({ def, value, onChange, scope, id }: { def: AssumptionD
     case 'percent':
       return (
         <span className="inline-flex items-center gap-1">
-          <TextInput id={id} inputMode="decimal" value={String(value)} onChange={(e) => onChange(e.target.value.replace(',', '.'))} className="w-24 text-right font-mono" />
+          <TextInput
+            id={id}
+            inputMode="decimal"
+            value={typeof value === 'number' ? value.toLocaleString('fr-FR', { useGrouping: false, maximumFractionDigits: 6 }) : value}
+            onChange={(e) => onChange(e.target.value)}
+            invalid={typeof normalized(def, value) !== 'number'}
+            className="w-24 text-right font-mono"
+          />
           <span className="text-sm text-muted">%</span>
         </span>
       );
@@ -191,7 +215,7 @@ function SavedRecalcs({ executionId, tool, cycle }: { executionId: string | null
             const scopeLabel = toolScopes(tool, data).find((s) => s.id === r.scope)?.label ?? r.scope;
             const defs = assumptionDefs(tool, r.scope);
             const client = clientAssumptions(params, tool, r.scope);
-            const changed = defs.filter((d) => r.assumptions[d.id] && String(r.assumptions[d.id]!.value) !== String(client[d.id] ?? ''));
+            const changed = defs.filter((d) => r.assumptions[d.id] && !sameValue(d, r.assumptions[d.id]!.value, client[d.id]));
             const gap = r.summary.computed - r.summary.recorded;
             return (
               <tr key={r.id} className="border-b border-line align-top last:border-b-0">
@@ -258,15 +282,18 @@ export function RecalcTool({ executionId, tool, cycle }: { executionId: string |
   const [values, setValues] = useState<Record<string, Record<string, string | number>>>({});
   const [sources, setSources] = useState<Record<string, Record<string, string | null>>>({});
   const [saved, setSaved] = useState<string | null>(null);
-  const v = { ...client, ...(values[scope] ?? {}) };
-  const src = sources[scope] ?? {};
   const defs = assumptionDefs(tool, scope);
-  const assumptions = Object.fromEntries(defs.map((d) => [d.id, { value: v[d.id] ?? '', source: String(v[d.id] ?? '') !== String(client[d.id] ?? '') ? (src[d.id] ?? null) : null }]));
+  // v: as typed (shown in the inputs); vn: as submitted to the rules (percentages typed with a comma normalised)
+  const v = { ...client, ...(values[scope] ?? {}) };
+  const vn = Object.fromEntries(Object.entries(v).map(([k, x]) => [k, normalized(defs.find((d) => d.id === k), x)]));
+  const src = sources[scope] ?? {};
+  const assumptions = Object.fromEntries(defs.map((d) => [d.id, { value: vn[d.id] ?? '', source: sameValue(d, v[d.id], client[d.id]) ? null : (src[d.id] ?? null) }]));
+  const invalid = defs.filter((d) => d.kind === 'percent' && typeof vn[d.id] !== 'number');
   const unsourced = unsourcedChanges(params, tool, scope, assumptions);
   const access = toolAccess(tool, scope, data);
-  const blocked = access.ok ? assumptionBlocked(tool, v, data) : null;
+  const blocked = access.ok ? assumptionBlocked(tool, vn, data) : null;
   const ready = tool === 'prorata' || c.view.ledger2025 === 'draft';
-  const outcome = useMemo(() => (ready && access.ok && !blocked && unsourced.length === 0 ? runRecalc(tool, scope, v, data) : null), [ready, access.ok, blocked, unsourced.length, tool, scope, JSON.stringify(v), data]); // eslint-disable-line react-hooks/exhaustive-deps
+  const outcome = useMemo(() => (ready && access.ok && !blocked && invalid.length === 0 && unsourced.length === 0 ? runRecalc(tool, scope, vn, data) : null), [ready, access.ok, blocked, invalid.length, unsourced.length, tool, scope, JSON.stringify(vn), data]); // eslint-disable-line react-hooks/exhaustive-deps
   const scopeLabel = scopes.find((s) => s.id === scope)?.label ?? scope;
   const idp = `recalc-${executionId ?? 'free'}-${tool}`;
   const req = sourceRequest(tool, scope);
@@ -319,7 +346,7 @@ export function RecalcTool({ executionId, tool, cycle }: { executionId: string |
           <fieldset className="space-y-2 rounded-md border border-line p-3">
             <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-muted">Hypothèses (celles du client par défaut)</legend>
             {defs.map((d) => {
-              const changed = String(v[d.id] ?? '') !== String(client[d.id] ?? '');
+              const changed = !sameValue(d, v[d.id], client[d.id]);
               const id = `${idp}-${d.id}`;
               return (
                 <div key={d.id} className="grid gap-1 sm:grid-cols-[minmax(12rem,18rem)_minmax(0,1fr)] sm:items-start">
@@ -353,6 +380,7 @@ export function RecalcTool({ executionId, tool, cycle }: { executionId: string |
             })}
           </fieldset>
           {blocked && <p className="text-sm text-warn">{blocked}</p>}
+          {invalid.length > 0 && <p className="text-sm text-warn">Saisissez un pourcentage valide, avec une virgule décimale ({invalid.map((d) => d.label).join(', ')}).</p>}
           {unsourced.length > 0 && <p className="text-sm text-warn">Citez la source de chaque hypothèse modifiée (pièce reçue ou paramètre du cabinet) pour obtenir le calcul.</p>}
           {outcome && (
             <div className="overflow-x-auto rounded-md border border-line">

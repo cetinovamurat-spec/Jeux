@@ -8,8 +8,8 @@ export const STATUS_TONES: Readonly<Record<FindingStatus, Tone>> = { question: '
 export const STATUS_HELP: Readonly<Record<FindingStatus, string>> = {
   question: 'Point à instruire : il n’entre pas dans le tableau des anomalies.',
   finding: 'Anomalie retenue : elle entre dans le tableau des anomalies.',
-  dismissed: 'Point écarté après examen (pièces à l’appui).',
-  closed: 'Point clos.',
+  dismissed: 'Point écarté après examen, pièces à l’appui : rien à reporter, il n’entre pas dans le tableau des anomalies.',
+  closed: 'Point réglé (réponse obtenue, question sans objet) : rien à reporter, il n’entre pas dans le tableau des anomalies. Une anomalie retenue reste au statut « Constat », même si l’organisme accepte de la corriger.',
 };
 
 export const NATURE_LABELS: Readonly<Record<Nature, string>> = {

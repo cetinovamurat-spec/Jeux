@@ -9,7 +9,6 @@ import { Badge, Card, cx } from '../../components/ui';
 
 const DIFFICULTY_LABEL: Record<Difficulty, string> = { assistant: 'Assistant', senior: 'Senior', manager: 'Manager' };
 
-
 function initials(name: string): string {
   const words = name.split(/\s+/).filter(Boolean);
   if (words.length === 0) return '?';
@@ -25,8 +24,39 @@ function Avatar({ name }: { name: string }) {
   );
 }
 
+/** Hours in the French format, as in the top bar (« 12,5 h »). */
 function hours(h: number): string {
-  return `${h} h`;
+  return `${h.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} h`;
+}
+
+interface MemberHours {
+  id: string;
+  name: string;
+  role: string;
+  allotted: number;
+  used: number;
+  left: number;
+}
+
+function MemberRow({ member: m }: { member: MemberHours }) {
+  return (
+    <tr className="border-b border-line">
+      <th scope="row" className="px-3 py-1.5 text-left font-normal">
+        <div className="flex items-center gap-2">
+          <Avatar name={m.name} />
+          <div className="min-w-0">
+            <p className={cx('leading-tight', m.id === 'senior' && 'font-semibold')}>{m.name}</p>
+            <p className="line-clamp-2 text-xs leading-tight text-muted" title={m.role}>
+              {m.role}
+            </p>
+          </div>
+        </div>
+      </th>
+      <td className="num px-1.5 py-1.5">{hours(m.allotted)}</td>
+      <td className="num px-1.5 py-1.5 text-muted">{hours(m.used)}</td>
+      <td className="num px-3 py-1.5">{hours(m.left)}</td>
+    </tr>
+  );
 }
 
 export function TeamCard() {
@@ -40,13 +70,17 @@ export function TeamCard() {
   const confirmations = useGame((s) => s.game.confirmations);
   const samples = useGame((s) => s.game.samples);
   const recalcs = useGame((s) => s.game.recalcs);
-  const byMember = useMemo(() => hoursUsed({ program, requests, confirmations, samples, recalcs }, c.params).byMember, [program, requests, confirmations, samples, recalcs, c]);
-  const members = gp.team.map((m) => {
+  const used = useMemo(() => hoursUsed({ program, requests, confirmations, samples, recalcs }, c.params), [program, requests, confirmations, samples, recalcs, c]);
+  const all = gp.team.map((m) => {
     const allotted = m.hoursByDifficulty[difficulty];
-    const used = byMember[m.id];
-    return { ...m, allotted, used, left: allotted - used };
+    const spent = used.byMember[m.id];
+    return { ...m, allotted, used: spent, left: allotted - spent };
   });
-  const total = members.reduce((acc, m) => ({ allotted: acc.allotted + m.allotted, used: acc.used + m.used, left: acc.left + m.left }), { allotted: 0, used: 0, left: 0 });
+  // Sofia's hours are a separate envelope: the mission budget (top bar, partner's arbitration) is the rest of the team.
+  const members = all.filter((m) => m.id !== 'sofia');
+  const envelopes = all.filter((m) => m.id === 'sofia');
+  const allotted = members.reduce((acc, m) => acc + m.allotted, 0);
+  const total = { allotted, used: used.team, left: allotted - used.team };
   const usedPct = budget > 0 ? total.used / budget : 0;
 
   return (
@@ -71,25 +105,10 @@ export function TeamCard() {
         </thead>
         <tbody>
           {members.map((m) => (
-            <tr key={m.id} className="border-b border-line">
-              <th scope="row" className="px-3 py-1.5 text-left font-normal">
-                <div className="flex items-center gap-2">
-                  <Avatar name={m.name} />
-                  <div className="min-w-0">
-                    <p className={cx('leading-tight', m.id === 'senior' && 'font-semibold')}>{m.name}</p>
-                    <p className="line-clamp-2 text-xs leading-tight text-muted" title={m.role}>
-                      {m.role}
-                    </p>
-                  </div>
-                </div>
-              </th>
-              <td className="num px-1.5 py-1.5">{hours(m.allotted)}</td>
-              <td className="num px-1.5 py-1.5 text-muted">{hours(m.used)}</td>
-              <td className="num px-3 py-1.5">{hours(m.left)}</td>
-            </tr>
+            <MemberRow key={m.id} member={m} />
           ))}
         </tbody>
-        <tfoot>
+        <tbody>
           <tr className="border-b border-line bg-sunken font-semibold">
             <th scope="row" className="px-3 py-1.5 text-left">
               Total de l’équipe
@@ -98,7 +117,19 @@ export function TeamCard() {
             <td className="num px-1.5 py-1.5">{hours(total.used)}</td>
             <td className="num px-3 py-1.5">{hours(total.left)}</td>
           </tr>
-        </tfoot>
+        </tbody>
+        {envelopes.length > 0 && (
+          <tbody>
+            <tr>
+              <th scope="colgroup" colSpan={4} className="px-3 pb-0.5 pt-2 text-left text-xs font-medium text-muted">
+                Enveloppe distincte (hors budget de la mission)
+              </th>
+            </tr>
+            {envelopes.map((m) => (
+              <MemberRow key={m.id} member={m} />
+            ))}
+          </tbody>
+        )}
       </table>
 
       <div className="space-y-1.5 px-3 py-2.5 text-sm">
@@ -118,7 +149,7 @@ export function TeamCard() {
           aria-valuemin={0}
           aria-valuemax={budget}
           aria-valuenow={total.used}
-          aria-valuetext={`${total.used} heures consommées sur ${budget}`}
+          aria-valuetext={`${hours(total.used)} consommées sur ${hours(budget)}`}
           className="relative mt-1 h-2 rounded bg-sunken"
         >
           <div className={cx('h-2 rounded', total.used > ceiling ? 'bg-ko' : total.used > budget ? 'bg-warn' : 'bg-accent')} style={{ width: `${Math.min(100, (total.used / ceiling) * 100)}%` }} />

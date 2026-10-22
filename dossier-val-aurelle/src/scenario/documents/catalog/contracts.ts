@@ -1,15 +1,99 @@
 /** Contracts and supporting documents. */
-import { addYears } from '../../../engine/dates';
+import { addYears, type IsoDate } from '../../../engine/dates';
+import type { Invoice } from '../../datasets';
 import { DocBuilder, ENTITY_HEADER, date, ofProg, debitOf, euro, euro0, fromEuros, meuro, pct, person, progName, tpName, type DocContext } from '../context';
 import type { DocumentModel } from '../model';
-import { fillInvoices, fillOperationOrders, fillOrders, invoicesTitle, ordersTitle, programmeWorksInvoices } from '../replies';
+import { operationAcceptance, operationOrders, programmeInvoices } from '../replies';
+
+/**
+ * Replies of the scenario's objects in the families dated on the request
+ * (plan J4 §8.2, replies.ts → REQUEST_DATED_FAMILIES): the documents of their
+ * neighbours, built on the date of the request from the same data, with the
+ * clues tagged on them (registered when a row carries them). The catalogue
+ * keeps a reference version, built at the start of the final and never served
+ * as such (`rebuiltOnRequest`); documents/index.ts → requestReply builds the
+ * version of each request.
+ */
+export const SCENARIO_REPLIES: Readonly<Record<string, (c: DocContext, asOf: IsoDate, update: boolean) => DocumentModel[]>> = {
+  // Les Peupliers (A06): maintenance works capitalised
+  'programme-invoices:PEU': (c, asOf, update) => {
+    const capitalised = (i: Invoice) => !!i.orderRef?.startsWith('BC2025-PE-') && i.lines.some((l) => l.account === '61521');
+    return programmeInvoices(c, 'PEU', asOf, update, {
+      invoicesId: 'factures-peupliers',
+      ordersId: 'bons-commande-peupliers',
+      invoice: (b) => {
+        const k = b.clueOnUse('A06', 'contract', 'Les factures décrivent de la peinture des cages d’escalier, un remplacement ponctuel de robinetterie et une réparation de toiture après infiltrations : de l’entretien.');
+        return (i) => (capitalised(i) ? k() : undefined);
+      },
+      order: (b) => {
+        const k = b.clueOnUse('A06', 'management', 'Les bons de commande rattachent la peinture, la robinetterie et la réparation de toiture au « programme d’entretien 2025 ».');
+        return (i) => (capitalised(i) ? k() : undefined);
+      },
+    });
+  },
+  // Les Érables (A02): invoice of the heat pump
+  'programme-invoices:ERA': (c, asOf, update) => {
+    const pac = c.cd.invoices.filter((i) => i.supplierId === 'F0024' && i.lines.some((l) => l.programmeId === 'ERA'));
+    const last = pac[pac.length - 1]!;
+    return programmeInvoices(c, 'ERA', asOf, update, {
+      invoicesId: 'facture-pac-erables',
+      ordersId: 'bons-commande-erables',
+      invoice: (b) => {
+        const k = b.clueOnUse('A02', 'contract', 'La facture de la pompe à chaleur mentionne la dépose et l’évacuation de l’ancienne chaufferie.');
+        return (i) => (i.id === last.id ? k() : undefined);
+      },
+    });
+  },
+  // Les Tilleuls (A16): work order n° 7, signed and not invoiced
+  'operation-orders:TIL': (c, asOf, update) => {
+    const t = c.params.scenario.specific.tilleuls;
+    const os7 = c.d.A16.os7Date;
+    const moe = person(c, 'projectManager');
+    const asset = person(c, 'assetDirector');
+    return [
+      operationOrders(c, 'TIL', asOf, update, {
+        id: 'os7-tilleuls',
+        ...(os7 <= asOf
+          ? {
+              amendments: 'Ordre de service modificatif : ordre de service n° 7 (travaux supplémentaires), reproduit ci-dessous.',
+              annex: (b: DocBuilder) => {
+                b.h(`Ordre de service n° 7 – travaux supplémentaires (${tpName(c, 'F0022')})`);
+                const k = b.clue('A16', 'contract', `L’ordre de service n° 7 (${euro0(fromEuros(t.os7Euros))}) est signé par le maître d’œuvre et la maîtrise d’ouvrage : les travaux supplémentaires sont dus.`, ['A16.a']);
+                b.fields([['Objet', 'Travaux supplémentaires : renforcement des fondations du bâtiment B et adaptation des réseaux'], ['Montant HT', euro0(fromEuros(t.os7Euros)), k], ['Délai', 'sans incidence sur le délai contractuel']]);
+                b.sign(moe.name, moe.role, os7);
+                b.sign(asset.name, `${asset.role}, pour le maître de l’ouvrage`, os7);
+              },
+            }
+          : {}),
+      }),
+    ];
+  },
+  // Les Tilleuls (A01): reception pronounced, the operation is still in progress in the books
+  'operation-acceptance:TIL': (c, asOf, update) => {
+    const t = c.params.scenario.specific.tilleuls;
+    return [
+      operationAcceptance(c, 'TIL', asOf, update, {
+        id: 'pv-reception-tilleuls',
+        reception: (b, operationId) => {
+          const comps = c.cd.components.filter((x) => x.operationId === operationId);
+          if (!comps.length || t.receptionDate > asOf) return undefined;
+          return { on: t.receptionDate, buildings: comps.map((x) => x.building), clue: b.clue('A01', 'contract', `La réception des travaux des Tilleuls est prononcée le ${date(t.receptionDate)}.`) };
+        },
+      }),
+    ];
+  },
+};
+
+/** Reference version of a scenario reply dated on the request (start of the final): clues, designer mode, review pack. */
+function referenceReply(c: DocContext, key: string): DocumentModel[] {
+  return SCENARIO_REPLIES[key]!(c, c.d.calendar['finalStart']!, false).map((d) => (d.availability.kind === 'onRequest' ? { ...d, availability: { ...d.availability, rebuiltOnRequest: true as const } } : d));
+}
 
 export function contractDocuments(c: DocContext): DocumentModel[] {
   const docs: DocumentModel[] = [];
   const sp = c.params.scenario.specific;
   const ceo = person(c, 'ceo');
   const asset = person(c, 'assetDirector');
-  const moe = person(c, 'projectManager');
 
   // --- conventions avec les gestionnaires de foyers (A11) -------------------
   {
@@ -47,58 +131,13 @@ export function contractDocuments(c: DocContext): DocumentModel[] {
   }
 
   // --- Les Peupliers : factures et bons de commande (A06) --------------------
-  {
-    const asOf = '2025-08-29';
-    const inv = programmeWorksInvoices(c, 'PEU', asOf);
-    const capitalised = (i: (typeof inv)[number]) => !!i.orderRef?.startsWith('BC2025-PE-') && i.lines.some((l) => l.account === '61521');
-    const b = new DocBuilder({ id: 'factures-peupliers', title: invoicesTitle(c, 'PEU'), category: 'contracts', date: asOf, issuer: `${ENTITY_HEADER(c)} – comptabilité fournisseurs`, availability: { kind: 'onRequest', family: 'programme-invoices', object: 'PEU', from: 'chiefAccountant' } });
-    const k = b.clue('A06', 'contract', 'Les factures décrivent de la peinture des cages d’escalier, un remplacement ponctuel de robinetterie et une réparation de toiture après infiltrations : de l’entretien.');
-    fillInvoices(b, c, inv, (i) => (capitalised(i) ? k : undefined));
-    docs.push(b.build());
-    const bc = new DocBuilder({ id: 'bons-commande-peupliers', title: ordersTitle(c, 'PEU'), category: 'contracts', date: asOf, issuer: `${ENTITY_HEADER(c)} – direction du patrimoine`, availability: { kind: 'onRequest', family: 'programme-invoices', object: 'PEU', from: 'chiefAccountant' } });
-    const k2 = bc.clue('A06', 'management', 'Les bons de commande rattachent la peinture, la robinetterie et la réparation de toiture au « programme d’entretien 2025 ».');
-    fillOrders(bc, c, inv, (i) => (capitalised(i) ? k2 : undefined));
-    docs.push(bc.build());
-  }
+  docs.push(...referenceReply(c, 'programme-invoices:PEU'));
 
   // --- Les Érables : facture de la PAC (A02) ---------------------------------
-  {
-    const pac = c.cd.invoices.filter((i) => i.supplierId === 'F0024' && i.lines.some((l) => l.programmeId === 'ERA'));
-    const last = pac[pac.length - 1]!;
-    const asOf = sp.erables.heatPumpInService;
-    const inv = programmeWorksInvoices(c, 'ERA', asOf);
-    const b = new DocBuilder({ id: 'facture-pac-erables', title: invoicesTitle(c, 'ERA'), category: 'contracts', date: asOf, issuer: `${ENTITY_HEADER(c)} – comptabilité fournisseurs`, availability: { kind: 'onRequest', family: 'programme-invoices', object: 'ERA', from: 'chiefAccountant' } });
-    const k = b.clue('A02', 'contract', 'La facture de la pompe à chaleur mentionne la dépose et l’évacuation de l’ancienne chaufferie.');
-    fillInvoices(b, c, inv, (i) => (i.id === last.id ? k : undefined));
-    docs.push(b.build());
-    const bc = new DocBuilder({ id: 'bons-commande-erables', title: ordersTitle(c, 'ERA'), category: 'contracts', date: asOf, issuer: `${ENTITY_HEADER(c)} – direction du patrimoine`, availability: { kind: 'onRequest', family: 'programme-invoices', object: 'ERA', from: 'chiefAccountant' } });
-    fillOrders(bc, c, inv);
-    docs.push(bc.build());
-  }
+  docs.push(...referenceReply(c, 'programme-invoices:ERA'));
 
   // --- Les Tilleuls : réception, OS n° 7 (A01, A16) ---------------------------
-  {
-    const t = sp.tilleuls;
-    const b = new DocBuilder({ id: 'pv-reception-tilleuls', title: `Procès-verbal de réception des travaux – ${progName(c, 'TIL')}`, category: 'contracts', date: t.receptionDate, issuer: moe.name, availability: { kind: 'onRequest', family: 'operation-acceptance', object: 'TIL', from: 'assetDirector' } });
-    const k = b.clue('A01', 'contract', `La réception des Tilleuls est prononcée le ${date(t.receptionDate)}, avec levée des réserves.`);
-    b.p(`Le maître de l’ouvrage, après avoir pris connaissance des opérations préalables à la réception, déclare prononcer la réception des travaux de construction de 52 logements à compter du ${date(t.receptionDate)}. Les réserves mineures listées en annexe seront levées dans un délai de 30 jours.`, k);
-    b.sign(asset.name, `${asset.role}, pour le maître de l’ouvrage`, t.receptionDate);
-    b.sign(tpName(c, 'F0022'), 'Entreprise générale', t.receptionDate);
-    b.sign(moe.name, moe.role, t.receptionDate);
-    docs.push(b.build());
-  }
-  {
-    const t = sp.tilleuls;
-    const sit = new DocBuilder({ id: 'situations-tilleuls', title: `Ordres de service, avenants et situations de travaux – ${progName(c, 'TIL')}`, category: 'contracts', date: t.receptionDate, issuer: `${ENTITY_HEADER(c)} – maîtrise d’ouvrage`, availability: { kind: 'onRequest', family: 'operation-orders', object: 'TIL', from: 'assetDirector' } });
-    fillOperationOrders(sit, c, 'TIL', t.receptionDate, 'Ordre de service modificatif : ordre de service n° 7 (travaux supplémentaires), joint.');
-    docs.push(sit.build());
-    const b = new DocBuilder({ id: 'os7-tilleuls', title: `Ordre de service n° 7 – ${progName(c, 'TIL')} – travaux supplémentaires`, category: 'contracts', date: c.d.A16.os7Date, issuer: moe.name, recipient: tpName(c, 'F0022'), availability: { kind: 'onRequest', family: 'operation-orders', object: 'TIL', from: 'assetDirector' } });
-    const k = b.clue('A16', 'contract', `L’ordre de service n° 7 (${euro0(fromEuros(t.os7Euros))}) est signé par le maître d’œuvre et la maîtrise d’ouvrage : les travaux supplémentaires sont dus.`, ['A16.a']);
-    b.fields([['Objet', 'Travaux supplémentaires : renforcement des fondations du bâtiment B et adaptation des réseaux'], ['Montant HT', euro0(fromEuros(t.os7Euros)), k], ['Délai', 'sans incidence sur le délai contractuel']]);
-    b.sign(moe.name, moe.role, c.d.A16.os7Date);
-    b.sign(asset.name, `${asset.role}, pour le maître de l’ouvrage`, c.d.A16.os7Date);
-    docs.push(b.build());
-  }
+  docs.push(...referenceReply(c, 'operation-acceptance:TIL'), ...referenceReply(c, 'operation-orders:TIL'));
 
   // --- Les Charmes : arrêté de subvention, ordre de service (A09) -----------
   {

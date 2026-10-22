@@ -47,7 +47,10 @@ export interface AnomalyPart {
   /**
    * Discriminating objects: when sibling parts (or neighbouring anomalies)
    * share their objects, a finding must name or link at least one of them.
-   * They also count as objects of the part.
+   * They also count as objects of the part. Never a generic document (bank
+   * statement, fixed-asset table, rent roll, aged balance, prior-year
+   * accounts or management report): one such document linked to an unrelated
+   * point, or to a false lead, would be enough to detect the part.
    */
   keyObjects?: readonly PartObject[];
   /**

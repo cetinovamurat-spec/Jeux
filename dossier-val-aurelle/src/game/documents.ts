@@ -24,12 +24,14 @@ export interface AvailabilityContext {
   designer: boolean;
   /**
    * Date the reply to a request key reaches the auditor for a document dated
-   * `docDate` (the interlocutor's delay from the request, or from the date of
-   * the document when it did not exist yet), or null when it was never asked
-   * (J4c). Without it, a document given on request is available once its key
-   * is answered and its date reached.
+   * `docDate` (with the answer when the document exists by then, otherwise
+   * its date plus the interlocutor's delay; null: established on the date of
+   * the request, with the answer), served by the requests sent on `sentOn`
+   * only when given; null when it was never asked (game/requests.ts →
+   * requestArrivals). Without it, a document given on request is available
+   * once its key is answered and its date reached.
    */
-  requestArrival?: (key: string, docDate: IsoDate) => IsoDate | null;
+  requestArrival?: (key: string, docDate: IsoDate | null, sentOn?: IsoDate) => IsoDate | null;
 }
 
 /**
@@ -47,12 +49,20 @@ export function availabilityContext(s: Pick<GameState, 'clock' | 'settings' | 'r
   };
 }
 
-/** Date a document given on request reaches the auditor (earliest over the keys it answers), or null when it was never asked. */
+/**
+ * Date a document given on request reaches the auditor (earliest over the
+ * keys it answers), or null when it was never asked. A reply built for a
+ * request (`asOf`) is served by that request; the reference version of a
+ * reply rebuilt on each request is « received » with the first answer, when
+ * the player gets its first version (same id: ui/screens/ged/replies.ts).
+ */
 function onRequestArrival(doc: DocumentModel, ctx: AvailabilityContext): IsoDate | null {
-  const keys = onRequestKeys(doc.availability);
+  const a = doc.availability;
+  if (a.kind !== 'onRequest') return null;
+  const keys = onRequestKeys(a);
   let best: IsoDate | null = null;
   for (const k of keys) {
-    const d = ctx.requestArrival ? ctx.requestArrival(k, doc.date) : ctx.answeredRequests.has(k) ? (doc.date > ctx.date ? null : doc.date) : null;
+    const d = ctx.requestArrival ? ctx.requestArrival(k, a.rebuiltOnRequest ? null : doc.date, a.asOf) : ctx.answeredRequests.has(k) ? (doc.date > ctx.date ? null : doc.date) : null;
     if (d !== null && (best === null || d < best)) best = d;
   }
   return best;

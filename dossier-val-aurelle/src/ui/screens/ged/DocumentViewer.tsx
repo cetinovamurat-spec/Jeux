@@ -10,7 +10,7 @@ import { formatDateFr } from '../../../engine/dates';
 import { blockText, type SearchHit } from '../../../game/documents';
 import { captureRiskFactor } from '../../../game/planning';
 import { addAnnotation, removeAnnotation, toggleEvidence, type DocumentState } from '../../../game/state';
-import type { DocumentModel } from '../../../scenario/documents';
+import { baseDocumentId, type DocumentModel } from '../../../scenario/documents';
 import { useCase } from '../../app/context';
 import { useGame } from '../../app/store';
 import { DocumentView } from '../../components/DocumentView';
@@ -139,7 +139,7 @@ export function DocumentViewer({ doc, state, prevId, nextId, position, total, hi
               Facteur de risque…
             </Button>
             <NewFindingButton
-              seed={{ objects: [{ kind: 'document', id: doc.id }], evidence: [selected === null ? { kind: 'doc', docId: doc.id } : { kind: 'doc', docId: doc.id, block: selected }], label: `${doc.title}${selected === null ? '' : ` – bloc ${selected + 1}`}` }}
+              seed={{ objects: [{ kind: 'document', id: baseDocumentId(doc.id) }], evidence: [selected === null ? { kind: 'doc', docId: doc.id } : { kind: 'doc', docId: doc.id, block: selected }], label: `${doc.title}${selected === null ? '' : ` – bloc ${selected + 1}`}` }}
             />
           </span>
         </div>

@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { periodAt } from '../../src/game/clock';
 import { EMPTY_QUERY } from '../../src/game/fec-query';
-import { deserialize, serialize } from '../../src/game/persistence';
+import { cleanOrphans, deserialize, serialize } from '../../src/game/persistence';
 import {
   addAnnotation,
   addTickMark,
@@ -82,9 +82,47 @@ describe('game state', () => {
     expect(deserialize(serialize({ ...s, scenarioId: 'autre-dossier' }), fresh()).ok).toBe(false);
     expect(deserialize(JSON.stringify({ ...s, schemaVersion: 99 }), fresh()).ok).toBe(false);
   });
-  it('flags a save made with another generated world or another content version', () => {
-    const r = deserialize(serialize({ ...fresh(), scenarioHash: 'autre' }), fresh());
+  it('flags a save made with another generated world or another content version, once: the save adopts the current content', () => {
+    const r = deserialize(serialize({ ...fresh(), scenarioHash: 'autre', contentVersion: 0 }), fresh());
     expect(r.ok && r.contentChanged).toBe(true);
+    if (!r.ok) return;
+    expect(r.state).toMatchObject({ scenarioHash: fresh().scenarioHash, contentVersion: fresh().contentVersion });
+    const again = deserialize(serialize(r.state), fresh());
+    expect(again.ok && again.contentChanged).toBeFalsy();
+  });
+
+  it('cleans the references the current content no longer knows, and lists them', () => {
+    const params = loadParams();
+    const known = (id: string) => id !== 'piece-retiree';
+    let s = markRead(markRead(fresh(), 'kbis'), 'piece-retiree');
+    s = {
+      ...s,
+      program: {
+        planned: [
+          { procedureId: 'board-minutes', assignee: 'senior' },
+          { procedureId: 'procedure-retiree', assignee: 'senior' },
+        ],
+        executions: [
+          { id: 'x1', procedureId: 'board-minutes', assignee: 'senior', hours: 7.5, launchedOn: '2025-11-03', conclusion: null, comment: '', refs: [{ kind: 'doc', id: 'kbis' }, { kind: 'doc', id: 'piece-retiree', block: 1 }, { kind: 'query', id: 'q1' }], review: { status: 'pending' } },
+          { id: 'x2', procedureId: 'procedure-retiree', assignee: 'senior', hours: 4, launchedOn: '2025-11-03', conclusion: null, comment: '', refs: [], review: { status: 'pending' } },
+        ],
+      },
+      requests: { items: [{ id: 'r1', family: 'interim-extraction', object: '', sentOn: '2025-11-03' }, { id: 'r2', family: 'famille-retiree', object: '', sentOn: '2025-11-03' }] },
+      worksheets: { ...s.worksheets, master: { crossCycle: { explained: { l1: { text: 'x', evidence: ['kbis', 'piece-retiree'] } }, pins: ['doc:piece-retiree', 'finding:c1'], conclusion: null, comment: '' } } },
+      planning: { ...s.planning, riskFactors: [{ id: 'f1', docId: 'piece-retiree', block: null, cycle: 'crossCycle', assertion: null, note: '', on: '2025-11-03' }] },
+    };
+    const r = cleanOrphans(s, params, known);
+    expect(r.removed).toHaveLength(7);
+    expect(r.state.program.planned.map((p) => p.procedureId)).toEqual(['board-minutes']);
+    expect(r.state.program.executions.map((e) => e.id)).toEqual(['x1']);
+    expect(r.state.program.executions[0]!.refs).toEqual([{ kind: 'doc', id: 'kbis' }, { kind: 'query', id: 'q1' }]);
+    expect(r.state.requests.items.map((x) => x.id)).toEqual(['r1']);
+    expect(Object.keys(r.state.documents)).toEqual(['kbis']);
+    expect(r.state.worksheets.master['crossCycle']!.explained['l1']!.evidence).toEqual(['kbis']);
+    expect(r.state.worksheets.master['crossCycle']!.pins).toEqual(['finding:c1']);
+    expect(r.state.planning.riskFactors).toEqual([]);
+    // nothing left to clean: unchanged
+    expect(cleanOrphans(r.state, params, known)).toEqual({ state: r.state, removed: [] });
   });
   it('restarts a J3 game (schema 1) at the beginning of the engagement, keeping settings, tick marks and saved queries', () => {
     const v1 = {

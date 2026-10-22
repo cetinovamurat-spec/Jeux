@@ -7,9 +7,9 @@
 import { useId, useMemo, useState } from 'react';
 import { formatDateFr } from '../../../engine/dates';
 import { workCalendar } from '../../../game/calendar';
-import { answerDate, delayDays, familyOf, interlocutorOf, remindRequest, requestKey, requestObjects, sendRequest } from '../../../game/requests';
+import { answerDate, delayDays, duplicateOf, familyOf, interlocutorOf, lastReminder, remindRequest, requestKey, requestObjects, sendRequest } from '../../../game/requests';
 import { fold } from '../../../game/text';
-import { requestLabel } from '../../../scenario/documents';
+import { REQUEST_DATED_FAMILIES, requestLabel } from '../../../scenario/documents';
 import type { RequestFamily } from '../../../scenario/schemas/requests';
 import { useCase } from '../../app/context';
 import { useGame } from '../../app/store';
@@ -18,7 +18,7 @@ import { entryIdsByNumber } from '../fec/entryKey';
 import { ConfirmationsPanel } from '../tools/ConfirmationsPanel';
 import { ReceivedLinks, REQUEST_STATE_TONE, requestStateText, useThirdPartyName } from '../tools/RequestControls';
 import { useGedView } from './gedStore';
-import { delayText, interlocutorText, plural } from './labels';
+import { delayText, interlocutorText, plural, reminderText } from './labels';
 import { useRequestRows } from './replies';
 
 const MONTHS_FR = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
@@ -87,15 +87,24 @@ function ObjectPicker({ family, value, onChange, idPrefix }: { family: RequestFa
     );
   }
 
-  const words = fold(filter).split(/\s+/).filter(Boolean);
-  const shown = words.length ? objects.filter((o) => words.every((w) => fold(o.label).includes(w))) : objects;
+  const visible = (f: string) => {
+    const words = fold(f).split(/\s+/).filter(Boolean);
+    return words.length ? objects.filter((o) => words.every((w) => fold(o.label).includes(w))) : objects;
+  };
+  const shown = visible(filter);
   const current = shown.some((o) => o.id === value) ? value : '';
+  // the object sent is always the one shown selected: filtering it out selects the first object left (none when the list is empty)
+  const onFilter = (next: string) => {
+    setFilter(next);
+    const list = visible(next);
+    if (!list.some((o) => o.id === value)) onChange(list[0]?.id ?? '');
+  };
   return (
     <div className="grid gap-1.5">
       {objects.length > 8 && (
         <label className="text-sm">
           <span className="block text-xs text-muted">Filtrer la liste</span>
-          <TextInput type="search" value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Nom, mois…" className="w-full max-w-sm" autoComplete="off" />
+          <TextInput type="search" value={filter} onChange={(e) => onFilter(e.target.value)} placeholder="Nom, mois…" className="w-full max-w-sm" autoComplete="off" />
         </label>
       )}
       <label className="text-sm" htmlFor={`${idPrefix}-object`}>
@@ -144,6 +153,8 @@ function Catalogue() {
     return list.some((o) => o.id === object);
   })();
   const previous = items.filter((x) => x.family === family.id && x.object === object);
+  const duplicate = duplicateOf(items, family.id, object, date, params);
+  const last = previous.reduce<string | null>((m, x) => (m === null || x.sentOn > m ? x.sentOn : m), null);
   const who = interlocutorOf(params, family.id, object);
   const delay = delayDays(params, family.id, object, difficulty);
 
@@ -187,10 +198,15 @@ function Catalogue() {
         </div>
         <ObjectPicker key={family.id} family={family} value={object} idPrefix={`${idPrefix}-${family.id}`} onChange={(v) => setObjects((o) => ({ ...o, [family.id]: v }))} />
         {family.parameter === 'fecEntry' && object.split(':')[1] && !valid && <p className="text-sm text-warn">Aucune écriture de ce numéro dans le FEC disponible de l’exercice.</p>}
-        {previous.length > 0 && (
-          <p className="text-sm text-warn">
-            Déjà demandée le {formatDateFr(previous[0]!.sentOn)} : une demande en double est mal perçue par le client.
-          </p>
+        {duplicate ? (
+          <p className="text-sm text-warn">Déjà demandée le {formatDateFr(duplicate.sentOn)} : une demande en double est mal perçue par le client.</p>
+        ) : (
+          last && (
+            <p className="text-sm text-muted">
+              Déjà demandée le {formatDateFr(last)}, lors d’une précédente intervention.{' '}
+              {REQUEST_DATED_FAMILIES.has(family.id) ? 'La réponse à une nouvelle demande est établie à sa date, avec les données connues à ce moment.' : 'Une nouvelle demande donnera les mêmes pièces.'}
+            </p>
+          )
         )}
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="primary" disabled={!valid} onClick={send}>
@@ -239,6 +255,7 @@ function Tracker() {
         <tbody>
           {rows.map((r) => {
             const k = requestKey(r.item.family, r.item.object);
+            const reminded = lastReminder(r.item);
             return (
               <tr key={r.item.id} className="border-b border-line align-top last:border-b-0">
                 <td className="px-3 py-1.5 font-mono text-xs">{formatDateFr(r.item.sentOn)}</td>
@@ -250,11 +267,11 @@ function Tracker() {
                 <td className="px-2 py-1.5">
                   <Badge tone={REQUEST_STATE_TONE[r.status.state]}>{{ waiting: 'En attente', notYetEstablished: 'Pas encore établi', partial: 'Reçue en partie', received: 'Reçue' }[r.status.state]}</Badge>
                   <span className="mt-0.5 block text-xs text-muted">{requestStateText(r.status)}</span>
-                  {r.item.remindedOn && <span className="block text-xs text-muted">Relancée le {formatDateFr(r.item.remindedOn)}</span>}
+                  {reminded && <span className="block text-xs text-muted">{reminderText(r.item.reminders!.length, reminded, 'Relancée')}</span>}
                 </td>
                 <td className="px-3 py-1.5 text-right">
                   {r.status.canRemind && (
-                    <Button className="px-1.5 py-0 text-xs" disabled={r.item.remindedOn === date} onClick={() => act((s) => remindRequest(s, r.item.id, params))} title={`Relancer (${hours(params.requests.costHours.reminder)} h)`} aria-label={`Relancer la demande : ${requestLabel(params, r.item.family, r.item.object, tpName)}`} data-key={k}>
+                    <Button className="px-1.5 py-0 text-xs" disabled={reminded === date} onClick={() => act((s) => remindRequest(s, r.item.id, params))} title={`Relancer (${hours(params.requests.costHours.reminder)} h)`} aria-label={`Relancer la demande : ${requestLabel(params, r.item.family, r.item.object, tpName)}`} data-key={k}>
                       Relancer
                     </Button>
                   )}

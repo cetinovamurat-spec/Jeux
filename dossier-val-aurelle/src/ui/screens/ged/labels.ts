@@ -65,7 +65,9 @@ export function availabilityText(a: Availability, docDate: string, params: Param
       return `Reçu en cours de mission, disponible à partir du ${formatDateFr(a.from)}.`;
     case 'onRequest': {
       const p = params.documents.people[a.from];
-      return `Communiqué uniquement sur demande précise : « ${a.request} »${p ? `, auprès de ${p.name} (${p.role})` : ''}.`;
+      const what = `« ${a.request} »${p ? `, auprès de ${p.name} (${p.role})` : ''}`;
+      if (a.rebuiltOnRequest) return `Version de référence : la pièce est établie à la date de chaque demande ${what}, avec les données connues à cette date.`;
+      return `Communiqué uniquement sur demande précise : ${what}${a.asOf ? ` (établi pour la demande du ${formatDateFr(a.asOf)})` : ''}.`;
     }
     case 'confirmation':
       return `Réponse à la demande de confirmation « ${a.request} » ; arrive le ${formatDateFr(a.arrives)} si la demande a été envoyée.`;
@@ -113,4 +115,9 @@ export function interlocutorText(params: Params, id: string): string {
 /** Delay of an interlocutor in working days, in words. */
 export function delayText(days: number): string {
   return days <= 1 ? '1 jour ouvré' : `${days} jours ouvrés`;
+}
+
+/** Reminders of a request or a confirmation: « Relancée le 20/11/2025 », « Relancée 3 fois, en dernier le 24/11/2025 ». */
+export function reminderText(count: number, last: string, verb: 'Relancé' | 'Relancée'): string {
+  return count > 1 ? `${verb} ${count} fois, en dernier le ${formatDateFr(last)}` : `${verb} le ${formatDateFr(last)}`;
 }

@@ -8,6 +8,7 @@
  */
 import { z } from 'zod';
 import type { Cycle, Nature } from '../anomalies/types';
+import type { DocumentCategory } from '../documents/model';
 
 export const CYCLE_IDS = ['crossCycle', 'rentReceivables', 'fixedAssets', 'provisions', 'debtTreasury', 'purchases', 'equitySubsidies', 'disclosures'] as const satisfies readonly Cycle[];
 export const ASSERTION_IDS = ['occurrence', 'completeness', 'cutoff', 'valuation', 'classification', 'presentation', 'compliance'] as const satisfies readonly Nature[];
@@ -41,6 +42,9 @@ export const SAMPLE_POPULATIONS = ['capitalised-works', 'construction-progress',
 export const RECALC_TOOLS = ['depreciation', 'icne', 'impairment', 'pge', 'rent-revision', 'prorata'] as const;
 export const VIEW_SCREENS = ['/fec', '/etats', '/ged', '/analyse', '/balance', '/grand-livre'] as const;
 
+/** Categories of the GED (scenario/documents/model.ts → DocumentCategory). */
+export const DOCUMENT_CATEGORIES = ['permanent', 'governance', 'accounting', 'contracts', 'mail', 'internal', 'thirdParty'] as const satisfies readonly DocumentCategory[];
+
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
 // --- conditions (game/conditions.ts evaluates them) -------------------------------
@@ -70,7 +74,8 @@ export const conditionSchema: z.ZodType<Condition> = z.lazy(() =>
 // --- typed outputs (plan J4 §7.2) --------------------------------------------------
 export const requestRefSchema = z.object({ family: z.enum(REQUEST_FAMILIES), object: z.string().optional() });
 export const outputSchema = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('view'), screen: z.enum(VIEW_SCREENS) }),
+  /** A screen of J3; for the GED, the categories of documents the procedure examines (scope of the delegated work). */
+  z.object({ kind: z.literal('view'), screen: z.enum(VIEW_SCREENS), categories: z.array(z.enum(DOCUMENT_CATEGORIES)).min(1).optional() }),
   z.object({ kind: z.literal('requests'), requests: z.array(requestRefSchema).min(1) }),
   z.object({ kind: z.literal('confirmations') }),
   z.object({ kind: z.literal('sample'), population: z.enum(SAMPLE_POPULATIONS) }),
@@ -95,9 +100,11 @@ export const completionSchema = z.discriminatedUnion('kind', [
   /** At least `min` confirmation requests prepared. */
   z.object({ kind: z.literal('confirmations'), min: z.number().int().positive() }),
   /** Share of the available documents of a category read. */
-  z.object({ kind: z.literal('read'), category: z.enum(['permanent', 'governance', 'accounting', 'contracts', 'mail', 'internal', 'thirdParty']), minPct: z.number().min(0).max(100) }),
+  z.object({ kind: z.literal('read'), category: z.enum(DOCUMENT_CATEGORIES), minPct: z.number().min(0).max(100) }),
   /** The worksheet was updated on or after the start of a calendar period (subsequent events: update at the signature). */
   z.object({ kind: z.literal('updated'), fromPeriod: z.string() }),
+  /** At least `min` references on the worksheet, produced by the work or linked by the player (notes and screens of J3). */
+  z.object({ kind: z.literal('refs'), min: z.number().int().positive() }),
 ]);
 export type CompletionCriterion = z.infer<typeof completionSchema>;
 
@@ -125,10 +132,12 @@ export const procedureSchema = z.object({
   /** Response to the risk of management override (always retained): added to the programme automatically. */
   overrideResponse: z.boolean().optional(),
   output: outputSchema,
-  completion: z.array(completionSchema).default([]),
+  /** At least one criterion tied to real work (tests/params/procedures.test.ts). */
+  completion: z.array(completionSchema).min(1),
   /**
-   * Anomaly parts the procedure can reveal (debrief and tests only, never
-   * shown to the player outside the designer mode).
+   * Anomaly parts the procedure can reveal (debrief, tests, Antoine's advice,
+   * the clues a delegated worksheet reports within the reach of its work;
+   * never shown to the player outside the designer mode).
    */
   effectiveFor: z.array(z.string()).default([]),
   /** Delegated work (§7): the scripted faulty variant of J5 (T1 to T4) and the member it concerns. Correct in J4. */

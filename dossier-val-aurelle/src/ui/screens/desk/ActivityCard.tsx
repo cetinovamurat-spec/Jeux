@@ -3,7 +3,6 @@ import { useMemo } from 'react';
 import { useGedDocuments } from '../ged/replies';
 import { Link } from 'react-router';
 import { formatDateFr } from '../../../engine/dates';
-import { useCase } from '../../app/context';
 import { useGame } from '../../app/store';
 import { Card, EmptyState } from '../../components/ui';
 import { describeEvent, latestEvents } from './journal';
@@ -23,8 +22,7 @@ function Counter({ label, value, of, to }: { label: string; value: number; of?: 
 }
 
 export function ActivityCard() {
-  const c = useCase();
-  const available = useGedDocuments().available;
+  const { available, byId } = useGedDocuments();
   const docs = useGame((s) => s.game.documents);
   const ticks = useGame((s) => s.game.ticks);
   const savedQueries = useGame((s) => s.game.savedQueries);
@@ -43,9 +41,10 @@ export function ActivityCard() {
   }, [available, docs, ticks, savedQueries]);
 
   const events = useMemo(() => {
-    const ctx = { docTitle: (id: string) => c.documentsById.get(id)?.title, savedQueries };
+    // replies built on demand are not in the scenario's index: resolve through the GED
+    const ctx = { docTitle: (id: string) => byId(id)?.title, savedQueries };
     return latestEvents(journal, LATEST).map(({ event, index }) => ({ index, on: event.on, view: describeEvent(event, ctx) }));
-  }, [c, journal, savedQueries]);
+  }, [byId, journal, savedQueries]);
 
   return (
     <Card title="Activité" actions={journal.length > 0 ? <span className="text-xs text-muted">{journal.length} action{journal.length > 1 ? 's' : ''} au journal</span> : undefined}>

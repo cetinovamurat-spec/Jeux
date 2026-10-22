@@ -15,6 +15,7 @@ import {
   findingAmount,
   finalEnd,
   linkEvidence,
+  meaningfulLines,
   pendingPoints,
   setFindingStatus,
   uniqueEvidence,
@@ -108,6 +109,21 @@ describe('checks of the form', () => {
     expect(draftErrors(draft({ proposedEntry: [{ account: '7088', debit: 10, credit: 10 }, { account: '4687', debit: 0, credit: 0 }] }), ctx).join(' ')).toMatch(/à la fois/);
     // empty lines of the form are ignored
     expect(draftErrors(draft({ proposedEntry: [...draft().proposedEntry, { account: '', debit: 0, credit: 0 }] }), ctx)).toEqual([]);
+  });
+
+  it('reports a line with an amount and no account (it would be dropped on saving) and refuses a negative amount', () => {
+    const lines = [
+      { account: '6281', debit: 100_000 * EUR, credit: 0 },
+      { account: '', debit: 84_000 * EUR, credit: 0 },
+      { account: '4081', debit: 0, credit: 100_000 * EUR },
+      { account: '', debit: 0, credit: 84_000 * EUR },
+    ];
+    expect(draftErrors(draft({ proposedEntry: lines }), ctx)).toEqual(['Ligne 2 : compte manquant.', 'Ligne 4 : compte manquant.']);
+    // what is saved and matched, and what the form totals
+    expect(entryTotals(meaningfulLines(lines))).toEqual({ debit: 100_000 * EUR, credit: 100_000 * EUR, balanced: true });
+    expect(draftErrors(draft({ proposedEntry: [{ account: '', debit: -100, credit: 0 }] }), ctx)).toContain('Ligne 1 : compte manquant.');
+    const negative = draftErrors(draft({ proposedEntry: [{ account: '7088', debit: -100, credit: 0 }, { account: '4687', debit: 0, credit: -100 }] }), ctx);
+    expect(negative).toEqual(['Montant invalide sur le compte 7088.', 'Montant invalide sur le compte 4687.']);
   });
 
   it('limits objects and natures, requires a treatment for a « constat » and a fix compatible with the treatments', () => {

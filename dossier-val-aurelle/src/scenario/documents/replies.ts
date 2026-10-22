@@ -7,6 +7,11 @@
  *
  * Generic replies are built on demand on the main thread (the UI caches them);
  * they never read a field that betrays the correction key.
+ *
+ * As-of rule (plan J4 §8.2-8.4): the families of REQUEST_DATED_FAMILIES are
+ * answered by documents established on the date of the request, with the data
+ * known at that date, for every object — the scenario's too, whose clues are
+ * tagged on the same documents (catalog/contracts.ts → SCENARIO_REPLIES).
  */
 import { addBusinessDays, addDays, endOfMonth, type IsoDate } from '../../engine/dates';
 import { closingBalancesByAux } from '../../engine/balance';
@@ -18,7 +23,7 @@ import type { AssetComponent, JournalEntry, Ledger, LoanScheduleLine, ThirdParty
 import { createRng } from '../../engine/rng';
 import type { Invoice, Lease } from '../datasets';
 import { DocBuilder, ENTITY_HEADER, date, debitOf, euro, euro0, fromEuros, person, progName, pts, tpName, type AvailabilityInput, type DocContext } from './context';
-import type { DocumentModel, Interlocutor } from './model';
+import { versionedId, type DocumentModel, type Interlocutor } from './model';
 import { requestLabel } from './request-labels';
 
 // ---------------------------------------------------------------------------
@@ -46,6 +51,80 @@ export function slug(name: string): string {
 
 function onRequest(family: string, object: string, from: Interlocutor): AvailabilityInput {
   return { kind: 'onRequest', family, object, from };
+}
+
+/** « de » elided before a vowel or a mute h: « d’entretien des espaces verts », « de travaux ». */
+function de(text: string): string {
+  return /^[aeiouyhàâäéèêëîïôöùûüœæ]/i.test(text) ? `d’${text}` : `de ${text}`;
+}
+
+/** First words of the names that take the definite article (institutions, and companies named by a common noun). */
+const DEFINITE: Readonly<Record<string, 'le' | 'la' | 'l’' | 'les'>> = {
+  État: 'l’',
+  Agence: 'l’',
+  Association: 'l’',
+  Région: 'la',
+  Communauté: 'la',
+  Caisse: 'la',
+  Banque: 'la',
+  Compagnie: 'la',
+  Société: 'la',
+  Mutuelle: 'la',
+  Direction: 'la',
+  Département: 'le',
+  Centre: 'le',
+  Crédit: 'le',
+  Cabinet: 'le',
+  GIE: 'le',
+  Communes: 'les',
+};
+const OF_ARTICLE = { le: 'du ', la: 'de la ', 'l’': 'de l’', les: 'des ' } as const;
+
+/**
+ * « de » + name of a third party, with the article of the institutions and
+ * the contractions: de l’État, de la Région, du Département, du Centre
+ * communal…, des Jardiniers du Val, d’Énergies du Val, de Me Hélène Leclerc.
+ */
+export function ofName(name: string): string {
+  const lead = /^(Les|Le|La) (.+)$/.exec(name);
+  if (lead) return `${OF_ARTICLE[lead[1]!.toLowerCase() as 'les' | 'le' | 'la']}${lead[2]}`;
+  if (/^L[’']/.test(name)) return `de ${name}`;
+  const article = DEFINITE[name.split(/[\s’']/)[0]!];
+  return article ? `${OF_ARTICLE[article]}${name}` : de(name);
+}
+
+/** Title of a third party’s reply to a confirmation request; a name with an apposition (« Me X, notaire ») is closed by a comma. */
+export function confirmationReplyTitle(name: string): string {
+  return `Réponse ${ofName(name)}${name.includes(',') ? ',' : ''} à la demande de confirmation`;
+}
+
+// ---------------------------------------------------------------------------
+// as-of rule
+// ---------------------------------------------------------------------------
+
+/**
+ * Families whose replies are established on the date of the request, from the
+ * data known at that date (invoices, orders and situations, receptions,
+ * sales): a later request of the same object gets updated documents, whose ids
+ * carry its date (`update`), beside the first ones.
+ */
+export const REQUEST_DATED_FAMILIES: ReadonlySet<string> = new Set(['programme-invoices', 'operation-orders', 'operation-acceptance', 'sale-notary']);
+
+/**
+ * The reply to every object of the family is built by the family's builder,
+ * the scenario's objects included (the families dated on the request, and the
+ * supporting documents of an entry): a scenario piece that is not such a
+ * reply is attached to it only when it exists on the date of the request;
+ * established later, it reaches the auditor as mail, at its date plus the
+ * interlocutor's delay, without being announced.
+ */
+export function builtForEveryObject(family: string): boolean {
+  return REQUEST_DATED_FAMILIES.has(family) || family === 'entry-voucher';
+}
+
+/** Id of a document of a reply dated on the request: the date is appended for the updated version of a later request. */
+function replyId(id: string, asOf: IsoDate, update: boolean): string {
+  return update ? versionedId(id, asOf) : id;
 }
 
 const byDateThenNumber = (a: Invoice, b: Invoice) => (a.invoiceDate < b.invoiceDate ? -1 : a.invoiceDate > b.invoiceDate ? 1 : a.number < b.number ? -1 : a.number > b.number ? 1 : 0);
@@ -204,13 +283,21 @@ export function ordersTitle(c: DocContext, pid: string): string {
   return `Bons de commande 2025 – ${progName(c, pid)}`;
 }
 
-function programmeInvoices(c: DocContext, pid: string, asOf: IsoDate): DocumentModel[] {
+/** Clues of a scenario object tagged on the documents of its reply (registered on each document's builder). */
+type Tagger<T> = (b: DocBuilder) => (x: T) => string | undefined;
+
+/**
+ * Works invoices of the programme and their purchase orders, as known at
+ * `asOf`. A scenario object keeps the ids of its documents and tags its
+ * clues on the rows (`tags`).
+ */
+export function programmeInvoices(c: DocContext, pid: string, asOf: IsoDate, update = false, tags: { invoicesId?: string; ordersId?: string; invoice?: Tagger<Invoice>; order?: Tagger<Invoice> } = {}): DocumentModel[] {
   const inv = programmeWorksInvoices(c, pid, asOf);
   const s = slug(progName(c, pid));
-  const b = new DocBuilder({ id: `factures-${s}`, title: invoicesTitle(c, pid), category: 'contracts', date: asOf, issuer: `${ENTITY_HEADER(c)} – comptabilité fournisseurs`, availability: onRequest('programme-invoices', pid, 'chiefAccountant') });
-  fillInvoices(b, c, inv);
-  const o = new DocBuilder({ id: `bons-commande-${s}`, title: ordersTitle(c, pid), category: 'contracts', date: asOf, issuer: `${ENTITY_HEADER(c)} – direction du patrimoine`, availability: onRequest('programme-invoices', pid, 'chiefAccountant') });
-  fillOrders(o, c, inv);
+  const b = new DocBuilder({ id: replyId(tags.invoicesId ?? `factures-${s}`, asOf, update), title: invoicesTitle(c, pid), category: 'contracts', date: asOf, issuer: `${ENTITY_HEADER(c)} – comptabilité fournisseurs`, availability: onRequest('programme-invoices', pid, 'chiefAccountant') });
+  fillInvoices(b, c, inv, tags.invoice?.(b));
+  const o = new DocBuilder({ id: replyId(tags.ordersId ?? `bons-commande-${s}`, asOf, update), title: ordersTitle(c, pid), category: 'contracts', date: asOf, issuer: `${ENTITY_HEADER(c)} – direction du patrimoine`, availability: onRequest('programme-invoices', pid, 'chiefAccountant') });
+  fillOrders(o, c, inv, tags.order?.(o));
   return [b.build(), o.build()];
 }
 
@@ -443,27 +530,46 @@ export function fillOperationOrders(b: DocBuilder, c: DocContext, pid: string, u
   b.note(amendments);
 }
 
-function operationOrders(c: DocContext, pid: string, asOf: IsoDate): DocumentModel {
-  const b = new DocBuilder({ id: `ordres-service-${slug(progName(c, pid))}`, title: `Ordres de service, avenants et situations de travaux – ${progName(c, pid)}`, category: 'contracts', date: asOf, issuer: `${ENTITY_HEADER(c)} – maîtrise d’ouvrage`, availability: onRequest('operation-orders', pid, 'assetDirector') });
-  fillOperationOrders(b, c, pid, asOf, 'Aucun ordre de service modificatif ni avenant aux marchés de ces opérations.');
+/**
+ * Orders, amendments and situations of the recent operations of a programme,
+ * as known at `asOf`. A scenario object keeps its id, states its amendments
+ * and appends them (`tags.annex`, which tags the clues).
+ */
+export function operationOrders(c: DocContext, pid: string, asOf: IsoDate, update = false, tags: { id?: string; amendments?: string; annex?: (b: DocBuilder) => void } = {}): DocumentModel {
+  const b = new DocBuilder({ id: replyId(tags.id ?? `ordres-service-${slug(progName(c, pid))}`, asOf, update), title: `Ordres de service, avenants et situations de travaux – ${progName(c, pid)}`, category: 'contracts', date: asOf, issuer: `${ENTITY_HEADER(c)} – maîtrise d’ouvrage`, availability: onRequest('operation-orders', pid, 'assetDirector') });
+  fillOperationOrders(b, c, pid, asOf, tags.amendments ?? 'Aucun ordre de service modificatif ni avenant aux marchés de ces opérations.');
+  tags.annex?.(b);
   return b.build();
 }
 
-function operationAcceptance(c: DocContext, pid: string, asOf: IsoDate): DocumentModel {
+/** Reception of an operation stated by the maîtrise d’ouvrage: date, buildings, clue (scenario objects). */
+export interface Reception {
+  on: IsoDate;
+  buildings: readonly string[];
+  clue?: string | undefined;
+}
+
+/**
+ * Receptions of the recent operations of a programme, as known at `asOf`
+ * (an operation put in service later is still in progress). A scenario
+ * object keeps its id and states the reception of its operations
+ * (`tags.reception`, which tags the clues).
+ */
+export function operationAcceptance(c: DocContext, pid: string, asOf: IsoDate, update = false, tags: { id?: string; reception?: (b: DocBuilder, operationId: string) => Reception | undefined } = {}): DocumentModel {
   const asset = person(c, 'assetDirector');
-  const b = new DocBuilder({ id: `reception-${slug(progName(c, pid))}`, title: `Réception des travaux – ${progName(c, pid)}`, category: 'contracts', date: asOf, issuer: `${ENTITY_HEADER(c)} – maîtrise d’ouvrage`, availability: onRequest('operation-acceptance', pid, 'assetDirector') });
-  const rows: string[][] = [];
+  const b = new DocBuilder({ id: replyId(tags.id ?? `reception-${slug(progName(c, pid))}`, asOf, update), title: `Réception des travaux – ${progName(c, pid)}`, category: 'contracts', date: asOf, issuer: `${ENTITY_HEADER(c)} – maîtrise d’ouvrage`, availability: onRequest('operation-acceptance', pid, 'assetDirector') });
+  const rows: { cells: string[]; clue?: string }[] = [];
   for (const op of recentOperations(c, pid)) {
-    const comps = c.pd.components.filter((x) => x.operationId === op.id);
-    const inv = operationInvoices(c, op.id, '2026-12-31');
+    const inv = operationInvoices(c, op.id, asOf);
     const contractor = inv.length ? tpName(c, inv[inv.length - 1]!.supplierId) : '—';
-    if (comps.length) {
-      const d = comps.map((x) => x.inServiceDate).sort()[0]!;
-      const buildings = [...new Set(comps.map((x) => x.building))];
-      rows.push([op.label, buildings.length === 1 ? buildings[0]! : `${buildings.length} bâtiments`, contractor, `Réception prononcée le ${date(d)}, sans réserve majeure`]);
+    const comps = c.pd.components.filter((x) => x.operationId === op.id && x.inServiceDate <= asOf);
+    const r: Reception | undefined = tags.reception?.(b, op.id) ?? (comps.length ? { on: comps.map((x) => x.inServiceDate).sort()[0]!, buildings: comps.map((x) => x.building) } : undefined);
+    if (r && r.on <= asOf) {
+      const buildings = [...new Set(r.buildings)];
+      rows.push({ cells: [op.label, buildings.length === 1 ? buildings[0]! : buildings.length ? `${buildings.length} bâtiments` : '—', contractor, `Réception prononcée le ${date(r.on)}, sans réserve majeure`], ...(r.clue ? { clue: r.clue } : {}) });
     } else {
       const delivery = c.params.scenario.operationsInProgress.find((o) => o.id === pid)?.delivery;
-      rows.push([op.label, '—', contractor, delivery ? `Travaux en cours ; livraison prévue le ${date(delivery)}` : 'Travaux en cours ; réception non prononcée']);
+      rows.push({ cells: [op.label, '—', contractor, delivery ? `Travaux en cours ; livraison prévue le ${date(delivery)}` : 'Travaux en cours ; réception non prononcée'] });
     }
   }
   b.table(['Opération', 'Bâtiments', 'Entreprise', 'Réception'], rows, { align: ['left', 'left', 'left', 'left'] });
@@ -486,13 +592,46 @@ const CATEGORY_LABELS: Readonly<Record<string, string>> = {
   ascenseurs: 'maintenance des ascenseurs',
   espaces_verts: 'entretien des espaces verts',
   nettoyage: 'nettoyage des parties communes',
-  contrats_entretien: 'contrats d’entretien et de maintenance',
+  contrats_entretien: 'entretien et maintenance des équipements techniques',
 };
 
+/**
+ * Purchase categories that no commission awards: statutory contributions of
+ * the HLM bodies, co-ownership charges called by the syndic, bank services.
+ * Their suppliers have no tender file, and their agreements no contractual
+ * clause (nature only).
+ */
+export const NOT_AWARDED: Readonly<Record<string, string>> = {
+  cglls: 'Cotisation réglementaire due par les organismes d’habitations à loyer modéré, sans contrat',
+  syndic: 'Charges de copropriété appelées par le syndic désigné par l’assemblée générale des copropriétaires',
+  banque: 'Convention de compte et conditions tarifaires des services bancaires',
+};
+
+const mainCategories = new WeakMap<readonly Invoice[], Map<string, string>>();
+
+/** Main purchase category of a supplier: the category of its largest invoiced total. */
+export function supplierCategoryOf(invoices: readonly Invoice[], id: string): string {
+  let main = mainCategories.get(invoices);
+  if (!main) {
+    const totals = new Map<string, Map<string, number>>();
+    for (const i of invoices) {
+      const t = totals.get(i.supplierId) ?? new Map<string, number>();
+      t.set(i.category, (t.get(i.category) ?? 0) + i.total);
+      totals.set(i.supplierId, t);
+    }
+    main = new Map([...totals].map(([s, t]) => [s, [...t.entries()].sort((a, b) => b[1] - a[1])[0]![0]]));
+    mainCategories.set(invoices, main);
+  }
+  return main.get(id) ?? 'autres_services';
+}
+
+/** The purchases of the supplier are awarded after competition: a tender file exists. */
+export function hasTenderFile(invoices: readonly Invoice[], id: string): boolean {
+  return !(supplierCategoryOf(invoices, id) in NOT_AWARDED);
+}
+
 function supplierCategory(c: DocContext, id: string): string {
-  const n = new Map<string, number>();
-  for (const i of c.pd.invoices) if (i.supplierId === id) n.set(i.category, (n.get(i.category) ?? 0) + i.total);
-  return [...n.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'autres_services';
+  return supplierCategoryOf(c.pd.invoices, id);
 }
 
 function supplierVolume(c: DocContext, id: string, year: string): Cents {
@@ -506,13 +645,14 @@ function supplierTender(c: DocContext, id: string, asOf: IsoDate): DocumentModel
   const first = c.pd.invoices.filter((i) => i.supplierId === id).map((i) => i.invoiceDate).sort()[0] ?? asOf;
   const award = addDays(first, -45);
   const rng = createRng(`tender:${id}`);
-  const others = c.pd.thirdParties.filter((t) => t.kind === 'supplier' && t.id !== id && supplierCategory(c, t.id) === cat).map((t) => t.name);
+  // never the auditor's own firm among the bidders
+  const others = c.pd.thirdParties.filter((t) => t.kind === 'supplier' && t.id !== id && t.name !== c.params.game.firmName && supplierCategory(c, t.id) === cat).map((t) => t.name);
   const fillers = ['Groupe Habitat Services', 'Entreprise Duval Bâtiment', 'Rénovation Marnaise SAS'];
   const bidders = [name, ...rng.shuffle(others).slice(0, 3)];
   for (const f of fillers) if (bidders.length < 4 && !bidders.includes(f)) bidders.push(f);
   const factors = [1, ...[0, 1, 2].map(() => 1 + rng.uniform(0.03, 0.2))].sort((a, b) => a - b);
   const s = slug(name);
-  const b = new DocBuilder({ id: `marche-${s}`, title: `Rapport d’analyse des offres – marché de ${CATEGORY_LABELS[cat] ?? 'prestations'} attribué à ${name}`, category: 'contracts', date: award, issuer: `${ENTITY_HEADER(c)} – commission d’appel d’offres`, availability: onRequest('supplier-tender', id, 'assetDirector') });
+  const b = new DocBuilder({ id: `marche-${s}`, title: `Rapport d’analyse des offres – marché ${de(CATEGORY_LABELS[cat] ?? 'prestations')} attribué à ${name}`, category: 'contracts', date: award, issuer: `${ENTITY_HEADER(c)} – commission d’appel d’offres`, availability: onRequest('supplier-tender', id, 'assetDirector') });
   b.table(['Candidat', 'Offre (base annuelle)', 'Classement'], bidders.map((x, i) => [x, euro0(Math.round(base * factors[i]!)), String(i + 1)]), { align: ['left', 'right', 'right'] });
   b.p('La commission (directeur général, directrice administrative et financière, un administrateur) retient l’offre économiquement la plus avantageuse.');
   const ceo = person(c, 'ceo');
@@ -528,9 +668,10 @@ function supplierTender(c: DocContext, id: string, asOf: IsoDate): DocumentModel
 // sales of a programme: promises, deeds, notary
 // ---------------------------------------------------------------------------
 
-function saleNotary(c: DocContext, pid: string, asOf: IsoDate): DocumentModel {
+/** Sales of a programme known at `asOf`: promises signed by then, deeds and payments of the notary made by then. */
+function saleNotary(c: DocContext, pid: string, asOf: IsoDate, update = false): DocumentModel {
   const sales = c.pd.sales.filter((s) => s.programmeId === pid && (s.deedDate >= '2025-01-01' || s.promiseDate >= '2025-01-01') && s.promiseDate <= asOf).sort((a, b) => (a.promiseDate < b.promiseDate ? -1 : 1));
-  const b = new DocBuilder({ id: `ventes-${slug(progName(c, pid))}`, title: `Ventes HLM – ${progName(c, pid)} : promesses, actes et versements du notaire`, category: 'contracts', date: asOf, issuer: `${ENTITY_HEADER(c)} – direction financière`, availability: onRequest('sale-notary', pid, 'cfo') });
+  const b = new DocBuilder({ id: replyId(`ventes-${slug(progName(c, pid))}`, asOf, update), title: `Ventes HLM – ${progName(c, pid)} : promesses, actes et versements du notaire`, category: 'contracts', date: asOf, issuer: `${ENTITY_HEADER(c)} – direction financière`, availability: onRequest('sale-notary', pid, 'cfo') });
   b.table(
     ['Vente', 'Logement', 'Acquéreur', 'Promesse', 'Acte authentique', 'Prix', 'Versement du notaire', 'Notaire'],
     sales.map((s) => [s.id, s.dwellingIds[0] ?? '', s.buyer, date(s.promiseDate), s.deedDate <= asOf ? date(s.deedDate) : 'à signer', euro0(s.price), s.paymentDate <= asOf ? date(s.paymentDate) : '—', tpName(c, s.notaryId)]),
@@ -544,37 +685,53 @@ function saleNotary(c: DocContext, pid: string, asOf: IsoDate): DocumentModel {
 // agreements with a third party
 // ---------------------------------------------------------------------------
 
+/**
+ * Agreements in force with a third party, as known at `asOf` (date of the
+ * request): loans signed, financing decisions and their receipts, sales
+ * entrusted to the notary, invoicing of the year — up to that date, and up
+ * to the year end once it is past.
+ */
 function agreements(c: DocContext, id: string, asOf: IsoDate): DocumentModel {
   const tp = thirdParty(c, id);
   const name = tpName(c, id);
+  const at = asOf < YEAR_END ? asOf : YEAR_END;
   const b = new DocBuilder({ id: `conventions-${slug(name)}`, title: `Conventions et contrats en vigueur – ${name}`, category: 'contracts', date: asOf, issuer: ENTITY_HEADER(c), recipient: name, availability: onRequest('third-party-agreements', id, 'cfo') });
   const kind = tp?.kind ?? 'other';
   if (kind === 'lender') {
-    const loans = c.pd.loans.filter((l) => l.lenderId === id);
+    const loans = c.pd.loans.filter((l) => l.lenderId === id && l.startDate <= asOf);
     if (loans.length) {
       b.table(['Contrat', 'Produit', 'Programme', 'Montant emprunté', 'Date de signature', 'Taux'], loans.map((l) => [l.contractNumber, l.product, l.programmeId ? progName(c, l.programmeId) : '—', euro0(l.principal), date(l.startDate), l.rate.kind === 'fixed' ? `fixe ${pts(l.rate.ratePct)}` : `Livret A + ${pts(l.rate.marginPct)}`]), { title: 'Contrats de prêt', align: ['left', 'left', 'left', 'right', 'left', 'left'] });
     } else {
       b.p('Convention de compte courant et de services bancaires (gestion des flux, cartes, comptes à terme) ; conditions tarifaires annuelles.');
     }
   } else if (kind === 'publicBody') {
-    const subs = c.pd.subsidies.filter((s) => s.grantorId === id);
-    if (subs.length) b.table(['Décision', 'Programme', 'Montant accordé', 'Versé au 31/12/2025'], subs.map((s) => [date(s.decisionDate), progName(c, s.programmeId), euro0(s.amount), euro0(s.receipts.filter((r) => r.date <= YEAR_END).reduce((a, r) => a + r.amount, 0))]), { title: 'Décisions de financement', align: ['left', 'left', 'right', 'right'] });
+    const subs = c.pd.subsidies.filter((s) => s.grantorId === id && s.decisionDate <= asOf);
+    if (subs.length) b.table(['Décision', 'Programme', 'Montant accordé', `Versé au ${date(at)}`], subs.map((s) => [date(s.decisionDate), progName(c, s.programmeId), euro0(s.amount), euro0(s.receipts.filter((r) => r.date <= at).reduce((a, r) => a + r.amount, 0))]), { title: 'Décisions de financement', align: ['left', 'left', 'right', 'right'] });
     else b.p('Relations régies par les dispositions réglementaires générales ; aucune convention particulière de financement en cours.');
   } else if (kind === 'notary') {
-    const sales = c.pd.sales.filter((s) => s.notaryId === id && s.deedDate >= '2024-01-01');
+    const sales = c.pd.sales.filter((s) => s.notaryId === id && s.deedDate >= '2024-01-01' && s.promiseDate <= asOf);
     b.p('Lettre de mission pour la rédaction des actes de vente de logements aux locataires : honoraires à la charge des acquéreurs, versement du prix à l’organisme dans les jours suivant la signature des actes.');
     b.fields([['Ventes confiées depuis 2024', String(sales.length)]]);
   } else {
-    const inv = c.pd.invoices.filter((i) => i.supplierId === id && i.invoiceDate.startsWith('2025'));
-    const first = c.pd.invoices.filter((i) => i.supplierId === id).map((i) => i.invoiceDate).sort()[0];
-    const terms = inv.length ? Math.round(inv.reduce((s, i) => s + (Date.parse(i.dueDate) - Date.parse(i.invoiceDate)) / 86_400_000, 0) / inv.length) : 30;
-    b.fields([
-      ['Objet', CATEGORY_LABELS[supplierCategory(c, id)] ?? 'prestations de services'],
-      ['Contrat en vigueur depuis', first ? date(addDays(first, -30)) : '—'],
-      ['Conditions de paiement', `${terms} jours à réception de facture`],
-      ['Facturation 2025', `${inv.length} factures – ${euro(inv.reduce((s, i) => s + i.total, 0))}`],
-    ]);
-    b.p('Révision annuelle des prix selon l’indice contractuel ; résiliation possible à chaque échéance annuelle moyennant un préavis de trois mois.');
+    const known = c.pd.invoices.filter((i) => i.supplierId === id && i.invoiceDate <= at);
+    const inv = known.filter((i) => i.invoiceDate.startsWith('2025'));
+    const invoiced: [string, string] = [`Facturation 2025 (au ${date(at)})`, `${inv.length} factures – ${euro(inv.reduce((s, i) => s + i.total, 0))}`];
+    const cat = supplierCategory(c, id);
+    const nature = NOT_AWARDED[cat];
+    if (nature) {
+      // statutory contributions, co-ownership charges, bank services: no contract of the entity, no contractual clause
+      b.fields([['Nature', nature], invoiced]);
+    } else {
+      const first = known.map((i) => i.invoiceDate).sort()[0];
+      const terms = inv.length ? Math.round(inv.reduce((s, i) => s + (Date.parse(i.dueDate) - Date.parse(i.invoiceDate)) / 86_400_000, 0) / inv.length) : 30;
+      b.fields([
+        ['Objet', CATEGORY_LABELS[cat] ?? 'prestations de services'],
+        ['Contrat en vigueur depuis', first ? date(addDays(first, -30)) : '—'],
+        ['Conditions de paiement', `${terms} jours à réception de facture`],
+        invoiced,
+      ]);
+      b.p('Révision annuelle des prix selon l’indice contractuel ; résiliation possible à chaque échéance annuelle moyennant un préavis de trois mois.');
+    }
   }
   return b.build();
 }
@@ -676,9 +833,72 @@ function interimExtraction(c: DocContext): DocumentModel {
  * Closing-file objects answered by a transmittal note of the chief accountant
  * or the CFO: the documents it lists are handed over with the closing file
  * (data room, at their own dates), so the note is dated on the last of them.
- * The dates follow the catalogue (balances âgées, rapport de vacance).
+ * The titles and dates follow the catalogue. They make most of the closing
+ * file: its list of objects does not single out the files the scenario
+ * answers.
  */
 export const CLOSING_TRANSMITTALS: Readonly<Record<string, { date: IsoDate; from: Interlocutor; documents: readonly { title: string; date: IsoDate }[] }>> = {
+  'fixed-assets': {
+    date: '2026-02-06',
+    from: 'chiefAccountant',
+    documents: [
+      { title: 'Tableau des immobilisations 2025 et détail des immobilisations en cours par opération', date: '2026-02-06' },
+      { title: 'Tableau de suivi des subventions d’investissement (subventions à recevoir et opérations récentes)', date: '2026-02-06' },
+    ],
+  },
+  'hlm-sales': {
+    date: '2026-01-26',
+    from: 'cfo',
+    documents: [{ title: 'État des ventes HLM comptabilisées en 2025', date: '2026-01-26' }],
+  },
+  treasury: {
+    date: '2026-01-12',
+    from: 'chiefAccountant',
+    documents: [
+      { title: 'État de rapprochement bancaire au 31/12/2025 – compte principal', date: '2026-01-12' },
+      { title: 'Détail des comptes d’attente au 31/12/2025', date: '2026-01-12' },
+    ],
+  },
+  'rent-billing': {
+    date: '2026-01-20',
+    from: 'rentManager',
+    documents: [
+      { title: 'État de quittancement 2025 par programme (LOGIGES / LOGIGES 2)', date: '2026-01-08' },
+      { title: 'Rapprochement RLS / APL 2025 avec les états de la CAF', date: '2026-01-20' },
+    ],
+  },
+  accruals: {
+    date: '2026-02-04',
+    from: 'chiefAccountant',
+    documents: [{ title: 'État des charges à payer et des produits à recevoir au 31/12/2025', date: '2026-02-04' }],
+  },
+  provisions: {
+    date: '2026-01-30',
+    from: 'chiefAccountant',
+    documents: [{ title: 'Tableau des provisions et dépréciations 2025 (dossier de clôture)', date: '2026-01-30' }],
+  },
+  payroll: {
+    date: '2026-01-22',
+    from: 'cfo',
+    documents: [
+      { title: 'État des effectifs et des mouvements de personnel 2025', date: '2026-01-15' },
+      { title: 'Évaluation actuarielle des indemnités de fin de carrière au 31/12/2025', date: '2026-01-22' },
+    ],
+  },
+  'property-tax': {
+    date: '2025-12-15',
+    from: 'cfo',
+    documents: [
+      { title: 'Avis de taxe foncière 2025 (récapitulatif)', date: '2025-09-10' },
+      { title: 'Tableau fiscal – taxe foncière sur les propriétés bâties 2024-2025', date: '2025-10-20' },
+      { title: 'Réclamation contentieuse – dégrèvement de TFPB pour travaux d’économie d’énergie', date: '2025-12-15' },
+    ],
+  },
+  litigation: {
+    date: '2026-01-10',
+    from: 'cfo',
+    documents: [{ title: 'Registre des contentieux en cours au 31/12/2025 (service juridique)', date: '2026-01-10' }],
+  },
   'aged-balance': {
     date: '2026-01-09',
     from: 'chiefAccountant',
@@ -715,18 +935,25 @@ function closingTransmittal(c: DocContext, object: string): DocumentModel | null
 // generic replies to requests
 // ---------------------------------------------------------------------------
 
+/** Label of the request on the documents answering it (designer mode, review pack). */
+export function withRequestLabel(c: DocContext, family: string, object: string, docs: readonly DocumentModel[]): DocumentModel[] {
+  const label = requestLabel(c.params, family, object, (id) => thirdParty(c, id)?.name);
+  return docs.map((d) => (d.availability.kind === 'onRequest' ? { ...d, availability: { ...d.availability, request: label } } : d));
+}
+
 /**
  * Generic documents answering a request of the family about the object,
  * built from the presented data as known at `asOf` (date of the request), or
- * an empty list when the object is unknown. Never called for a key that
- * scenario documents answer.
+ * an empty list when the object is unknown. `update`: an earlier request of
+ * the same object was sent on another date — the documents of the families
+ * dated on the request carry the date in their ids. The scenario's objects
+ * are answered by documents/index.ts → requestReply.
  */
-export function genericReplies(c: DocContext, family: string, object: string, asOf: IsoDate): DocumentModel[] {
-  const label = requestLabel(c.params, family, object, (id) => thirdParty(c, id)?.name);
-  return buildGeneric(c, family, object, asOf).map((d) => (d.availability.kind === 'onRequest' ? { ...d, availability: { ...d.availability, request: label } } : d));
+export function genericReplies(c: DocContext, family: string, object: string, asOf: IsoDate, update = false): DocumentModel[] {
+  return withRequestLabel(c, family, object, buildGeneric(c, family, object, asOf, update));
 }
 
-function buildGeneric(c: DocContext, family: string, object: string, asOf: IsoDate): DocumentModel[] {
+function buildGeneric(c: DocContext, family: string, object: string, asOf: IsoDate, update: boolean): DocumentModel[] {
   switch (family) {
     case 'interim-extraction':
       return [interimExtraction(c)];
@@ -736,19 +963,19 @@ function buildGeneric(c: DocContext, family: string, object: string, asOf: IsoDa
       return d ? [d] : [];
     }
     case 'programme-invoices':
-      return programmeInvoices(c, object, asOf);
+      return programmeInvoices(c, object, asOf, update);
     case 'programme-rent-roll': {
       const [pid, month] = object.split(':');
       return pid && month ? [rentRoll(c, pid, month)] : [];
     }
     case 'operation-orders':
-      return [operationOrders(c, object, asOf)];
+      return [operationOrders(c, object, asOf, update)];
     case 'operation-acceptance':
-      return [operationAcceptance(c, object, asOf)];
+      return [operationAcceptance(c, object, asOf, update)];
     case 'supplier-tender':
       return supplierTender(c, object, asOf);
     case 'sale-notary':
-      return [saleNotary(c, object, asOf)];
+      return [saleNotary(c, object, asOf, update)];
     case 'third-party-agreements':
       return [agreements(c, object, asOf)];
     case 'programme-components':
@@ -842,7 +1069,7 @@ export function genericConfirmationReply(c: DocContext, thirdPartyId: string): D
   if (c.params.requests.confirmations.nonResponders.includes(thirdPartyId)) return null;
   const name = tpName(c, thirdPartyId);
   const at = confirmationReplyDate(c, thirdPartyId);
-  const b = new DocBuilder({ id: `confirmation-${slug(name)}`, title: `Réponse de ${name} à la demande de confirmation`, category: 'thirdParty', date: at, issuer: name, recipient: c.params.game.firmName, availability: { kind: 'confirmation', request: thirdPartyId, label: name, arrives: at } });
+  const b = new DocBuilder({ id: `confirmation-${slug(name)}`, title: confirmationReplyTitle(name), category: 'thirdParty', date: at, issuer: name, recipient: c.params.game.firmName, availability: { kind: 'confirmation', request: thirdPartyId, label: name, arrives: at } });
   fillConfirmationReply(b, c, thirdPartyId);
   b.sign(name, 'Pour le service comptable', at);
   return b.build();

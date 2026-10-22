@@ -1,5 +1,5 @@
 {
- "_comment": "Bibliothèque de procédures (cahier des charges §10.3, plan J4 §7) et programme 2024 du cabinet. Heures par profil : senior (le joueur), assistant (Léa), intern (Hugo), itAuditor (Sofia, enveloppe à part) ; un profil absent ne peut pas exécuter la procédure. Phases : périodes du calendrier (game.json) où la procédure peut être lancée. effectiveFor : parties d’anomalies que la procédure peut révéler (débrief et tests seulement, jamais affiché hors mode concepteur). delegated : variante fautive scénarisée de J5 (T1 à T4) ; en J4, les travaux délégués sont corrects. Calibrage (tests/params/procedures.test.ts) : bibliothèque au profil le moins cher ≈ 450 h, programme du cabinet ≈ 380 h.",
+ "_comment": "Bibliothèque de procédures (cahier des charges §10.3, plan J4 §7) et programme 2024 du cabinet. Heures par profil : senior (le joueur), assistant (Léa), intern (Hugo), itAuditor (Sofia, enveloppe à part) ; un profil absent ne peut pas exécuter la procédure. Phases : périodes du calendrier (game.json) où la procédure peut être lancée. effectiveFor : parties d’anomalies que la procédure peut révéler (débrief, tests, conseil d’Antoine, indices relevés par les travaux délégués dans leur périmètre ; jamais affiché hors mode concepteur). completion : au moins un critère d’achèvement lié à un vrai travail. Sortie « view » de la GED : catégories de pièces examinées. delegated : variante fautive scénarisée de J5 (T1 à T4) ; en J4, les travaux délégués sont corrects et ne rapportent que ce que la procédure a atteint (réponses à ses demandes et à ses confirmations, pièces des catégories examinées, exceptions de ses échantillons, écarts de ses recalculs), une fois ses critères d’achèvement remplis. Calibrage (tests/params/procedures.test.ts) : bibliothèque au profil le moins cher ≈ 450 h, programme du cabinet ≈ 380 h.",
  "procedures": [
   {
    "id": "engagement-acceptance",
@@ -29,7 +29,12 @@
     "kind": "memo",
     "memo": "independence"
    },
-   "completion": [],
+   "completion": [
+    {
+     "kind": "refs",
+     "min": 1
+    }
+   ],
    "effectiveFor": []
   },
   {
@@ -59,7 +64,10 @@
    "requires": [],
    "output": {
     "kind": "view",
-    "screen": "/ged"
+    "screen": "/ged",
+    "categories": [
+     "permanent"
+    ]
    },
    "completion": [
     {
@@ -104,7 +112,10 @@
    "requires": [],
    "output": {
     "kind": "view",
-    "screen": "/ged"
+    "screen": "/ged",
+    "categories": [
+     "governance"
+    ]
    },
    "completion": [
     {
@@ -154,7 +165,12 @@
     "kind": "view",
     "screen": "/balance"
    },
-   "completion": [],
+   "completion": [
+    {
+     "kind": "refs",
+     "min": 1
+    }
+   ],
    "effectiveFor": []
   },
   {
@@ -192,7 +208,12 @@
     "kind": "memo",
     "memo": "fraud-assessment"
    },
-   "completion": [],
+   "completion": [
+    {
+     "kind": "refs",
+     "min": 1
+    }
+   ],
    "effectiveFor": []
   },
   {
@@ -233,7 +254,12 @@
     "kind": "memo",
     "memo": "laws-regulations"
    },
-   "completion": [],
+   "completion": [
+    {
+     "kind": "refs",
+     "min": 1
+    }
+   ],
    "effectiveFor": []
   },
   {
@@ -331,7 +357,12 @@
     "kind": "memo",
     "memo": "retrospective"
    },
-   "completion": [],
+   "completion": [
+    {
+     "kind": "refs",
+     "min": 1
+    }
+   ],
    "effectiveFor": [
     "A05",
     "A07.a"
@@ -372,7 +403,12 @@
     "kind": "view",
     "screen": "/grand-livre"
    },
-   "completion": [],
+   "completion": [
+    {
+     "kind": "refs",
+     "min": 1
+    }
+   ],
    "effectiveFor": [
     "A18",
     "A12.i"
@@ -462,7 +498,12 @@
     "kind": "memo",
     "memo": "representation-letter"
    },
-   "completion": [],
+   "completion": [
+    {
+     "kind": "refs",
+     "min": 1
+    }
+   ],
    "effectiveFor": []
   },
   {
@@ -691,7 +732,12 @@
     "kind": "memo",
     "memo": "it-controls"
    },
-   "completion": [],
+   "completion": [
+    {
+     "kind": "refs",
+     "min": 1
+    }
+   ],
    "effectiveFor": []
   },
   {
@@ -723,7 +769,12 @@
     "kind": "memo",
     "memo": "walkthrough"
    },
-   "completion": [],
+   "completion": [
+    {
+     "kind": "refs",
+     "min": 1
+    }
+   ],
    "effectiveFor": []
   },
   {
@@ -757,7 +808,12 @@
     "kind": "memo",
     "memo": "controls"
    },
-   "completion": [],
+   "completion": [
+    {
+     "kind": "refs",
+     "min": 1
+    }
+   ],
    "effectiveFor": []
   },
   {
@@ -797,7 +853,12 @@
     "kind": "view",
     "screen": "/balance"
    },
-   "completion": [],
+   "completion": [
+    {
+     "kind": "refs",
+     "min": 1
+    }
+   ],
    "effectiveFor": []
   },
   {
@@ -849,11 +910,11 @@
    "id": "rent-revision-recalc",
    "cycle": "rentReceivables",
    "title": "Recalcul des loyers 2025 au regard de la hausse autorisée",
-   "objective": "Mesurer, programme par programme, les loyers quittancés au-delà de la hausse autorisée et le trop-perçu à restituer aux locataires.",
+   "objective": "Recalculer, programme par programme, les loyers 2025 des logements conventionnés avec la hausse maximale autorisée et les rapprocher du quittancement.",
    "steps": [
     "Obtenir la délibération du conseil sur la révision des loyers et la référence réglementaire de la hausse maximale.",
     "Recalculer les loyers 2025 des logements conventionnés avec la hausse maximale et les rapprocher du quittancement.",
-    "Apprécier la dette de restitution envers les locataires."
+    "Le cas échéant, apprécier l’obligation de restitution envers les locataires."
    ],
    "assertions": [
     "compliance",
@@ -925,7 +986,12 @@
     "kind": "view",
     "screen": "/balance"
    },
-   "completion": [],
+   "completion": [
+    {
+     "kind": "refs",
+     "min": 1
+    }
+   ],
    "effectiveFor": [
     "A19"
    ]
@@ -964,9 +1030,17 @@
    ],
    "output": {
     "kind": "view",
-    "screen": "/ged"
+    "screen": "/ged",
+    "categories": [
+     "accounting"
+    ]
    },
-   "completion": [],
+   "completion": [
+    {
+     "kind": "refs",
+     "min": 1
+    }
+   ],
    "effectiveFor": [
     "A07.c",
     "A15"
@@ -1093,9 +1167,17 @@
    "requires": [],
    "output": {
     "kind": "view",
-    "screen": "/ged"
+    "screen": "/ged",
+    "categories": [
+     "accounting"
+    ]
    },
-   "completion": [],
+   "completion": [
+    {
+     "kind": "refs",
+     "min": 1
+    }
+   ],
    "effectiveFor": []
   },
   {
@@ -1133,9 +1215,18 @@
    ],
    "output": {
     "kind": "view",
-    "screen": "/ged"
+    "screen": "/ged",
+    "categories": [
+     "accounting",
+     "contracts"
+    ]
    },
-   "completion": [],
+   "completion": [
+    {
+     "kind": "refs",
+     "min": 1
+    }
+   ],
    "effectiveFor": [
     "A10.a",
     "A10.b"
@@ -1176,7 +1267,12 @@
     "kind": "view",
     "screen": "/grand-livre"
    },
-   "completion": [],
+   "completion": [
+    {
+     "kind": "refs",
+     "min": 1
+    }
+   ],
    "effectiveFor": [
     "A11"
    ]
@@ -1210,9 +1306,18 @@
    "requires": [],
    "output": {
     "kind": "view",
-    "screen": "/ged"
+    "screen": "/ged",
+    "categories": [
+     "contracts",
+     "accounting"
+    ]
    },
-   "completion": [],
+   "completion": [
+    {
+     "kind": "refs",
+     "min": 1
+    }
+   ],
    "effectiveFor": [
     "A11",
     "A15"
@@ -1289,7 +1394,12 @@
     "kind": "memo",
     "memo": "walkthrough"
    },
-   "completion": [],
+   "completion": [
+    {
+     "kind": "refs",
+     "min": 1
+    }
+   ],
    "effectiveFor": []
   },
   {
@@ -1327,7 +1437,12 @@
     "kind": "view",
     "screen": "/grand-livre"
    },
-   "completion": [],
+   "completion": [
+    {
+     "kind": "refs",
+     "min": 1
+    }
+   ],
    "effectiveFor": [
     "A01"
    ]
@@ -1363,9 +1478,17 @@
    ],
    "output": {
     "kind": "view",
-    "screen": "/ged"
+    "screen": "/ged",
+    "categories": [
+     "accounting"
+    ]
    },
-   "completion": [],
+   "completion": [
+    {
+     "kind": "refs",
+     "min": 1
+    }
+   ],
    "effectiveFor": [
     "A01"
    ]
@@ -1453,9 +1576,17 @@
    ],
    "output": {
     "kind": "view",
-    "screen": "/ged"
+    "screen": "/ged",
+    "categories": [
+     "accounting"
+    ]
    },
-   "completion": [],
+   "completion": [
+    {
+     "kind": "refs",
+     "min": 1
+    }
+   ],
    "effectiveFor": [
     "A02",
     "A06"
@@ -1538,9 +1669,18 @@
    ],
    "output": {
     "kind": "view",
-    "screen": "/ged"
+    "screen": "/ged",
+    "categories": [
+     "accounting",
+     "contracts"
+    ]
    },
-   "completion": [],
+   "completion": [
+    {
+     "kind": "refs",
+     "min": 1
+    }
+   ],
    "effectiveFor": [
     "A03"
    ]
@@ -1613,7 +1753,12 @@
     "kind": "memo",
     "memo": "impairment-indicators"
    },
-   "completion": [],
+   "completion": [
+    {
+     "kind": "refs",
+     "min": 1
+    }
+   ],
    "effectiveFor": [
     "A04"
    ]
@@ -1730,9 +1875,17 @@
    "requires": [],
    "output": {
     "kind": "view",
-    "screen": "/ged"
+    "screen": "/ged",
+    "categories": [
+     "accounting"
+    ]
    },
-   "completion": [],
+   "completion": [
+    {
+     "kind": "refs",
+     "min": 1
+    }
+   ],
    "effectiveFor": []
   },
   {
@@ -1805,9 +1958,17 @@
    "requires": [],
    "output": {
     "kind": "view",
-    "screen": "/ged"
+    "screen": "/ged",
+    "categories": [
+     "accounting"
+    ]
    },
-   "completion": [],
+   "completion": [
+    {
+     "kind": "refs",
+     "min": 1
+    }
+   ],
    "effectiveFor": [
     "A13"
    ]
@@ -2026,7 +2187,12 @@
     "kind": "view",
     "screen": "/analyse"
    },
-   "completion": [],
+   "completion": [
+    {
+     "kind": "refs",
+     "min": 1
+    }
+   ],
    "effectiveFor": [
     "A08"
    ]
@@ -2109,7 +2275,12 @@
     "kind": "view",
     "screen": "/grand-livre"
    },
-   "completion": [],
+   "completion": [
+    {
+     "kind": "refs",
+     "min": 1
+    }
+   ],
    "effectiveFor": [
     "A18"
    ]
@@ -2149,7 +2320,12 @@
     "kind": "view",
     "screen": "/balance"
    },
-   "completion": [],
+   "completion": [
+    {
+     "kind": "refs",
+     "min": 1
+    }
+   ],
    "effectiveFor": [
     "A22"
    ]
@@ -2183,7 +2359,12 @@
     "kind": "memo",
     "memo": "controls"
    },
-   "completion": [],
+   "completion": [
+    {
+     "kind": "refs",
+     "min": 1
+    }
+   ],
    "effectiveFor": []
   },
   {
@@ -2215,7 +2396,12 @@
     "kind": "memo",
     "memo": "walkthrough"
    },
-   "completion": [],
+   "completion": [
+    {
+     "kind": "refs",
+     "min": 1
+    }
+   ],
    "effectiveFor": []
   },
   {
@@ -2336,7 +2522,11 @@
     "kind": "recalc",
     "tool": "prorata"
    },
-   "completion": [],
+   "completion": [
+    {
+     "kind": "recalc"
+    }
+   ],
    "effectiveFor": [
     "A20"
    ]
@@ -2369,9 +2559,17 @@
    "requires": [],
    "output": {
     "kind": "view",
-    "screen": "/ged"
+    "screen": "/ged",
+    "categories": [
+     "contracts"
+    ]
    },
-   "completion": [],
+   "completion": [
+    {
+     "kind": "refs",
+     "min": 1
+    }
+   ],
    "effectiveFor": [
     "A20"
    ]
@@ -2450,7 +2648,12 @@
     "kind": "view",
     "screen": "/analyse"
    },
-   "completion": [],
+   "completion": [
+    {
+     "kind": "refs",
+     "min": 1
+    }
+   ],
    "effectiveFor": []
   },
   {
@@ -2480,9 +2683,17 @@
    "requires": [],
    "output": {
     "kind": "view",
-    "screen": "/ged"
+    "screen": "/ged",
+    "categories": [
+     "accounting"
+    ]
    },
-   "completion": [],
+   "completion": [
+    {
+     "kind": "refs",
+     "min": 1
+    }
+   ],
    "effectiveFor": []
   },
   {
@@ -2519,7 +2730,12 @@
     "kind": "view",
     "screen": "/analyse"
    },
-   "completion": [],
+   "completion": [
+    {
+     "kind": "refs",
+     "min": 1
+    }
+   ],
    "effectiveFor": []
   },
   {
@@ -2550,9 +2766,17 @@
    "requires": [],
    "output": {
     "kind": "view",
-    "screen": "/ged"
+    "screen": "/ged",
+    "categories": [
+     "accounting"
+    ]
    },
-   "completion": [],
+   "completion": [
+    {
+     "kind": "refs",
+     "min": 1
+    }
+   ],
    "effectiveFor": [
     "A14.i"
    ]
@@ -2590,7 +2814,12 @@
     "kind": "view",
     "screen": "/balance"
    },
-   "completion": [],
+   "completion": [
+    {
+     "kind": "refs",
+     "min": 1
+    }
+   ],
    "effectiveFor": []
   },
   {
@@ -2670,7 +2899,12 @@
     "kind": "view",
     "screen": "/grand-livre"
    },
-   "completion": [],
+   "completion": [
+    {
+     "kind": "refs",
+     "min": 1
+    }
+   ],
    "effectiveFor": []
   },
   {
@@ -2792,7 +3026,13 @@
     "kind": "view",
     "screen": "/etats"
    },
-   "completion": [],
+   "completion": [
+    {
+     "kind": "ticks",
+     "scope": "annex",
+     "minPct": 50
+    }
+   ],
    "effectiveFor": [
     "A13",
     "A12.i",
@@ -2833,7 +3073,14 @@
     "kind": "view",
     "screen": "/etats"
    },
-   "completion": [],
+   "completion": [
+    {
+     "kind": "ticks",
+     "scope": "annex",
+     "table": "engagements",
+     "minPct": 80
+    }
+   ],
    "effectiveFor": [
     "A12.i"
    ]
@@ -2873,9 +3120,17 @@
    ],
    "output": {
     "kind": "view",
-    "screen": "/ged"
+    "screen": "/ged",
+    "categories": [
+     "accounting"
+    ]
    },
-   "completion": [],
+   "completion": [
+    {
+     "kind": "refs",
+     "min": 1
+    }
+   ],
    "effectiveFor": [
     "A14.i",
     "A14.ii",
@@ -2916,7 +3171,12 @@
     "kind": "view",
     "screen": "/analyse"
    },
-   "completion": [],
+   "completion": [
+    {
+     "kind": "refs",
+     "min": 1
+    }
+   ],
    "effectiveFor": [
     "A14.iii"
    ]

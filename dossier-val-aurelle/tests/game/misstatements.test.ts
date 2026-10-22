@@ -1,9 +1,11 @@
 /**
- * Table of misstatements (plan J4 §13.3): built from the findings « constat »,
- * every entry applied at once (CAF and net self-financing ratio corrected),
- * over- and understatements separated, trivial items listed and not
- * cumulated, individually significant items flagged, thresholds of the
- * player; the key's own correction entries reproduce the corrected accounts.
+ * Table of misstatements (plan J4 §13.3): built from the findings « constat »
+ * (never « question », « écarté » nor « clos »), every entry applied at once
+ * (CAF and net self-financing ratio corrected), over- and understatements
+ * separated, trivial items listed and not cumulated (a balance-sheet amount
+ * above the threshold is never trivial), individually significant items
+ * flagged, thresholds of the player; the key's own correction entries
+ * reproduce the corrected accounts.
  */
 import { describe, expect, it } from 'vitest';
 import type { Finding } from '../../src/game/findings';
@@ -76,11 +78,19 @@ const question = finding([
   ['6281', 500_000, 0],
   ['4081', 0, 500_000],
 ], 'question');
+const closed = finding([
+  ['6281', 184_000, 0],
+  ['4081', 0, 184_000],
+], 'closed');
+const dismissed = finding([
+  ['6281', 184_000, 0],
+  ['4081', 0, 184_000],
+], 'dismissed');
 
 describe('table of misstatements', () => {
-  const t = misstatementTable([a11, a08, a03, trivial, reclass, disclosure, question], { world, params: P, planning });
+  const t = misstatementTable([a11, a08, a03, trivial, reclass, disclosure, question, closed, dismissed], { world, params: P, planning });
 
-  it('keeps the findings « constat » only, one row each, without correction status (J6)', () => {
+  it('keeps the findings « constat » only (not « question », « clos » nor « écarté »), one row each, without correction status (J6)', () => {
     expect(t.rows.map((r) => r.findingId)).toEqual([a11.id, a08.id, a03.id, trivial.id, reclass.id, disclosure.id]);
     expect(t.rows.every((r) => r.correctionStatus === null)).toBe(true);
   });
@@ -120,6 +130,24 @@ describe('table of misstatements', () => {
     expect(t.corrected.ratio).toBeLessThan(t.presented.ratio);
     expect(t.threeYear.corrected).toBeCloseTo((t.threeYear.ratio2023 + t.threeYear.ratio2024 + t.corrected.ratio) / 3, 12);
     expect(t.referenceRates.threeYears).toBe(P.regulatory.netSelfFinancing.referenceRate3YearsPct / 100);
+  });
+
+  it('a balance-sheet misstatement stays out of « insignifiante » when its entry also carries a small result effect (A16.a with its depreciation)', () => {
+    const bare = finding([
+      ['2131', 210_000, 0],
+      ['4084', 0, 210_000],
+    ]);
+    const complete = finding([
+      ['2131', 210_000, 0],
+      ['4084', 0, 210_000],
+      ['68111', 2_985, 0],
+      ['28131', 0, 2_985],
+    ]);
+    const u = misstatementTable([bare, complete], { world, params: P, planning });
+    expect(u.rows.map((r) => r.belowTrivial)).toEqual([false, false]);
+    expect(u.rows[1]!.impact.result).toBe(2_985 * EUR);
+    expect(u.trivialTotal).toBe(0);
+    expect(u.overstatements).toBe(2_985 * EUR);
   });
 
   it('without a validated materiality: no threshold, nothing classed trivial nor significant', () => {

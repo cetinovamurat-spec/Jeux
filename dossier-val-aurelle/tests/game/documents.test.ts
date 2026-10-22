@@ -8,11 +8,17 @@ import {
   isAvailable,
   listDocuments,
   matchesStatus,
+  receivedOn,
   searchWords,
   type AvailabilityContext,
 } from '../../src/game/documents';
+import { addWorkingDays, workCalendar } from '../../src/game/calendar';
+import { delayDays, requestArrivals } from '../../src/game/requests';
+import { params } from '../helpers/world';
 import type { DocumentState } from '../../src/game/state';
 import type { Block, DocumentModel } from '../../src/scenario/documents';
+
+const P = params();
 
 function doc(id: string, over: Partial<DocumentModel> = {}): DocumentModel {
   return {
@@ -49,6 +55,29 @@ describe('isAvailable', () => {
     expect(isAvailable(d, ctx())).toBe(false);
     expect(isAvailable(d, ctx({ answeredRequests: new Set(['Autre demande']) }))).toBe(false);
     expect(isAvailable(d, ctx({ answeredRequests: new Set(['Registre des conventions']) }))).toBe(true);
+  });
+  it('onRequest, replies dated on the request: a version is served by its own request; the reference version comes with the first answer', () => {
+    const requests = { items: [
+      { id: 'req1', family: 'programme-invoices', object: 'PEU', sentOn: '2025-11-04' },
+      { id: 'req2', family: 'programme-invoices', object: 'PEU', sentOn: '2025-11-05' },
+      { id: 'req3', family: 'sale-notary', object: 'CLF', sentOn: '2025-11-17' },
+    ] };
+    const at = (date: string) => ctx({ date, requestArrival: requestArrivals(requests, P) });
+    const onRequest = (object: string, over: object = {}) => ({ kind: 'onRequest' as const, request: 'Factures', from: 'chiefAccountant' as const, family: 'programme-invoices', object, ...over });
+    // the version built for the second request (05/11) is not served by the answer to the first one (05/11)
+    const v2 = doc('factures-peupliers~2025-11-05', { date: '2025-11-05', availability: onRequest('PEU', { asOf: '2025-11-05' }) });
+    expect(isAvailable(v2, at('2025-11-05'))).toBe(false);
+    expect(isAvailable(v2, at('2025-11-06'))).toBe(true);
+    // the reference version (dated at the final) is received with the first answer, as its first version
+    const ref = doc('factures-peupliers', { date: '2026-02-23', availability: onRequest('PEU', { rebuiltOnRequest: true }) });
+    expect(isAvailable(ref, at('2025-11-04'))).toBe(false);
+    expect(isAvailable(ref, at('2025-11-05'))).toBe(true);
+    expect(receivedOn(ref, at('2026-03-01'), '2025-11-03')).toBe('2025-11-05');
+    expect(isAvailable(doc('x', { availability: onRequest('ERA', { rebuiltOnRequest: true }) }), at('2026-03-01'))).toBe(false);
+    // a scenario piece established after the request reaches the auditor as mail, at its date plus the delay
+    const promises = doc('promesses', { date: '2025-12-12', availability: { kind: 'onRequest', request: 'Ventes', from: 'cfo', family: 'sale-notary', object: 'CLF' } });
+    expect(isAvailable(promises, at('2025-12-12'))).toBe(false);
+    expect(receivedOn(promises, at('2026-01-05'), '2025-11-03')).toBe(addWorkingDays(workCalendar(P), '2025-12-12', delayDays(P, 'sale-notary', 'CLF')));
   });
   it('confirmation: the request must have been sent and the reply arrived', () => {
     const d = doc('a', { availability: { kind: 'confirmation', request: 'Notaire', arrives: '2026-01-16' } });

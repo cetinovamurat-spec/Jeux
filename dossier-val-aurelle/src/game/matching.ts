@@ -29,17 +29,23 @@
  *    the canonical order of the parts, then the order of the findings. A
  *    finding whose best target is already taken is a duplicate (neutral). A
  *    finding may cover several sibling parts when its amount matches their
- *    sum (A10 in one finding) or, for disclosure parts, when it is eligible
- *    for each of them with their treatments. A real anomaly always wins over a
- *    false lead.
+ *    sum (A10 in one finding; A07.a keeps its estimate range in the sum) or,
+ *    for disclosure parts and for parts credited on different bases (A16: the
+ *    adjustment and its disclosure), when it is eligible for each of them
+ *    with their treatments. A real anomaly always wins over a false lead,
+ *    except when the finding links one of the lead's evidence documents and
+ *    shares with the part nothing but linked documents.
  * 4. Quantification on the part's credit basis (result, equity, amount
  *    reclassified, disclosure fix): tolerance max(± tolerance % of the
  *    measure, reference clearly-trivial threshold), widened by the part's
- *    share range (A07.a) and, for a projected finding, by the range of the
- *    projected misstatements; signed amounts (A08 is negative).
- * 5. False leads: « écartée avec preuves » when a dismissed finding eligible
- *    for the lead links at least one of its evidence documents; « signalée à
- *    tort » when a finding (status « constat ») is matched to it above the
+ *    share range (A07.a) and, for a finding projected from a sample (not
+ *    drawn on specific items), by the range of the projected misstatements;
+ *    signed amounts (A08 is negative).
+ * 5. Only the findings with the status « constat » are reported; « écarté »
+ *    and « clos » (a point settled with nothing to report) are not. False
+ *    leads: « écartée avec preuves » when a dismissed or closed finding
+ *    eligible for the lead links at least one of its evidence documents;
+ *    « signalée à tort » when a finding « constat » is matched to it above the
  *    trivial threshold (or without any entry).
  */
 import type { IsoDate } from '../engine/dates';
@@ -53,7 +59,7 @@ import type { AnomalyId, Classification, CreditBasis, PartKey, Treatment } from 
 import type { FalseLead } from '../scenario/documents/false-leads';
 import type { DocumentModel, FalseLeadId } from '../scenario/documents/model';
 import type { Params } from '../scenario/params';
-import { findingAmount, meaningfulLines, type Evidence, type Finding } from './findings';
+import { findingAmount, linksProjectedSample, meaningfulLines, type Evidence, type Finding } from './findings';
 import type { GameState } from './state';
 
 // ---------------------------------------------------------------------------
@@ -326,7 +332,8 @@ interface Profile {
   inferred: Obj[];
   evidenceDocs: ReadonlySet<string>;
   measures: FindingMeasures | null;
-  hasSample: boolean;
+  /** A sample drawn otherwise than on specific items is linked: the misstatement can be projected. */
+  projectable: boolean;
 }
 
 function profileOf(f: Finding, index: number, input: MatchInput): Profile {
@@ -356,7 +363,7 @@ function profileOf(f: Finding, index: number, input: MatchInput): Profile {
     inferred: uniq(inferred),
     evidenceDocs: new Set(f.evidence.flatMap((e) => (e.kind === 'doc' ? [e.docId] : []))),
     measures,
-    hasSample: f.evidence.some((e) => e.kind === 'sample'),
+    projectable: linksProjectedSample(f.evidence, input.state?.samples),
   };
 }
 
@@ -379,6 +386,8 @@ export interface Evaluation {
   classificationOk: boolean;
   evidenceOk: boolean;
   naturesOk: boolean;
+  /** The finding shares with the target nothing but linked documents (no object named, no account of its entry, no other linked object). */
+  documentary: boolean;
 }
 
 function trivialOf(params: Params): Cents {
@@ -420,6 +429,8 @@ interface Common {
   keyOk: boolean;
   entryConsistent: boolean;
   correction: number;
+  /** Only linked documents in common (no direct object, no account of the correction entry, no other linked object). */
+  documentary: boolean;
 }
 
 function commonWith(p: Profile, objects: readonly Obj[], keys: readonly Obj[], correctionAccounts: readonly string[]): Common {
@@ -433,18 +444,26 @@ function commonWith(p: Profile, objects: readonly Obj[], keys: readonly Obj[], c
   }
   let direct = 0;
   let linked = 0;
+  let linkedOther = 0;
   let inferred = 0;
   for (const o of objects) {
     if (hasAny(p.direct, o)) direct++;
-    else if (hasAny(p.linked, o)) linked++;
-    else if (hasAny(p.inferred, o)) inferred++;
+    else if (hasAny(p.linked, o)) {
+      linked++;
+      if (o.kind !== 'document') linkedOther++;
+    } else if (hasAny(p.inferred, o)) inferred++;
   }
   const strong = [...p.direct, ...p.linked];
   const keyHits = keys.filter((k) => hasAny(strong, k)).length;
   const targetAccounts = [...accountsOf(objects), ...correctionAccounts];
   const entryConsistent = p.entryAccounts.length === 0 || targetAccounts.length === 0 || p.entryAccounts.some((a) => targetAccounts.some((b) => accountsMatch(a, b)));
   const correction = correctionAccounts.filter((a) => p.entryAccounts.some((b) => accountsMatch(a, b)) && !accountsOf(objects).some((x) => accountsMatch(x, a))).length;
-  return { conflict, direct, linked, inferred, keys: keyHits, keyOk: keys.length === 0 || keyHits > 0, entryConsistent, correction };
+  return { conflict, direct, linked, inferred, keys: keyHits, keyOk: keys.length === 0 || keyHits > 0, entryConsistent, correction, documentary: direct === 0 && correction === 0 && linkedOther === 0 };
+}
+
+/** Projected finding: classified « extrapolée » and linking a sample drawn otherwise than on specific items. */
+function projectedFinding(p: Profile): boolean {
+  return p.finding.classification === 'projected' && p.projectable;
 }
 
 function quantification(p: Profile, t: PartTarget, params: Params): Pick<Evaluation, 'quantified' | 'basis' | 'measure' | 'expected' | 'range'> {
@@ -456,7 +475,7 @@ function quantification(p: Profile, t: PartTarget, params: Params): Pick<Evaluat
       r = { quantified: ok, basis: b, measure: null, expected: null, range: null };
     } else {
       const expected = t.measures[b] ?? 0;
-      const range = acceptedRange(expected, params, { ...(t.toleranceShare ? { share: t.toleranceShare } : {}), projected: p.finding.classification === 'projected' });
+      const range = acceptedRange(expected, params, { ...(t.toleranceShare ? { share: t.toleranceShare } : {}), projected: projectedFinding(p) });
       const measure = p.measures ? p.measures[b] : null;
       r = { quantified: measure !== null && measure >= range[0] && measure <= range[1], basis: b, measure, expected, range };
     }
@@ -490,9 +509,10 @@ function evaluatePart(p: Profile, t: PartTarget, params: Params): Evaluation {
     score,
     treatmentOk,
     ...q,
-    classificationOk: f.classification === t.classification || (f.classification === 'projected' && p.hasSample),
+    classificationOk: f.classification === t.classification || projectedFinding(p),
     evidenceOk,
     naturesOk: f.natures.some((n) => t.natures.includes(n)),
+    documentary: c.documentary,
   };
 }
 
@@ -520,6 +540,7 @@ function evaluateLead(p: Profile, t: FalseLeadTarget): Evaluation {
     classificationOk: false,
     evidenceOk,
     naturesOk: false,
+    documentary: c.documentary,
   };
 }
 
@@ -552,9 +573,9 @@ function subsets<T>(xs: readonly T[]): T[][] {
 function groupCandidate(p: Profile, members: PartTarget[], evals: Evaluation[], params: Params): Candidate | null {
   const f = p.finding;
   const basis = members[0]!.creditBasis[0]!;
-  if (members.some((m) => m.creditBasis[0] !== basis)) return null;
-  if (basis === 'disclosure') {
-    // each member eligible on its own, with its treatment
+  if (basis === 'disclosure' || members.some((m) => m.creditBasis[0] !== basis)) {
+    // disclosure parts, or parts credited on different bases (A16: the adjustment and its disclosure):
+    // each member eligible on its own, with its treatment, and credited on its own evaluation
     if (!evals.every((e) => e.eligible && e.treatmentOk)) return null;
     return { profile: p, parts: members, lead: null, evals, score: evals.reduce((s, e) => s + e.score, 0), order: members[0]!.order };
   }
@@ -567,10 +588,14 @@ function groupCandidate(p: Profile, members: PartTarget[], evals: Evaluation[], 
   if (c.conflict || !c.entryConsistent || c.direct + c.linked + c.inferred === 0) return null;
   if (!members.some((m, i) => m.keys.length === 0 || evals[i]!.keyOk)) return null;
   const expected = members.reduce((s, m) => s + (m.measures[basis] ?? 0), 0);
-  const range = acceptedRange(expected, params, { projected: f.classification === 'projected' });
+  // the members' estimate ranges (A07.a) carried into the sum, the tolerance applied once
+  const bound = (pick: (s: { min: number; max: number }) => number) => members.reduce((s, m) => s + (m.measures[basis] ?? 0) * (m.toleranceShare ? pick(m.toleranceShare) : 1), 0);
+  const share = expected !== 0 && members.some((m) => m.toleranceShare) ? { min: bound((s) => s.min) / expected, max: bound((s) => s.max) / expected } : null;
+  const range = acceptedRange(expected, params, { ...(share ? { share } : {}), projected: projectedFinding(p) });
   const measure = p.measures[basis];
   if (measure < range[0] || measure > range[1]) return null;
-  if (evals.some((e) => e.quantified)) return null; // the amount is the one of a single part
+  // the amount is the one of a single part, unless the finding is eligible for every member on its own (overlapping estimate ranges)
+  if (evals.some((e) => e.quantified) && !evals.every((e) => e.eligible)) return null;
   const groupEvals = evals.map((e) => ({ ...e, eligible: true, quantified: true, basis, measure, expected, range }));
   return { profile: p, parts: members, lead: null, evals: groupEvals, score: evals.reduce((s, e) => s + e.score, 0) + 4, order: members[0]!.order, groupQuantified: true };
 }
@@ -598,7 +623,10 @@ function candidatesOf(p: Profile, parts: readonly PartTarget[], leads: readonly 
     evalOf.set(t.id, e);
     if (e.eligible) leadCands.push({ profile: p, parts: [], lead: t, evals: [e], score: e.score, order: t.order });
   }
-  return { real, leads: leadCands, evalOf };
+  // a false lead whose own evidence is linked wins over a part reached only through linked documents
+  // (the bank statement of December tied to the reconciliation of F6 is not the loan of A18)
+  const leadEvidenced = leadCands.some((c) => c.evals[0]!.evidenceOk);
+  return { real: leadEvidenced ? real.filter((c) => !c.evals.every((e) => e.documentary)) : real, leads: leadCands, evalOf };
 }
 
 // ---------------------------------------------------------------------------
@@ -616,11 +644,11 @@ export type FindingOutcome =
   | 'falseLeadReported'
   /** Reported finding matched to a false lead at or below the trivial threshold. */
   | 'falseLeadTrivial'
-  /** Dismissed finding on a false lead, with at least one of its evidence documents: « écartée avec preuves ». */
+  /** Dismissed or closed finding on a false lead, with at least one of its evidence documents: « écartée avec preuves ». */
   | 'falseLeadDismissed'
-  /** Dismissed finding on a false lead without its evidence. */
+  /** Dismissed or closed finding on a false lead without its evidence. */
   | 'falseLeadDismissedWithoutEvidence'
-  /** Dismissed finding that is in fact about a real anomaly (not credited). */
+  /** Dismissed or closed finding that is in fact about a real anomaly (not credited). */
   | 'dismissedAnomaly'
   /** Question (not credited; a pending point when still open after the final). */
   | 'question'
@@ -666,7 +694,7 @@ export interface PartMatch {
   duplicates: string[];
   /** Open questions pointing to the part. */
   questions: string[];
-  /** Dismissed findings that were about the part. */
+  /** Dismissed or closed findings that were about the part. */
   dismissedBy: string[];
 }
 
@@ -698,7 +726,8 @@ export interface MatchInput {
   date?: IsoDate;
 }
 
-const REPORTED: ReadonlySet<string> = new Set(['finding', 'closed']);
+/** Reported points: status « constat » only (« clos » is a point settled with nothing to report, like « écarté »; the table of misstatements keeps the same findings). */
+const reported = (f: Finding): boolean => f.status === 'finding';
 
 function emptyMatch(f: Finding, outcome: FindingOutcome): FindingMatch {
   return { findingId: f.id, partId: null, partIds: [], falseLeadId: null, detected: false, quantified: false, treatmentOk: false, classificationOk: false, evidenceOk: false, naturesOk: false, outcome, basis: null, measure: null, expected: null, range: null, score: 0 };
@@ -750,9 +779,9 @@ export function matchFindings(findings: readonly Finding[], input: MatchInput): 
   const pairs: Candidate[] = [];
   const top = new Map<string, number>();
   for (const p of profiles) {
-    if (!REPORTED.has(p.finding.status)) continue;
+    if (!reported(p.finding)) continue;
     const c = cands.get(p.finding.id)!;
-    const list = c.real.length > 0 ? c.real : c.leads; // a real anomaly always wins over a false lead
+    const list = c.real.length > 0 ? c.real : c.leads; // a real anomaly always wins over a false lead (see candidatesOf)
     for (const x of list) pairs.push(x);
     if (list.length) top.set(p.finding.id, Math.max(...list.map((x) => x.score)));
   }
@@ -799,7 +828,7 @@ export function matchFindings(findings: readonly Finding[], input: MatchInput): 
     const c = cands.get(f.id)!;
     const bestReal = [...c.real].sort(byScore)[0];
     const bestLead = [...c.leads].sort(byScore)[0];
-    if (REPORTED.has(f.status)) {
+    if (reported(f)) {
       results.set(f.id, emptyMatch(f, 'falsePositive'));
       continue;
     }
@@ -809,7 +838,7 @@ export function matchFindings(findings: readonly Finding[], input: MatchInput): 
       results.set(f.id, pendingAfter ? { ...m, pending: true } : m);
       continue;
     }
-    // dismissed
+    // dismissed or closed
     if (bestReal) results.set(f.id, fromCandidate(bestReal, 'dismissedAnomaly', false));
     else if (bestLead) results.set(f.id, fromCandidate(bestLead, bestLead.evals[0]!.evidenceOk ? 'falseLeadDismissed' : 'falseLeadDismissedWithoutEvidence', false));
     else results.set(f.id, emptyMatch(f, 'none'));

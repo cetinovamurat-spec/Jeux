@@ -42,11 +42,20 @@ export function requestStateText(st: RequestStatus): string {
 
 export const REQUEST_STATE_TONE: Readonly<Record<RequestStatus['state'], 'muted' | 'warn' | 'accent' | 'ok'>> = { waiting: 'muted', notYetEstablished: 'warn', partial: 'accent', received: 'ok' };
 
-/** Row of the first request of a key (the earliest answer), if the key was requested. */
+/**
+ * Row of a key that was requested: the latest request whose documents were
+ * received (the most recent version of a reply dated on the request), else
+ * the first request (the earliest answer).
+ */
 export function rowOfKey(rows: readonly RequestRow[], key: string): RequestRow | undefined {
-  let best: RequestRow | undefined;
-  for (const r of rows) if (requestKey(r.item.family, r.item.object) === key && (!best || r.item.sentOn < best.item.sentOn)) best = r;
-  return best;
+  let first: RequestRow | undefined;
+  let received: RequestRow | undefined;
+  for (const r of rows) {
+    if (requestKey(r.item.family, r.item.object) !== key) continue;
+    if (!first || r.item.sentOn < first.item.sentOn) first = r;
+    if (r.status.received.length > 0 && (!received || r.item.sentOn > received.item.sentOn)) received = r;
+  }
+  return received ?? first;
 }
 
 /** Links to the documents of a request received at the game date. */
@@ -76,6 +85,7 @@ export function RequestButton({ family, object, label = 'Demander la pièce', co
   const c = useCase();
   const act = useGame((s) => s.act);
   const rows = useRequestRows();
+  const difficulty = useGame((s) => s.game.difficulty);
   const key = requestKey(family, object);
   const row = rowOfKey(rows, key);
   const tpName = useThirdPartyName();
@@ -101,7 +111,7 @@ export function RequestButton({ family, object, label = 'Demander la pièce', co
   return (
     <Button
       className={compact ? 'px-1.5 py-0 text-xs' : undefined}
-      title={`${what} – auprès de ${who}, réponse sous ${delayText(delayDays(c.params, family, object))} (${c.params.requests.costHours.request.toLocaleString('fr-FR')} h)`}
+      title={`${what} – auprès de ${who}, réponse sous ${delayText(delayDays(c.params, family, object, difficulty))} (${c.params.requests.costHours.request.toLocaleString('fr-FR')} h)`}
       aria-label={`${label} : ${what}`}
       onClick={() => act((s) => sendRequest(s, family, object, c.params))}
     >

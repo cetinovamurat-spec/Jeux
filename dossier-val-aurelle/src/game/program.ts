@@ -13,15 +13,16 @@
 import { z } from 'zod';
 import { formatDateFr, type IsoDate } from '../engine/dates';
 import type { DocumentModel } from '../scenario/documents';
+import { baseDocumentId, onRequestKeys, requestKey } from '../scenario/documents/model';
 import type { Params } from '../scenario/params';
 import type { CompletionCriterion, ProcedureDef, ProfileId } from '../scenario/schemas/procedures';
 import type { UpcomingContext, UpcomingEvent } from './advance';
 import { hoursUsed, type HoursCharge } from './budget';
 import { nextOnSiteDay, periodIdAt, schedule, type MemberId, type ScheduledTask, type WorkCalendar } from './calendar';
-import { confirmationsOfExecution, type ConfirmationPopulation } from './confirmations';
+import { confirmationsOfExecution, type ConfirmationItem, type ConfirmationPopulation, type ConfirmationState } from './confirmations';
 import { evaluateAll, type ConditionContext, type ProcedureProgress } from './conditions';
 import type { FindingsState } from './findings';
-import { recordGaugeEvent } from './gauges';
+import { recordGaugeEvent, withdrawExecution } from './gauges';
 import { maxRiskOfCycle, planningThreshold, riskRank, uncoveredRisks } from './planning';
 import { log, nextId, type GameState } from './state';
 import { annexCells, statementCells, STATEMENT_ORDER, type AnnexTableShape } from './ticking';
@@ -313,24 +314,28 @@ export function phaseLabels(def: ProcedureDef, params: Params): string[] {
 }
 
 /**
- * Can the procedure be launched now by this member? The game date (or the
- * member's next day on site) must be in one of the procedure's phases, the
- * member's profile must be able to run it, and its prerequisites must be met.
+ * Can the procedure be launched now by this member? The work, scheduled after
+ * the member's queue on the member's days on site, must start in one of the
+ * procedure's phases and end before the member leaves the site; the member's
+ * profile must be able to run it, and its prerequisites must be met.
  */
 export function canLaunch(s: GameState, params: Params, procedureId: string, m: MemberId, ctx: LaunchContext): LaunchCheck {
   const def = procedureDef(params, procedureId);
   if (!def) return { ok: false, reasons: ['Procédure inconnue.'] };
   const reasons: string[] = [];
   if (executionOf(s.program, procedureId)) reasons.push('La procédure a déjà été lancée.');
-  if (procedureHours(def, m, params) === undefined) reasons.push(`Cette procédure ne peut pas être confiée à ${memberName(params, m)}.`);
-  // the work starts on the member's next day on site: that day must be in one of the procedure's phases
-  const firstDay = nextOnSiteDay(ctx.cal, m, ctx.date);
+  const hours = procedureHours(def, m, params);
+  if (hours === undefined) reasons.push(`Cette procédure ne peut pas être confiée à ${memberName(params, m)}.`);
+  // the work starts after the member's queue (or on the member's next day on site): that day must be in one of the procedure's phases
+  const t = hours === undefined ? null : previewLaunch(s.program, ctx.cal, m, hours, ctx.date);
+  const firstDay = t ? t.start : nextOnSiteDay(ctx.cal, m, ctx.date);
   const startPeriod = firstDay ? periodIdAt(ctx.cal, firstDay) : undefined;
   const phases = def.phases as readonly string[];
-  const who = m === 'senior' ? 'vous n’êtes' : `${memberName(params, m)} n’est`;
-  if (!firstDay) reasons.push(`${m === 'senior' ? 'Vous n’êtes' : `${memberName(params, m)} n’est`} plus sur site d’ici la fin de la mission.`);
+  const name = memberName(params, m);
+  if (!firstDay) reasons.push(`${m === 'senior' ? 'Vous n’êtes' : `${name} n’est`} plus sur site d’ici la fin de la mission.`);
   else if (startPeriod === undefined || !phases.includes(startPeriod))
-    reasons.push(`Procédure à mener pendant ${phaseList(def)}${firstDay > ctx.date ? ` ; ${who} sur site qu’à partir du ${formatDateFr(firstDay)}` : ''}.`);
+    reasons.push(`Procédure à mener pendant ${phaseList(def)}${firstDay > ctx.date ? ` ; ${m === 'senior' ? 'vos travaux ne commenceraient' : `les travaux de ${name} ne commenceraient`} que le ${formatDateFr(firstDay)}` : ''}.`);
+  else if (t && t.end === null) reasons.push(`La procédure ne pourrait pas être terminée avant la fin de ${m === 'senior' ? 'votre présence sur site' : `la présence sur site de ${name}`}.`);
   reasons.push(...evaluateAll(def.requires, ctx).reasons);
   return { ok: reasons.length === 0, reasons };
 }
@@ -401,12 +406,12 @@ export function launchExecution(s: GameState, params: Params, procedureId: strin
     hours,
     title: `« ${def.title} » lancée (${memberName(params, m)}, ${fmtHours(hours)} h)`,
   });
-  // budget: arbitration of the partner beyond the tolerance
+  // budget: arbitration of the partner beyond the tolerance (withdrawn with the launch if it is cancelled)
   if (impact?.arbitration) {
     const { justified } = impact;
     const overrun = Math.round((impact.after - impact.budget) * 10) / 10;
-    const gauges = { ...next.gauges, arbitrations: [...next.gauges.arbitrations, { on: next.clock.date, overrunHours: overrun, justified }] };
-    next = log({ ...next, gauges: justified ? gauges : recordGaugeEvent(gauges, { on: next.clock.date, gauge: 'partnerTrust', reason: UNJUSTIFIED_OVERRUN, ref: procedureId }) }, 'arbitration', procedureId, {
+    const gauges = { ...next.gauges, arbitrations: [...next.gauges.arbitrations, { on: next.clock.date, overrunHours: overrun, justified, executionId: id }] };
+    next = log({ ...next, gauges: justified ? gauges : recordGaugeEvent(gauges, { on: next.clock.date, gauge: 'partnerTrust', reason: UNJUSTIFIED_OVERRUN, ref: procedureId, executionId: id }) }, 'arbitration', procedureId, {
       justified,
       overrun,
       title: `arbitrage de l’associée : dépassement du budget de ${fmtHours(overrun)} h, ${justified ? 'justifié par le risque du cycle' : 'non justifié'}`,
@@ -415,13 +420,19 @@ export function launchExecution(s: GameState, params: Params, procedureId: strin
   return next;
 }
 
-/** Cancels an execution not yet started (its hours are given back). */
+/**
+ * Cancels an execution not yet started, or one that cannot be finished before
+ * its assignee leaves the site: its hours are given back, the partner's
+ * arbitration of its launch and its gauge event are withdrawn, and the
+ * procedure can be launched again (for another member).
+ */
 export function cancelExecution(s: GameState, executionId: string, cal: WorkCalendar, params?: Params): GameState {
   const e = s.program.executions.find((x) => x.id === executionId);
   if (!e) return s;
   const t = scheduleExecutions(s.program, cal).get(executionId);
-  if (t && t.start !== null && t.start <= s.clock.date) return s;
-  return log(withProgram(s, { ...s.program, executions: s.program.executions.filter((x) => x.id !== executionId) }), 'execution', e.procedureId, { action: 'cancel', title: `« ${procTitle(params, e.procedureId)} » : lancement annulé` });
+  if (t && t.start !== null && t.start <= s.clock.date && t.end !== null) return s;
+  const next = withProgram(s, { ...s.program, executions: s.program.executions.filter((x) => x.id !== executionId) });
+  return log({ ...next, gauges: withdrawExecution(next.gauges, executionId) }, 'execution', e.procedureId, { action: 'cancel', title: `« ${procTitle(params, e.procedureId)} » : lancement annulé` });
 }
 
 function withExecution(s: GameState, id: string, f: (e: Execution) => Execution): GameState {
@@ -516,6 +527,8 @@ export interface CompletionContext {
   availableDocs?: readonly { id: string; category: string }[];
   /** Population of a third party proposed for confirmation, when known (confirmations criterion). */
   populationOf?: (thirdParty: string) => ConfirmationPopulation | undefined;
+  /** Status of a confirmation request at the date, when known (delegated work: replies awaited). */
+  confirmationState?: (item: ConfirmationItem) => ConfirmationState;
 }
 
 export interface CompletionItem {
@@ -620,6 +633,10 @@ function criterionItem(c: CompletionCriterion, e: Execution, def: ProcedureDef, 
       const from = ctx.params.game.calendar.find((p) => p.id === c.fromPeriod)?.from ?? '9999-12-31';
       return { label: `Mise à jour à partir du ${formatDateFr(from)}, jusqu’à la signature du rapport`, ok: e.updatedOn !== undefined && e.updatedOn >= from };
     }
+    case 'refs': {
+      const n = derivedRefs(e, def, st, ctx.params, ctx.populationOf).length + e.refs.length;
+      return { label: `${c.min > 1 ? `Au moins ${c.min} références` : 'Au moins une référence'} aux pièces ou aux travaux qui fondent la conclusion : ${n}`, ok: n >= c.min };
+    }
   }
 }
 
@@ -646,32 +663,93 @@ export function formCheck(e: Execution, status: ExecutionStatus, refs: readonly 
 
 export interface DelegatedWorksheet {
   preparer: MemberId;
-  /** Documents examined where the member noted points for the senior (blocks of the document). */
+  /**
+   * Why the member proposes no conclusion yet, null once the work is done:
+   * 'work', the work criteria of the procedure are not met (nothing is
+   * reported); 'replies', replies to its confirmation requests are awaited.
+   */
+  pending: 'work' | 'replies' | null;
+  /**
+   * Documents reached by the work where the member noted points for the
+   * senior, named by title. The passages (`blocks`) are for the designer mode
+   * only: the player is never pointed to a block.
+   */
   points: { docId: string; title: string; blocks: number[] }[];
-  /** Conclusion proposed by the member. */
-  proposed: 'exceptions' | 'satisfactory';
+  /** Samples of the procedure with exceptions recorded, recalculations differing from the amount recorded. */
+  work: { kind: 'sample' | 'recalc'; id: string }[];
+  /** Conclusion proposed by the member, null while the work is pending. */
+  proposed: 'exceptions' | 'satisfactory' | null;
 }
 
 /**
- * Worksheet prepared by Léa or Hugo (plan J4 §7.1 « delegated »): drawn from
- * the key — the documents available at the delivery date that carry clues of
- * the parts the procedure can reveal, and the conclusion. Null for the
- * senior's own work and before the delivery.
+ * Documents the work of an execution reaches: the replies to the requests of
+ * its output, the replies to its confirmation requests, the documents of the
+ * categories it examines (GED view, reading criterion). Samples,
+ * recalculations, the other screens and the working notes reach no document
+ * of the GED.
  */
-export function delegatedWorksheet(e: Execution, def: ProcedureDef, status: ExecutionStatus, documents: readonly DocumentModel[], isAvailable: (d: DocumentModel) => boolean): DelegatedWorksheet | null {
+export function executionReach(e: Execution, def: ProcedureDef, ctx: Pick<CompletionContext, 'params' | 'state' | 'populationOf'>): (d: DocumentModel) => boolean {
+  const o = def.output;
+  const keys = new Set(o.kind === 'requests' ? o.requests.map((r) => requestKey(r.family, r.object ?? '')) : []);
+  const thirdParties = new Set(o.kind === 'confirmations' ? confirmationsOfExecution(ctx.state.confirmations.items, ctx.params, e.id, def.id, ctx.populationOf).map((c) => c.thirdParty) : []);
+  const categories = new Set<string>([...(o.kind === 'view' ? (o.categories ?? []) : []), ...def.completion.flatMap((c) => (c.kind === 'read' ? [c.category] : []))]);
+  return (d) => {
+    if (categories.has(d.category)) return true;
+    const a = d.availability;
+    if (a.kind === 'confirmation') return thirdParties.has(a.request);
+    return onRequestKeys(a).some((k) => keys.has(k));
+  };
+}
+
+/** The work of a procedure is done: delivered, its completion criteria met (the update up to the signature excepted: it follows the conclusion). */
+function workDone(e: Execution, def: ProcedureDef, status: ExecutionStatus, ctx: CompletionContext): boolean {
+  if (status !== 'delivered' && status !== 'documented') return false;
+  return def.completion.every((c) => c.kind === 'updated' || criterionItem(c, e, def, ctx).ok);
+}
+
+/**
+ * Worksheet prepared by Léa or Hugo (plan J4 §7.1 « delegated »): correct in
+ * J4, drawn from the key but limited to what the work of the procedure
+ * reached — the documents of its reach available to the caller (`documents`,
+ * at the game date) that carry clues of the parts it can reveal, named by
+ * document — and to the results of its own samples and recalculations.
+ * Nothing is reported and no conclusion is proposed until its work criteria
+ * are met; the conclusion also waits for the replies to its confirmation
+ * requests. Null for the senior's own work and before the delivery.
+ */
+export function delegatedWorksheet(e: Execution, def: ProcedureDef, status: ExecutionStatus, ctx: CompletionContext, documents: readonly DocumentModel[]): DelegatedWorksheet | null {
   if (e.assignee !== 'lea' && e.assignee !== 'hugo') return null;
   if (status !== 'delivered' && status !== 'documented') return null;
+  if (!workDone(e, def, status, ctx)) return { preparer: e.assignee, pending: 'work', points: [], work: [], proposed: null };
   const parts = new Set(def.effectiveFor);
   const anomalies = new Set(def.effectiveFor.map((p) => p.split('.')[0]!));
+  const reach = executionReach(e, def, ctx);
+  const seen = new Set<string>();
   const points: DelegatedWorksheet['points'] = [];
   for (const d of documents) {
+    if (seen.has(baseDocumentId(d.id)) || !reach(d)) continue;
     const clues = d.clues.filter((c) => anomalies.has(c.target) && (!c.parts || c.parts.some((p) => parts.has(p)) || parts.has(c.target)));
-    if (clues.length === 0 || !isAvailable(d)) continue;
+    if (clues.length === 0) continue;
+    seen.add(baseDocumentId(d.id));
     const ids = new Set(clues.map((c) => c.id));
     const blocks = d.blocks.flatMap((b, i) => (blockClues(b).some((c) => ids.has(c)) ? [i] : []));
     points.push({ docId: d.id, title: d.title, blocks });
   }
-  return { preparer: e.assignee, points, proposed: points.length ? 'exceptions' : 'satisfactory' };
+  points.sort((a, b) => a.title.localeCompare(b.title, 'fr'));
+  const st = ctx.state;
+  const work: DelegatedWorksheet['work'] = [
+    ...st.samples.items.filter((x) => x.executionId === e.id && Object.values(x.exceptions ?? {}).some((v) => v !== 0)).map((x) => ({ kind: 'sample' as const, id: x.id })),
+    ...st.recalcs.items.filter((x) => x.executionId === e.id && x.summary.computed !== x.summary.recorded).map((x) => ({ kind: 'recalc' as const, id: x.id })),
+  ];
+  const state = ctx.confirmationState;
+  const awaited =
+    def.output.kind === 'confirmations' &&
+    state !== undefined &&
+    confirmationsOfExecution(st.confirmations.items, ctx.params, e.id, def.id, ctx.populationOf).some((c) => {
+      const x = state(c);
+      return x === 'prepared' || x === 'sent';
+    });
+  return { preparer: e.assignee, pending: awaited ? 'replies' : null, points, work, proposed: awaited ? null : points.length > 0 || work.length > 0 ? 'exceptions' : 'satisfactory' };
 }
 
 function blockClues(b: DocumentModel['blocks'][number]): string[] {

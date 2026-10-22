@@ -6,8 +6,10 @@
  * to the partner, free comment. The impacts are derived from the entry with
  * the code of the key (result, equity, CAF, net self-financing), never typed.
  * The draft lives in the form: the game state changes only on « Enregistrer ».
+ * On the Constats screen it is kept in memory (findingsStore) until saved,
+ * deleted or cancelled; the dialog asks before closing it (onDirtyChange).
  */
-import { useId, useMemo, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useId, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { formatDateFr } from '../../../engine/dates';
 import { blockText } from '../../../game/documents';
@@ -15,6 +17,7 @@ import {
   createFinding,
   deleteFinding,
   draftErrors,
+  draftOf,
   draftWarnings,
   entryTotals,
   escalateFinding,
@@ -40,7 +43,8 @@ import { Badge, Button, Checkbox, cx, Select, TextInput } from '../../components
 import { entryIdsByNumber } from '../fec/entryKey';
 import { AmountInput } from '../tools/AmountInput';
 import { useEvidenceOptions, useEvidenceView, useFindingCatalog } from './catalog';
-import { CLASSIFICATION_LABELS, EVIDENCE_KIND_LABELS, NATURE_LABELS, OBJECT_KIND_LABELS, STATUS_HELP, STATUS_LABELS, STATUS_TONES, TREATMENT_LABELS, type EvidenceKind } from './labels';
+import { draftSignature, keptDraft, useFindingDrafts } from './findingsStore';
+import { CLASSIFICATION_LABELS, EVIDENCE_KIND_LABELS, NATURE_LABELS, OBJECT_KIND_LABELS, plural, STATUS_HELP, STATUS_LABELS, STATUS_TONES, TREATMENT_LABELS, type EvidenceKind } from './labels';
 
 export interface FindingFormProps {
   /** Finding being edited (absent: a new finding). */
@@ -52,6 +56,10 @@ export interface FindingFormProps {
   onDone: (id: string | null) => void;
   /** Hide the « Annuler » button (side panel of the screen). */
   hideCancel?: boolean;
+  /** Key under which the unsaved draft is kept in memory (Constats screen: finding id or 'new'). */
+  draftKey?: string;
+  /** Told whether the draft differs from what it started from (the dialog asks before closing). */
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 function Section({ title, children, hint }: { title: string; children: ReactNode; hint?: ReactNode }) {
@@ -71,7 +79,7 @@ function excerpt(text: string, n = 60): string {
 
 const EMPTY_LINE: ProposedLine = { account: '', debit: 0, credit: 0 };
 
-export function FindingForm({ findingId, initial, context, onDone, hideCancel }: FindingFormProps) {
+export function FindingForm({ findingId, initial, context, onDone, hideCancel, draftKey, onDirtyChange }: FindingFormProps) {
   const uid = useId().replace(/[^a-zA-Z0-9]/g, '');
   const c = useCase();
   const params = c.params;
@@ -80,11 +88,22 @@ export function FindingForm({ findingId, initial, context, onDone, hideCancel }:
   const saved = useGame((s) => (findingId ? s.game.findings.items.find((f) => f.id === findingId) : undefined));
   const catalog = useFindingCatalog();
   const evidenceView = useEvidenceView();
-  const [d, setD] = useState<FindingDraft>(() => ({ ...initial, proposedEntry: initial.proposedEntry.length ? initial.proposedEntry : [EMPTY_LINE, EMPTY_LINE] }));
+  const keep = useFindingDrafts((s) => s.keep);
+  const [d, setD] = useState<FindingDraft>(() => (draftKey ? keptDraft(useFindingDrafts.getState().drafts, draftKey, saved) : undefined) ?? { ...initial, proposedEntry: initial.proposedEntry.length ? initial.proposedEntry : [EMPTY_LINE, EMPTY_LINE] });
   const [tried, setTried] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const set = (changes: Partial<FindingDraft>) => setD((x) => ({ ...x, ...changes }));
   const m = params.disclosureItems.matching;
+
+  // unsaved changes: against the finding as saved (it changes on « Enregistrer »), or the initial draft of a new one
+  const dirty = draftSignature(d) !== draftSignature(saved ? draftOf(saved) : initial);
+  useEffect(() => {
+    if (draftKey) keep(draftKey, dirty ? { draft: d, base: saved ?? null } : null);
+  }, [draftKey, dirty, d, saved, keep]);
+  useEffect(() => onDirtyChange?.(dirty), [dirty, onDirtyChange]);
+  const drop = () => {
+    if (draftKey) keep(draftKey, null);
+  };
 
   const errors = useMemo(() => draftErrors(d, { params, accounts: catalog.accounts }), [d, params, catalog.accounts]);
   const warnings = useMemo(() => draftWarnings(d), [d]);
@@ -97,6 +116,7 @@ export function FindingForm({ findingId, initial, context, onDone, hideCancel }:
     e?.preventDefault();
     setTried(true);
     if (errors.length) return;
+    drop();
     if (findingId) {
       act((s) => updateFinding(s, findingId, d, params));
       onDone(findingId);
@@ -284,7 +304,7 @@ export function FindingForm({ findingId, initial, context, onDone, hideCancel }:
           (confirmDelete ? (
             <>
               <span className="mr-auto text-xs text-ko">Supprimer définitivement le constat {saved.id} ?</span>
-              <Button variant="danger" onClick={() => { act((s) => deleteFinding(s, saved.id)); onDone(null); }}>
+              <Button variant="danger" onClick={() => { drop(); act((s) => deleteFinding(s, saved.id)); onDone(null); }}>
                 Confirmer la suppression
               </Button>
               <Button onClick={() => setConfirmDelete(false)}>Garder</Button>
@@ -294,7 +314,8 @@ export function FindingForm({ findingId, initial, context, onDone, hideCancel }:
               Supprimer…
             </Button>
           ))}
-        {!hideCancel && <Button onClick={() => onDone(null)}>Annuler</Button>}
+        {saved && dirty && !confirmDelete && <span className="text-xs text-warn">Modifications non enregistrées</span>}
+        {!hideCancel && <Button onClick={() => { drop(); onDone(null); }}>Annuler</Button>}
         <Button type="submit" variant="primary">
           {findingId ? 'Enregistrer les modifications' : d.status === 'question' ? 'Enregistrer la question' : 'Enregistrer le constat'}
         </Button>
@@ -375,9 +396,20 @@ function ObjectsSection({ uid, objects, max, onChange }: { uid: string; objects:
 
 function EntrySection({ uid, lines, contextAmount, onChange }: { uid: string; lines: ProposedLine[]; contextAmount?: number | undefined; onChange: (l: ProposedLine[]) => void }) {
   const catalog = useFindingCatalog();
-  const totals = entryTotals(lines);
+  // totals of the lines that will be saved (with an account and an amount), as in the impacts and the table
+  const kept = meaningfulLines(lines);
+  const totals = entryTotals(kept);
   const setLine = (i: number, changes: Partial<ProposedLine>) => onChange(lines.map((l, k) => (k === i ? { ...l, ...changes } : l)));
-  const filled = meaningfulLines(lines).length > 0;
+  const filled = kept.length > 0;
+  const typed = lines.some((l) => l.debit !== 0 || l.credit !== 0);
+  const withoutAccount = lines.filter((l) => !l.account && (l.debit !== 0 || l.credit !== 0)).length;
+  const negative = lines.some((l) => l.debit < 0 || l.credit < 0);
+  // a negative amount is kept as typed (draftErrors refuses it), never zeroed; a positive one clears the other column
+  const amount = (i: number, side: 'debit' | 'credit', v: number | null) => {
+    const x = v ?? 0;
+    const clear = x > 0;
+    setLine(i, side === 'debit' ? { debit: x, ...(clear ? { credit: 0 } : {}) } : { credit: x, ...(clear ? { debit: 0 } : {}) });
+  };
   return (
     <Section title="Écriture de correction proposée" hint="Lignes équilibrées sur les comptes du plan ; les impacts en sont déduits. Laissez vide pour un constat d’information.">
       <div className="overflow-x-auto">
@@ -405,10 +437,10 @@ function EntrySection({ uid, lines, contextAmount, onChange }: { uid: string; li
                   </Select>
                 </td>
                 <td className="px-2 py-1 text-right">
-                  <AmountInput id={`${uid}-d${i}`} label={`Débit de la ligne ${i + 1}`} cents={l.debit || null} onCommit={(v) => setLine(i, { debit: Math.max(0, v ?? 0), ...(v ? { credit: 0 } : {}) })} className="w-32 py-0.5 text-right font-mono text-xs" />
+                  <AmountInput id={`${uid}-d${i}`} label={`Débit de la ligne ${i + 1}`} cents={l.debit || null} invalid={l.debit < 0} onCommit={(v) => amount(i, 'debit', v)} className="w-32 py-0.5 text-right font-mono text-xs" />
                 </td>
                 <td className="px-2 py-1 text-right">
-                  <AmountInput id={`${uid}-c${i}`} label={`Crédit de la ligne ${i + 1}`} cents={l.credit || null} onCommit={(v) => setLine(i, { credit: Math.max(0, v ?? 0), ...(v ? { debit: 0 } : {}) })} className="w-32 py-0.5 text-right font-mono text-xs" />
+                  <AmountInput id={`${uid}-c${i}`} label={`Crédit de la ligne ${i + 1}`} cents={l.credit || null} invalid={l.credit < 0} onCommit={(v) => amount(i, 'credit', v)} className="w-32 py-0.5 text-right font-mono text-xs" />
                 </td>
                 <td className="py-1 pl-2 text-right">
                   <Button variant="ghost" className="px-1.5 py-0 text-xs" aria-label={`Retirer la ligne ${i + 1}`} onClick={() => onChange(lines.filter((_, k) => k !== i))} disabled={lines.length <= 1}>
@@ -434,11 +466,18 @@ function EntrySection({ uid, lines, contextAmount, onChange }: { uid: string; li
           </tfoot>
         </table>
       </div>
+      {(withoutAccount > 0 || negative) && (
+        <p className="mt-1 text-xs text-ko">
+          {withoutAccount === 1 && 'Une ligne chiffrée n’a pas de compte : elle n’entre pas dans les totaux tant que son compte n’est pas choisi. '}
+          {withoutAccount > 1 && `${plural(withoutAccount, 'ligne chiffrée', 'lignes chiffrées')} n’ont pas de compte : elles n’entrent pas dans les totaux tant que leur compte n’est pas choisi. `}
+          {negative && 'Les montants se saisissent en positif, au débit ou au crédit.'}
+        </p>
+      )}
       <div className="mt-2 flex flex-wrap gap-2">
         <Button className="text-xs" onClick={() => onChange([...lines, EMPTY_LINE])}>
           Ajouter une ligne
         </Button>
-        {contextAmount !== undefined && !filled && (
+        {contextAmount !== undefined && !typed && (
           <Button className="text-xs" onClick={() => onChange([{ ...(lines[0] ?? EMPTY_LINE), debit: contextAmount, credit: 0 }, { ...(lines[1] ?? EMPTY_LINE), debit: 0, credit: contextAmount }, ...lines.slice(2)])}>
             Reprendre le montant relevé
           </Button>
@@ -579,7 +618,22 @@ function EvidenceSection({ uid, evidence, onChange }: { uid: string; evidence: E
               <label htmlFor={`${uid}-ev-num`} className="mb-0.5 block text-xs text-muted">
                 Numéro d’écriture (EcritureNum)
               </label>
-              <TextInput id={`${uid}-ev-num`} value={num} onChange={(e) => setNum(e.target.value)} placeholder="ex. OD000012" className="w-36 font-mono" invalid={!!error} aria-describedby={error ? `${uid}-ev-error` : undefined} />
+              <TextInput
+                id={`${uid}-ev-num`}
+                value={num}
+                onChange={(e) => setNum(e.target.value)}
+                // Enter links the entry (« Lier »), it does not submit the finding
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    add();
+                  }
+                }}
+                placeholder="ex. OD000012"
+                className="w-36 font-mono"
+                invalid={!!error}
+                aria-describedby={error ? `${uid}-ev-error` : undefined}
+              />
             </div>
           </>
         )}

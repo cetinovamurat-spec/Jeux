@@ -25,6 +25,7 @@ import {
   hoursCharged,
   launchBudgetImpact,
   launchExecution,
+  memberName,
   plannedHours,
   previewLaunch,
   planProcedure,
@@ -39,10 +40,11 @@ import {
   upcomingProgram,
   updateExecution,
   validateProgramme,
+  type CompletionContext,
   type Execution,
   type LaunchContext,
 } from '../../src/game/program';
-import { initialState, saveQuery, setTick, type GameState } from '../../src/game/state';
+import { initialState, markRead, saveQuery, setTick, type GameState } from '../../src/game/state';
 import { statementCells, STATEMENT_ORDER } from '../../src/game/ticking';
 import type { DocumentModel } from '../../src/scenario/documents';
 import { loadParams } from '../../src/scenario/params';
@@ -174,6 +176,34 @@ describe('executions: launch, scheduling, delivery', () => {
     expect(canLaunch(s, params, 'subsequent-events', 'senior', ctx(s)).ok).toBe(false);
   });
 
+  it('checks the phase on the day the work would start after the member’s queue, not on the member’s next day on site', () => {
+    // the senior's interim (17-20/11, 4 days at 7 h) is full: an interim procedure would start in the final
+    const busy: Execution = { id: 'busy', procedureId: 'payroll', assignee: 'senior', hours: 28, launchedOn: '2025-11-17', conclusion: null, comment: '', refs: [], review: { status: 'pending' } };
+    const s = advanceTo(fresh(), '2025-11-17');
+    const full = { ...s, program: { ...s.program, executions: [busy] } };
+    expect(canLaunch(s, params, 'permanent-file', 'senior', ctx(s)).ok).toBe(true);
+    const check = canLaunch(full, params, 'permanent-file', 'senior', ctx(full));
+    expect(check.ok).toBe(false);
+    expect(check.reasons).toContain('Procédure à mener pendant la planification ou l’intérim ; vos travaux ne commenceraient que le 23/02/2026.');
+    expect(launch(full, 'permanent-file', 'senior')).toBe(full);
+    // Léa's queue is empty: she can still run it during the interim
+    expect(canLaunch(full, params, 'permanent-file', 'lea', ctx(full)).ok).toBe(true);
+  });
+
+  it('refuses a launch that cannot be finished before the member leaves the site; an unfinishable launch can be cancelled and relaunched', () => {
+    const s = advanceTo(fresh(), '2026-03-12');
+    const lea = canLaunch(s, params, 'journal-entry-tests', 'lea', ctx(s));
+    expect(lea.reasons).toEqual([`La procédure ne pourrait pas être terminée avant la fin de la présence sur site de ${memberName(params, 'lea')}.`]);
+    expect(canLaunch(s, params, 'journal-entry-tests', 'senior', ctx(s)).ok).toBe(true);
+    // a launch saved before this check: started, never finished
+    const stuck: Execution = { id: 'stuck', procedureId: 'journal-entry-tests', assignee: 'lea', hours: def('journal-entry-tests').hours.assistant!, launchedOn: '2026-03-12', conclusion: null, comment: '', refs: [], review: { status: 'pending' } };
+    let late = advanceTo({ ...s, program: { ...s.program, executions: [stuck] } }, '2026-03-16');
+    expect(statusOf(late, stuck)).toBe('unfinishable');
+    late = cancelExecution(late, 'stuck', cal, params);
+    expect(late.program.executions).toEqual([]);
+    expect(canLaunch(late, params, 'journal-entry-tests', 'senior', ctx(late)).ok).toBe(true);
+  });
+
   it('cancels a launch not yet started and gives its hours back', () => {
     let s = launch(fresh(), 'rent-controls', 'lea');
     const id = s.program.executions[0]!.id;
@@ -186,7 +216,7 @@ describe('executions: launch, scheduling, delivery', () => {
 });
 
 describe('worksheets: documentation, completion, form check, review', () => {
-  it('documents a worksheet once delivered; a memo procedure is complete once documented', () => {
+  it('documents a worksheet once delivered; a memo procedure is complete once documented with the evidence it cites', () => {
     let s = launch(fresh(), 'engagement-acceptance', 'senior');
     const id = s.program.executions[0]!.id;
     s = advanceTo(s, '2025-11-04');
@@ -196,14 +226,38 @@ describe('worksheets: documentation, completion, form check, review', () => {
     expect(e).toMatchObject({ conclusion: 'satisfactory', comment: 'Indépendance confirmée', documentedOn: '2025-11-04' });
     const st = statusOf(s, e);
     expect(st).toBe('documented');
-    const c = completionOf(e, def('engagement-acceptance'), st, { params, date: s.clock.date, state: s, answered: new Set() });
-    expect(c.done).toBe(true);
+    const done = () => completionOf(s.program.executions[0]!, def('engagement-acceptance'), st, { params, date: s.clock.date, state: s, answered: new Set() }).done;
+    expect(done()).toBe(false);
     expect(formCheck(e, st, [])).toEqual(['Feuille sans référence : liez les pièces, requêtes ou travaux qui fondent la conclusion.']);
     s = addExecutionRef(s, id, { kind: 'doc', id: 'declarations-independance' });
     expect(addExecutionRef(s, id, { kind: 'doc', id: 'declarations-independance' })).toBe(s);
     expect(formCheck(s.program.executions[0]!, st, s.program.executions[0]!.refs)).toEqual([]);
+    expect(done()).toBe(true);
     s = removeExecutionRef(s, id, { kind: 'doc', id: 'declarations-independance' });
     expect(s.program.executions[0]!.refs).toEqual([]);
+    expect(done()).toBe(false);
+  });
+
+  it('never completes a procedure on a conclusion alone: the prorata recalculation of the accruals, a reference for the override responses', () => {
+    let s = advanceTo(fresh(), '2026-02-23');
+    s = launch(s, 'accruals-review', 'senior');
+    s = launch(s, 'unusual-transactions', 'senior');
+    const [accruals, unusual] = s.program.executions;
+    s = advanceTo(s, '2026-02-25');
+    s = documentExecution(s, params, accruals!.id, 'satisfactory', '', cal);
+    s = documentExecution(s, params, unusual!.id, 'satisfactory', '', cal);
+    const comp = (i: number) => {
+      const e = s.program.executions[i]!;
+      return completionOf(e, def(e.procedureId), statusOf(s, e), { params, date: s.clock.date, state: s, answered: new Set() });
+    };
+    expect(statusOf(s, s.program.executions[0]!)).toBe('documented');
+    expect(comp(0).done).toBe(false);
+    expect(comp(0).items.find((i) => i.label === 'Recalcul effectué dans la procédure')!.ok).toBe(false);
+    expect(comp(1).done).toBe(false);
+    s = { ...s, recalcs: { items: [{ id: 'rc1', executionId: accruals!.id, tool: 'prorata', scope: 'free', assumptions: {}, summary: { computed: 0, recorded: 0 }, on: s.clock.date }] } };
+    expect(comp(0).done).toBe(true);
+    s = addExecutionRef(s, unusual!.id, { kind: 'doc', id: 'detail-comptes-attente' });
+    expect(comp(1).done).toBe(true);
   });
 
   it('refuses to document before the delivery', () => {
@@ -274,26 +328,70 @@ describe('worksheets: documentation, completion, form check, review', () => {
     expect(s.program.executions[0]!.review).toEqual({ status: 'returned', on: '2025-11-03', comment: 'Étendre le test' });
   });
 
-  it('prepares a correct delegated worksheet: the available documents carrying clues of the parts the procedure can reveal', () => {
-    const doc = (id: string, target: string, parts?: string[]): DocumentModel => ({
+  describe('delegated worksheet (§7): correct, limited to what the work of the procedure reached', () => {
+    const clue = (id: string, target: string, parts?: string[]) => ({ id, target: target as 'A04', ...(parts ? { parts } : {}), documentId: id, source: 'accounting' as const, text: 'x' });
+    const doc = (id: string, category: DocumentModel['category'], target: string | null, availability: DocumentModel['availability'] = { kind: 'initial' }): DocumentModel => ({
       id,
       title: `Pièce ${id}`,
-      category: 'accounting',
+      category,
       date: '2025-01-01',
       issuer: 'x',
-      availability: { kind: 'initial' },
-      blocks: [{ kind: 'paragraph', text: 'a' }, { kind: 'paragraph', text: 'b', clue: `${id}-c` }],
-      clues: [{ id: `${id}-c`, target: target as 'A06', ...(parts ? { parts } : {}), documentId: id, source: 'accounting', text: 'x' }],
+      availability,
+      blocks: [{ kind: 'paragraph', text: 'a' }, { kind: 'paragraph', text: 'b', ...(target ? { clue: `${id}-c` } : {}) }],
+      clues: target ? [clue(`${id}-c`, target)] : [],
     });
-    const docs = [doc('d1', 'A06'), doc('d2', 'A17'), doc('d3', 'A06')];
-    const e: Execution = { id: 'e1', procedureId: 'additions-test', assignee: 'hugo', hours: 1, launchedOn: '2026-02-23', conclusion: null, comment: '', refs: [], review: { status: 'pending' } };
-    const w = delegatedWorksheet(e, def('additions-test'), 'delivered', docs, (d) => d.id !== 'd3')!;
-    expect(w.preparer).toBe('hugo');
-    expect(w.points).toEqual([{ docId: 'd1', title: 'Pièce d1', blocks: [1] }]);
-    expect(w.proposed).toBe('exceptions');
-    expect(delegatedWorksheet({ ...e, assignee: 'senior' }, def('additions-test'), 'delivered', docs, () => true)).toBeNull();
-    expect(delegatedWorksheet(e, def('additions-test'), 'inProgress', docs, () => true)).toBeNull();
-    expect(delegatedWorksheet(e, def('payroll'), 'delivered', docs, () => true)!.proposed).toBe('satisfactory');
+    const exec = (procedureId: string, assignee: Execution['assignee'] = 'lea', refs: Execution['refs'] = []): Execution => ({ id: 'e1', procedureId, assignee, hours: 1, launchedOn: '2025-11-17', conclusion: null, comment: '', refs, review: { status: 'pending' } });
+    const cctx = (s: GameState, extra: Partial<CompletionContext> = {}): CompletionContext => ({ params, date: s.clock.date, state: s, answered: new Set(), ...extra });
+
+    it('reports nothing and proposes no conclusion before the work criteria are met; never for the senior’s own work or before the delivery', () => {
+      // the board minutes: the governance documents read (80 %) — a permanent memo and an internal note with clues are outside its reach
+      const docs = [doc('pv', 'governance', 'A17'), doc('pv2', 'governance', null), doc('memo', 'permanent', 'A17'), doc('note', 'internal', 'A17'), doc('pv3', 'governance', 'A04')];
+      const available = docs.map((d) => ({ id: d.id, category: d.category }));
+      let s = fresh();
+      const e = exec('board-minutes');
+      expect(delegatedWorksheet(e, def('board-minutes'), 'delivered', cctx(s, { availableDocs: available }), docs)).toEqual({ preparer: 'lea', pending: 'work', points: [], work: [], proposed: null });
+      for (const id of ['pv', 'pv2', 'pv3']) s = markRead(s, id);
+      const w = delegatedWorksheet(e, def('board-minutes'), 'delivered', cctx(s, { availableDocs: available }), docs)!;
+      expect(w.pending).toBeNull();
+      expect(w.points.map((p) => p.docId)).toEqual(['pv', 'pv3']);
+      expect(w.points[0]!.blocks).toEqual([1]);
+      expect(w.proposed).toBe('exceptions');
+      expect(delegatedWorksheet({ ...e, assignee: 'senior' }, def('board-minutes'), 'delivered', cctx(s, { availableDocs: available }), docs)).toBeNull();
+      expect(delegatedWorksheet(e, def('board-minutes'), 'inProgress', cctx(s, { availableDocs: available }), docs)).toBeNull();
+    });
+
+    it('reaches the replies to its own requests and confirmations only, and waits for the replies before concluding', () => {
+      const reply = doc('releve', 'thirdParty', 'A18', { kind: 'onRequest', request: 'x', from: 'cfo', family: 'bank-statements', object: '2025-12' });
+      const other = doc('etat-dette', 'accounting', 'A18');
+      const s = fresh();
+      const bank = exec('bank-reconciliation', 'hugo');
+      expect(delegatedWorksheet(bank, def('bank-reconciliation'), 'delivered', cctx(s), [reply, other])!.pending).toBe('work');
+      const got = delegatedWorksheet(bank, def('bank-reconciliation'), 'delivered', cctx(s, { received: new Set(['bank-statements:2025-12']) }), [reply, other])!;
+      expect(got.points.map((p) => p.docId)).toEqual(['releve']);
+      expect(got.proposed).toBe('exceptions');
+      // the lenders' confirmations: the reply of a third party confirmed in the procedure, once it has arrived
+      const lenders = exec('lender-confirmations');
+      const conf = doc('confirmation-bdt', 'thirdParty', 'A18', { kind: 'confirmation', request: 'BDT', arrives: '2026-02-02' });
+      const prepared = prepareConfirmation(s, 'BDT', 'Banque des Territoires', 'lea', params, lenders.id);
+      expect(delegatedWorksheet(lenders, def('lender-confirmations'), 'delivered', cctx(s), [conf, other])!.pending).toBe('work');
+      const sent = delegatedWorksheet(lenders, def('lender-confirmations'), 'delivered', cctx(prepared, { confirmationState: () => 'sent' }), [other])!;
+      expect(sent).toMatchObject({ pending: 'replies', points: [], proposed: null });
+      const replied = delegatedWorksheet(lenders, def('lender-confirmations'), 'delivered', cctx(prepared, { confirmationState: () => 'replied' }), [conf, other])!;
+      expect(replied).toMatchObject({ pending: null, points: [{ docId: 'confirmation-bdt' }], proposed: 'exceptions' });
+    });
+
+    it('reports the results of its own samples and recalculations, never the clues of documents its work did not reach', () => {
+      const pv = doc('pv-ca', 'governance', 'A04');
+      let s = advanceTo(fresh(), '2026-02-23');
+      const e = exec('depreciation-recalc');
+      s = { ...s, recalcs: { items: [{ id: 'rc1', executionId: e.id, tool: 'depreciation', scope: 'GLB', assumptions: {}, summary: { computed: 100, recorded: 100 }, on: s.clock.date }] } };
+      expect(delegatedWorksheet(e, def('depreciation-recalc'), 'delivered', cctx(s), [pv])).toMatchObject({ pending: null, points: [], work: [], proposed: 'satisfactory' });
+      s = { ...s, recalcs: { items: [{ ...s.recalcs.items[0]!, summary: { computed: 150, recorded: 100 } }] } };
+      expect(delegatedWorksheet(e, def('depreciation-recalc'), 'delivered', cctx(s), [pv])).toMatchObject({ points: [], work: [{ kind: 'recalc', id: 'rc1' }], proposed: 'exceptions' });
+      // a procedure without effective parts, documented with a reference: nothing to report
+      const payroll = { ...exec('payroll', 'hugo', [{ kind: 'doc', id: 'pv-ca' }]), id: 'e2' };
+      expect(delegatedWorksheet(payroll, def('payroll'), 'delivered', cctx(s), [pv])).toMatchObject({ pending: null, points: [], proposed: 'satisfactory' });
+    });
   });
 });
 
@@ -316,6 +414,22 @@ describe('budget overrun: arbitration of the partner (J4-4)', () => {
     const s = launch(s0, 'board-minutes', 'senior');
     expect(s.gauges.arbitrations[0]!.justified).toBe(true);
     expect(s.gauges.events).toEqual([]);
+  });
+
+  it('withdraws the arbitration and its gauge event when the launch is cancelled, and arbitrates the relaunch once', () => {
+    // Léa is on site from the interim: launched during the planning, the work has not started
+    let s = launch(overBudget(fresh()), 'rent-controls', 'lea');
+    const id = s.program.executions.at(-1)!.id;
+    expect(s.gauges.arbitrations).toMatchObject([{ justified: false, executionId: id }]);
+    expect(s.gauges.events).toMatchObject([{ reason: UNJUSTIFIED_OVERRUN, executionId: id }]);
+    s = cancelExecution(s, id, cal, params);
+    expect(s.gauges).toEqual({ events: [], arbitrations: [] });
+    s = launch(s, 'rent-controls', 'lea');
+    expect(s.gauges.arbitrations).toHaveLength(1);
+    expect(s.gauges.events).toHaveLength(1);
+    // another gauge event is kept
+    const other = { ...s, gauges: { ...s.gauges, events: [...s.gauges.events, { on: '2025-11-03', gauge: 'clientRelation' as const, reason: 'duplicateRequest' }] } };
+    expect(cancelExecution(other, other.program.executions.at(-1)!.id, cal, params).gauges.events.map((e) => e.reason)).toEqual(['duplicateRequest']);
   });
 
   it('does not arbitrate within the tolerance', () => {
@@ -368,16 +482,33 @@ describe('journal of the programme (desk: kinds and French subjects)', () => {
 });
 
 describe('Antoine’s advice (plan J4 §14)', () => {
-  it('points to a cycle assessed at risk whose detailed procedures were not launched, worded as method', () => {
-    let s = setRisk(fresh(), 'fixedAssets', null, 'high', 'Livraisons et remplacements');
+  it('points to a cycle the player assessed at risk whose effective procedures were not launched, worded as method', () => {
+    const none = antoineAdvice(fresh(), params, '2025-11-03');
+    expect(none.cycle).toBeNull();
+    expect(none.text).toMatch(/évaluer les risques/);
+    const s = setRisk(fresh(), 'fixedAssets', null, 'high', 'Livraisons et remplacements');
     const a = antoineAdvice(s, params, s.clock.date);
     expect(a.cycle).toBe('fixedAssets');
-    expect(a.procedures.length).toBeGreaterThan(0);
-    for (const id of a.procedures) expect(def(id).cycle).toBe('fixedAssets');
     expect(a.text).not.toMatch(/\bA\d\d\b|anomalie|erreur/i);
-    // a planned procedure is suggested first
-    s = planProcedure(s, params, 'sales-cutoff');
-    expect(antoineAdvice(s, params, s.clock.date).procedures[0]).toBe('sales-cutoff');
+    // never a procedure by its title
+    for (const p of params.procedures.procedures) expect(a.text.includes(p.title), p.id).toBe(false);
+    // once its effective procedures are launched, the cycle is no longer pointed to
+    const executions = params.procedures.procedures
+      .filter((p) => p.cycle === 'fixedAssets' && p.effectiveFor.length > 0)
+      .map((p, i): Execution => ({ id: `x${i}`, procedureId: p.id, assignee: 'senior', hours: 1, launchedOn: '2025-11-03', conclusion: null, comment: '', refs: [], review: { status: 'pending' } }));
+    expect(antoineAdvice({ ...s, program: { ...s.program, executions } }, params, s.clock.date).cycle).toBeNull();
+  });
+
+  it('gives the same answer whatever procedure is planned or removed from the programme', () => {
+    let s = setRisk(fresh('assistant'), 'fixedAssets', null, 'significant', 'Livraisons et remplacements');
+    s = setRisk(s, 'rentReceivables', 'valuation', 'high', 'Impayés');
+    s = adoptFirmProgramme(s, params);
+    const before = antoineAdvice(s, params, s.clock.date);
+    for (const p of params.procedures.procedures) {
+      const planned = s.program.planned.some((x) => x.procedureId === p.id);
+      const changed = planned ? unplanProcedure(s, params, p.id) : planProcedure(s, params, p.id);
+      expect(antoineAdvice(changed, params, s.clock.date), p.id).toEqual(before);
+    }
   });
 
   it('is free at the assistant level, costs the partner’s trust at the senior level, unavailable at the manager level', () => {

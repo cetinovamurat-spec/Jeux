@@ -18,6 +18,7 @@ import { loadParams, type Params } from '../scenario/params';
 import type { UpcomingContext, UpcomingEvent } from './advance';
 import type { HoursCharge } from './budget';
 import { addWorkingDays, workCalendar, type MemberId, type WorkCalendar } from './calendar';
+import { lastReminder, readReminders } from './requests';
 
 export interface ConfirmationItem {
   /** Third party (id of the confirmation populations). */
@@ -27,7 +28,8 @@ export interface ConfirmationItem {
   by?: MemberId;
   /** Execution of the programme the request was prepared in (its time is then part of the procedure). */
   executionId?: string;
-  remindedOn?: IsoDate;
+  /** Dates of the reminders, oldest first (each one is charged). */
+  reminders?: IsoDate[];
 }
 
 export interface ConfirmationsState {
@@ -40,13 +42,17 @@ export function initialConfirmations(): ConfirmationsState {
 
 export const confirmationsSchema = z.object({
   items: z.array(
-    z.object({
-      thirdParty: z.string(),
-      preparedOn: z.string(),
-      by: z.enum(['senior', 'lea', 'hugo', 'sofia']).optional(),
-      executionId: z.string().optional(),
-      remindedOn: z.string().optional(),
-    }),
+    z
+      .object({
+        thirdParty: z.string(),
+        preparedOn: z.string(),
+        by: z.enum(['senior', 'lea', 'hugo', 'sofia']).optional(),
+        executionId: z.string().optional(),
+        reminders: z.array(z.string()).optional(),
+        /** Saves made before the reminders were listed: the last one only. */
+        remindedOn: z.string().optional(),
+      })
+      .transform(readReminders),
   ),
 });
 
@@ -129,8 +135,15 @@ export interface ConfirmationCandidate {
 
 const YEAR_END = '2025-12-31';
 
-/** Third parties proposed for confirmation, by population, from the presented data (plan J4 §9). */
-export function confirmationCandidates(params: Params, ds: ScenarioDatasets): ConfirmationCandidate[] {
+/**
+ * Third parties proposed for confirmation, by population, from the presented
+ * data (plan J4 §9). The populations are those of the year; the selection
+ * figures (`amount`) are taken as known at `asOf` (cutoff of the data vintage
+ * the player consults: outstanding capital, invoices, receipts and decisions
+ * up to that date), and are all null when no 2025 data is available yet
+ * (`asOf` null).
+ */
+export function confirmationCandidates(params: Params, ds: ScenarioDatasets, asOf: IsoDate | null = YEAR_END): ConfirmationCandidate[] {
   const cfg = params.requests.confirmations;
   const name = (id: string) => ds.thirdParties.find((t) => t.id === id)?.name ?? id;
   const out: ConfirmationCandidate[] = [];
@@ -140,12 +153,21 @@ export function confirmationCandidates(params: Params, ds: ScenarioDatasets): Co
     seen.add(c.thirdParty);
     out.push(c);
   };
+  const known = (d: IsoDate) => asOf !== null && d <= asOf;
+  // order of a population: by the selection figure shown, by name when there is none yet
+  const ranked = (ids: Iterable<string>, at: ReadonlyMap<string, Cents>) => [...ids].sort((a, b) => (asOf ? (at.get(b) ?? 0) - (at.get(a) ?? 0) : 0) || name(a).localeCompare(name(b), 'fr'));
   // lenders: outstanding loans at the year end
   const schedules = new Map<string, LoanScheduleLine[]>();
   for (const l of ds.loanSchedules) schedules.set(l.loanId, [...(schedules.get(l.loanId) ?? []), l]);
   const byLender = new Map<string, Cents>();
-  for (const l of ds.loans) if (l.refDate <= YEAR_END) byLender.set(l.lenderId, (byLender.get(l.lenderId) ?? 0) + outstandingAt(l, schedules.get(l.id) ?? [], YEAR_END));
-  for (const [id, v] of [...byLender.entries()].sort((a, b) => b[1] - a[1])) add({ thirdParty: id, name: name(id), population: 'lenders', subject: 'Emprunts : capital restant dû, intérêts courus, garanties et engagements', amount: v });
+  const lentAt = new Map<string, Cents>();
+  for (const l of ds.loans) {
+    if (l.refDate > YEAR_END) continue;
+    const sched = schedules.get(l.id) ?? [];
+    byLender.set(l.lenderId, (byLender.get(l.lenderId) ?? 0) + outstandingAt(l, sched, YEAR_END));
+    if (asOf) lentAt.set(l.lenderId, (lentAt.get(l.lenderId) ?? 0) + outstandingAt(l, sched, asOf));
+  }
+  for (const id of ranked(byLender.keys(), lentAt)) add({ thirdParty: id, name: name(id), population: 'lenders', subject: 'Emprunts : capital restant dû, intérêts courus, garanties et engagements', amount: asOf ? (lentAt.get(id) ?? 0) : null });
   // banks without loans: accounts
   for (const t of ds.thirdParties) if (t.kind === 'lender' && !byLender.has(t.id)) add({ thirdParty: t.id, name: t.name, population: 'banks', subject: 'Comptes bancaires, placements et engagements', amount: null });
   // notaries of the sales of 2025 and 2026
@@ -155,25 +177,30 @@ export function confirmationCandidates(params: Params, ds: ScenarioDatasets): Co
   // lawyers paid in 2025 (all lawyers when none was paid)
   const lawyers = ds.thirdParties.filter((t) => t.kind === 'lawyer');
   const paid = lawyers.filter((t) => ds.invoices.some((i) => i.supplierId === t.id && i.invoiceDate.startsWith('2025')));
-  for (const t of paid.length ? paid : lawyers) add({ thirdParty: t.id, name: t.name, population: 'lawyers', subject: 'Litiges et contentieux en cours, honoraires dus', amount: ds.invoices.filter((i) => i.supplierId === t.id && i.invoiceDate.startsWith('2025')).reduce((s, i) => s + i.total, 0) || null });
+  for (const t of paid.length ? paid : lawyers) add({ thirdParty: t.id, name: t.name, population: 'lawyers', subject: 'Litiges et contentieux en cours, honoraires dus', amount: ds.invoices.filter((i) => i.supplierId === t.id && i.invoiceDate.startsWith('2025') && known(i.invoiceDate)).reduce((s, i) => s + i.total, 0) || null });
   // funders with subsidies receivable at the year end
+  const restAt = (s: ScenarioDatasets['subsidies'][number], d: IsoDate) => (s.decisionDate > d || (s.cancelledOn && s.cancelledOn <= d) ? 0 : s.amount - s.receipts.filter((r) => r.date <= d).reduce((a, r) => a + r.amount, 0));
   const receivable = new Map<string, Cents>();
+  const receivableAt = new Map<string, Cents>();
   for (const s of ds.subsidies) {
-    if (s.decisionDate > YEAR_END || (s.cancelledOn && s.cancelledOn <= YEAR_END)) continue;
-    const rest = s.amount - s.receipts.filter((r) => r.date <= YEAR_END).reduce((a, r) => a + r.amount, 0);
-    if (rest > 0) receivable.set(s.grantorId, (receivable.get(s.grantorId) ?? 0) + rest);
+    const rest = restAt(s, YEAR_END);
+    if (rest <= 0) continue;
+    receivable.set(s.grantorId, (receivable.get(s.grantorId) ?? 0) + rest);
+    if (asOf) receivableAt.set(s.grantorId, (receivableAt.get(s.grantorId) ?? 0) + Math.max(0, restAt(s, asOf)));
   }
-  for (const [id, v] of [...receivable.entries()].sort((a, b) => b[1] - a[1])) add({ thirdParty: id, name: name(id), population: 'funders', subject: 'Subventions accordées et restant à verser', amount: v });
+  for (const id of ranked(receivable.keys(), receivableAt)) add({ thirdParty: id, name: name(id), population: 'funders', subject: 'Subventions accordées et restant à verser', amount: asOf ? (receivableAt.get(id) ?? 0) : null });
   // suppliers by volume, and the suppliers always proposed (group entities, disputes, major contracts)
   const volume = new Map<string, Cents>();
   for (const i of ds.invoices) if (i.invoiceDate.startsWith('2025')) volume.set(i.supplierId, (volume.get(i.supplierId) ?? 0) + i.total);
   const minVolume = Math.round(cfg.supplierMinVolumeEuros * 100);
   const supplierIds = new Set([...cfg.suppliersAlways, ...[...volume.entries()].filter(([, v]) => v >= minVolume).map(([id]) => id)]);
   const supplierKinds = new Set(['supplier', 'groupEntity']);
-  for (const id of [...supplierIds].sort((a, b) => (volume.get(b) ?? 0) - (volume.get(a) ?? 0))) {
+  const volumeAt = new Map<string, Cents>();
+  if (asOf) for (const i of ds.invoices) if (i.invoiceDate.startsWith('2025') && known(i.invoiceDate)) volumeAt.set(i.supplierId, (volumeAt.get(i.supplierId) ?? 0) + i.total);
+  for (const id of ranked(supplierIds, volumeAt)) {
     const t = ds.thirdParties.find((x) => x.id === id);
     if (!t || !supplierKinds.has(t.kind)) continue;
-    add({ thirdParty: id, name: t.name, population: 'suppliers', subject: 'Solde fournisseur, factures non réglées et litiges', amount: volume.get(id) ?? 0 });
+    add({ thirdParty: id, name: t.name, population: 'suppliers', subject: 'Solde fournisseur, factures non réglées et litiges', amount: asOf ? (volumeAt.get(id) ?? 0) : null });
   }
   // debtors: residence managers and group entities financed by the entity (accounts without invoices)
   for (const t of ds.thirdParties) if (t.kind === 'residenceManager') add({ thirdParty: t.id, name: t.name, population: 'debtors', subject: 'Redevances et sommes dues à l’organisme', amount: null });
@@ -236,12 +263,12 @@ export function withdrawConfirmation<S extends ConfirmationHost>(s: S, thirdPart
   return { ...s, confirmations: { items: s.confirmations.items.filter((it) => it.thirdParty !== thirdParty) } };
 }
 
-/** Reminds a third party after the sending (journal; a third party that never replies stays silent). */
+/** Reminds a third party after the sending, once a day at most (journal, cost; a third party that never replies stays silent). */
 export function remindConfirmation<S extends ConfirmationHost>(s: S, thirdParty: string, label: string, params: Params = loadParams()): S {
   if (s.clock.date < sendingDate(params)) return s;
   const it = s.confirmations.items.find((x) => x.thirdParty === thirdParty);
-  if (!it || it.preparedOn >= sendingDate(params) || it.remindedOn === s.clock.date) return s;
-  const next: S = { ...s, confirmations: { items: s.confirmations.items.map((x) => (x.thirdParty === thirdParty ? { ...x, remindedOn: s.clock.date } : x)) } };
+  if (!it || it.preparedOn >= sendingDate(params) || lastReminder(it) === s.clock.date) return s;
+  const next: S = { ...s, confirmations: { items: s.confirmations.items.map((x) => (x.thirdParty === thirdParty ? { ...x, reminders: [...(x.reminders ?? []), s.clock.date] } : x)) } };
   return withJournal(next, 'confirmationReminder', thirdParty, `Relance de la demande de confirmation – ${label}`);
 }
 
@@ -261,13 +288,13 @@ export function upcomingConfirmations(s: ConfirmationsState, ctx: UpcomingContex
   ];
 }
 
-/** Hours charged by the preparation of the confirmation requests (outside a procedure) and the reminders. */
+/** Hours charged by the preparation of the confirmation requests (outside a procedure) and each reminder. */
 export function hoursCharged(s: ConfirmationsState, params: Params): HoursCharge[] {
   const cfg = params.requests.confirmations;
   const out: HoursCharge[] = [];
   for (const it of s.items) {
     if (it.executionId === undefined) out.push({ member: it.by ?? 'senior', hours: cfg.preparationHours, on: it.preparedOn });
-    if (it.remindedOn) out.push({ member: 'senior', hours: cfg.reminderHours, on: it.remindedOn });
+    for (const on of it.reminders ?? []) out.push({ member: 'senior', hours: cfg.reminderHours, on });
   }
   return out;
 }

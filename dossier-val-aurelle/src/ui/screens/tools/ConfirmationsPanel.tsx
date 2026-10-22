@@ -7,7 +7,7 @@
  */
 import { useMemo } from 'react';
 import { Link } from 'react-router';
-import { formatDateFr } from '../../../engine/dates';
+import { formatDateFr, type IsoDate } from '../../../engine/dates';
 import {
   canPrepare,
   confirmationCandidates,
@@ -22,13 +22,14 @@ import {
   type ConfirmationState,
 } from '../../../game/confirmations';
 import type { MemberId } from '../../../game/calendar';
+import { lastReminder } from '../../../game/requests';
 import type { Tone } from '../../../game/state';
 import { useCase } from '../../app/context';
 import { useGame } from '../../app/store';
 import { Amount } from '../../components/Amount';
 import { Badge, Button, cx } from '../../components/ui';
 import { NewFindingButton } from '../findings/NewFindingButton';
-import { CONFIRMATION_STATE_LABELS, plural, POPULATION_LABELS } from '../ged/labels';
+import { CONFIRMATION_STATE_LABELS, plural, POPULATION_LABELS, reminderText } from '../ged/labels';
 import { useConfirmationRows } from '../ged/replies';
 
 const STATE_TONE: Readonly<Record<ConfirmationState, Tone>> = { prepared: 'accent', notSent: 'muted', sent: 'muted', replied: 'ok', noReply: 'warn' };
@@ -37,10 +38,17 @@ function formatHours(h: number): string {
   return h.toLocaleString('fr-FR', { maximumFractionDigits: 2 });
 }
 
-/** Candidates of the populations, from the presented data (cached per case). */
+/** Cutoff of the 2025 data the player consults (extraction or final ledger), or null before the extraction. */
+function useSelectionDate(): IsoDate | null {
+  const c = useCase();
+  return c.view.ledger2025 === 'none' ? null : c.view.cutoff;
+}
+
+/** Candidates of the populations, from the presented data, with their selection figures as known at the data vintage in force. */
 function useCandidates(populations: readonly ConfirmationPopulation[]): ConfirmationCandidate[] {
   const c = useCase();
-  const all = useMemo(() => confirmationCandidates(c.params, c.datasets), [c]);
+  const asOf = useSelectionDate();
+  const all = useMemo(() => confirmationCandidates(c.params, c.datasets, asOf), [c, asOf]);
   return useMemo(() => all.filter((x) => populations.includes(x.population)), [all, populations]);
 }
 
@@ -57,6 +65,7 @@ function Preparation({ populations, idPrefix, execution }: { populations: readon
   const items = useGame((s) => s.game.confirmations.items);
   const prepared = new Set(items.map((x) => x.thirdParty));
   const candidates = useCandidates(populations);
+  const asOf = useSelectionDate();
   const n = candidates.filter((x) => prepared.has(x.thirdParty)).length;
   return (
     <div className="space-y-3">
@@ -90,8 +99,8 @@ function Preparation({ populations, idPrefix, execution }: { populations: readon
                   <th scope="col" className="px-2 py-1 text-left font-medium">
                     Objet de la demande
                   </th>
-                  <th scope="col" className="px-2 py-1 text-right font-medium">
-                    Donnée de sélection
+                  <th scope="col" className="px-2 py-1 text-right font-medium" title={asOf ? undefined : 'Données 2025 disponibles avec l’extraction comptable'}>
+                    Donnée de sélection{asOf ? ` au ${formatDateFr(asOf)}` : ''}
                   </th>
                 </tr>
               </thead>
@@ -172,6 +181,7 @@ function Tracker({ populations }: { populations: readonly ConfirmationPopulation
               const cand = byId.get(r.item.thirdParty)!;
               const replied = r.state === 'replied' && r.reply;
               const canRemind = (r.state === 'sent' || r.state === 'noReply') && date > sending;
+              const reminded = lastReminder(r.item);
               return (
                 <tr key={r.item.thirdParty} className="border-b border-line align-top last:border-b-0">
                   <th scope="row" className="px-2 py-1.5 text-left font-normal">
@@ -180,7 +190,7 @@ function Tracker({ populations }: { populations: readonly ConfirmationPopulation
                   </th>
                   <td className="whitespace-nowrap px-2 py-1.5">
                     <Badge tone={STATE_TONE[r.state]}>{CONFIRMATION_STATE_LABELS[r.state] ?? r.state}</Badge>
-                    {r.item.remindedOn && <span className="block text-xs text-muted">Relancé le {formatDateFr(r.item.remindedOn)}</span>}
+                    {reminded && <span className="block text-xs text-muted">{reminderText(r.item.reminders!.length, reminded, 'Relancé')}</span>}
                   </td>
                   <td className="px-2 py-1.5">
                     {replied ? (
@@ -194,7 +204,7 @@ function Tracker({ populations }: { populations: readonly ConfirmationPopulation
                   <td className="px-2 py-1.5">
                     <div className="flex flex-wrap justify-end gap-1">
                       {canRemind && (
-                        <Button className="px-1.5 py-0 text-xs" onClick={() => act((s) => remindConfirmation(s, r.item.thirdParty, cand.name, params))} disabled={r.item.remindedOn === date} title={`Relancer ${cand.name} (${formatHours(params.requests.confirmations.reminderHours)} h)`}>
+                        <Button className="px-1.5 py-0 text-xs" onClick={() => act((s) => remindConfirmation(s, r.item.thirdParty, cand.name, params))} disabled={reminded === date} title={`Relancer ${cand.name} (${formatHours(params.requests.confirmations.reminderHours)} h)`}>
                           Relancer
                         </Button>
                       )}

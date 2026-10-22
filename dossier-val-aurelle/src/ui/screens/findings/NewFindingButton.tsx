@@ -22,6 +22,8 @@ export function NewFindingButton({ seed, compact, tabIndex }: { seed: FindingSee
   const c = useCase();
   const act = useGame((s) => s.act);
   const [draft, setDraft] = useState<FindingDraft | null>(null);
+  /** The form holds unsaved input: the dialog asks before closing. */
+  const [dirty, setDirty] = useState(false);
   const [notice, setNotice] = useState<{ id: string; what: string } | null>(null);
   useEffect(() => {
     if (!notice) return;
@@ -29,7 +31,10 @@ export function NewFindingButton({ seed, compact, tabIndex }: { seed: FindingSee
     return () => clearTimeout(t);
   }, [notice]);
   const about = seed.label ? ` : ${seed.label}` : '';
-  const open = () => setDraft(draftFromSeed(seed, c.params, 'finding', useGame.getState().game.samples));
+  const open = () => {
+    setDirty(false);
+    setDraft(draftFromSeed(seed, c.params, 'finding', useGame.getState().game.samples));
+  };
   const question = () => {
     act((s) => captureQuestion(s, seed, c.params)[0]);
     const id = useGame.getState().game.findings.items.at(-1)?.id;
@@ -68,10 +73,11 @@ export function NewFindingButton({ seed, compact, tabIndex }: { seed: FindingSee
           ))}
       </span>
       {draft && (
-        <FindingDialog title="Nouveau constat" onClose={() => setDraft(null)}>
+        <FindingDialog title="Nouveau constat" dirty={dirty} onClose={() => setDraft(null)}>
           <FindingForm
             initial={draft}
             {...(seed.label ? { context: seed.label } : {})}
+            onDirtyChange={setDirty}
             onDone={(id) => {
               setDraft(null);
               const saved = id ? useGame.getState().game.findings.items.find((f) => f.id === id) : undefined;

@@ -50,6 +50,14 @@ export type Interlocutor = 'cfo' | 'chiefAccountant' | 'assetDirector' | 'rentMa
  * A document without `family` is a legacy one (J3), answered by the label
  * `request`: buildDocuments maps every catalogue document to its family and
  * object.
+ *
+ * `rebuiltOnRequest` marks the reference version of a scenario reply that is
+ * rebuilt on the date of each request (families dated on the request,
+ * replies.ts → REQUEST_DATED_FAMILIES): it carries the clues (designer mode,
+ * review pack, matching) and is never shown as such; the player receives the
+ * version built for the request, under the same id. `asOf` is the date of
+ * the request a reply dated on the request was built for: only the requests
+ * sent that day serve it.
  */
 export interface OnRequestAvailability {
   kind: 'onRequest';
@@ -58,6 +66,8 @@ export interface OnRequestAvailability {
   family?: string;
   object?: string;
   also?: readonly string[];
+  rebuiltOnRequest?: true;
+  asOf?: IsoDate;
 }
 
 export type Availability =
@@ -88,6 +98,20 @@ export interface DocumentModel {
   availability: Availability;
   blocks: readonly Block[];
   clues: readonly Clue[];
+}
+
+/** Separator of the request date in the id of an updated reply (`ventes-coquelicots~2026-02-23`); never used by a catalogue id. */
+const VERSION_SEPARATOR = '~';
+
+/** Id of the updated version of a reply, built for a later request of the same object sent on `asOf`. */
+export function versionedId(id: string, asOf: IsoDate): string {
+  return `${id}${VERSION_SEPARATOR}${asOf}`;
+}
+
+/** Id of the document an updated reply is a version of (the id itself otherwise): the object the matching knows. */
+export function baseDocumentId(id: string): string {
+  const i = id.indexOf(VERSION_SEPARATOR);
+  return i < 0 ? id : id.slice(0, i);
 }
 
 /** Key of a request: 'family' or 'family:object'. */

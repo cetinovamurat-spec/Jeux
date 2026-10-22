@@ -13,6 +13,7 @@ import {
   initialRequests,
   interlocutorOf,
   isValidObject,
+  lastReminder,
   notYetEstablishedText,
   receivedRequests,
   remindRequest,
@@ -92,6 +93,19 @@ describe('dates', () => {
     expect(arrivalDate(p, cal, it0, '2025-06-30')).toBe(answerDate(p, cal, it0));
     expect(arrivalDate(p, cal, it0, '2026-02-06')).toBe(addWorkingDays(cal, '2026-02-06', 1));
   });
+  it('a document established between the request and the answer comes with the answer (max(envoi + délai, date de la pièce))', () => {
+    // asset director (3 days): asked on Thursday 13/11/2025, answer due Tuesday 18/11; the plan is dated Saturday 15/11
+    const pge = item({ family: 'closing-file', object: 'pge', sentOn: '2025-11-13' });
+    expect(answerDate(p, cal, pge)).toBe('2025-11-18');
+    expect(arrivalDate(p, cal, pge, '2025-11-15')).toBe('2025-11-18');
+    expect(arrivalDate(p, cal, pge, '2025-11-18')).toBe('2025-11-18');
+    const st = requestStatus(p, cal, pge, [{ id: 'ppe-officiel', date: '2025-11-15' }], '2025-11-18');
+    expect(st.state).toBe('received');
+    expect(st.received).toEqual([{ id: 'ppe-officiel', on: '2025-11-18' }]);
+    expect(requestStatus(p, cal, pge, [{ id: 'ppe-officiel', date: '2025-11-15' }], '2025-11-19').canRemind).toBe(false);
+    // established after the answer: its own date plus the delay
+    expect(arrivalDate(p, cal, pge, '2025-11-19')).toBe(addWorkingDays(cal, '2025-11-19', 3));
+  });
   it('answered keys: the family alone, or family:object', () => {
     const s = { items: [item({ family: 'interim-extraction', object: '' }), item({ id: 'req2' })] };
     expect([...answeredRequests(s, p, '2025-11-07')]).toEqual([]);
@@ -109,6 +123,10 @@ describe('dates', () => {
     const s = { items: [item({ sentOn: '2026-02-23' }), item({ id: 'req2', sentOn: '2025-11-07' })] };
     expect(requestArrivals(s, p)('programme-components:LIL', '2025-06-30')).toBe('2025-11-10');
     expect(requestArrivals(s, p)('programme-components:ERA', '2025-06-30')).toBeNull();
+    // a document established on the date of each request comes with the first answer; a version built for a request, with its answer
+    expect(requestArrivals(s, p)('programme-components:LIL', null)).toBe('2025-11-10');
+    expect(requestArrivals(s, p)('programme-components:LIL', '2026-02-23', '2026-02-23')).toBe(addWorkingDays(cal, '2026-02-23', 1));
+    expect(requestArrivals(s, p)('programme-components:LIL', '2026-02-23', '2026-01-05')).toBeNull();
   });
 });
 
@@ -148,6 +166,16 @@ describe('actions', () => {
     expect(s.requests.items).toHaveLength(2);
     expect(s.gauges.events).toEqual([{ on: '2025-11-07', gauge: 'clientRelation', reason: 'duplicateRequest', ref: 'closing-file:icne' }]);
   });
+  it('asking again at a later phase of the engagement (updated documents) is not a duplicate', () => {
+    let s = sendRequest(host('2025-11-04'), 'sale-notary', 'COQ', p);
+    // off site after the interim: same phase as the interim, but not as the planning
+    s = sendRequest({ ...s, clock: { date: '2025-11-25' } }, 'sale-notary', 'COQ', p);
+    s = sendRequest({ ...s, clock: { date: '2025-11-18' } }, 'sale-notary', 'COQ', p);
+    expect(s.gauges.events.map((e) => [e.on, e.reason])).toEqual([['2025-11-18', 'duplicateRequest']]);
+    s = sendRequest({ ...s, clock: { date: '2026-02-23' } }, 'sale-notary', 'COQ', p);
+    expect(s.gauges.events).toHaveLength(1);
+    expect(s.requests.items.map((x) => x.sentOn)).toEqual(['2025-11-04', '2025-11-25', '2025-11-18', '2026-02-23']);
+  });
   it('a request about a cycle assessed at low risk, without any finding, is recorded as unrelated', () => {
     const h = host();
     const low = { ...h, planning: { ...h.planning, risks: { fixedAssets: { level: 'low' as const, justification: '', on: '2025-11-05' } } } };
@@ -162,7 +190,8 @@ describe('actions', () => {
   it('reminder: journal and cost; the reply keeps its date', () => {
     let s = sendRequest(host(), 'programme-components', 'ERA', p);
     s = remindRequest({ ...s, clock: { date: '2025-11-20' } }, 'req1', p);
-    expect(s.requests.items[0]!.remindedOn).toBe('2025-11-20');
+    expect(s.requests.items[0]!.reminders).toEqual(['2025-11-20']);
+    expect(lastReminder(s.requests.items[0]!)).toBe('2025-11-20');
     expect(s.journal.at(-1)).toMatchObject({ kind: 'requestReminder', ref: 'programme-components:ERA' });
     expect(answerDate(p, cal, s.requests.items[0]!)).toBe(answerDate(p, cal, item({ object: 'ERA' })));
     expect(hoursCharged(s.requests, p)).toEqual([
@@ -170,6 +199,24 @@ describe('actions', () => {
       { member: 'senior', hours: p.requests.costHours.reminder, on: '2025-11-20' },
     ]);
     expect(remindRequest(s, 'nope', p)).toBe(s);
+    expect(requestsSchema.parse(s.requests)).toEqual(s.requests);
+  });
+  it('every reminder is charged, one a day at most', () => {
+    let s = sendRequest(host(), 'closing-file', 'pge', p);
+    for (const d of ['2025-11-20', '2025-11-21', '2025-11-21', '2025-11-24']) s = remindRequest({ ...s, clock: { date: d } }, 'req1', p);
+    expect(s.requests.items[0]!.reminders).toEqual(['2025-11-20', '2025-11-21', '2025-11-24']);
+    expect(s.journal.filter((j) => j.kind === 'requestReminder')).toHaveLength(3);
+    expect(hoursCharged(s.requests, p).filter((h) => h.hours === p.requests.costHours.reminder).map((h) => h.on)).toEqual(['2025-11-20', '2025-11-21', '2025-11-24']);
+  });
+  it('a save holding the last reminder only (remindedOn) is read as a list of one', () => {
+    const legacy = { items: [{ id: 'req1', family: 'closing-file', object: 'pge', sentOn: '2025-11-07', remindedOn: '2025-11-20' }, { id: 'req2', family: 'closing-file', object: 'icne', sentOn: '2025-11-07' }] };
+    const read = requestsSchema.parse(legacy);
+    expect(read.items).toEqual([
+      { id: 'req1', family: 'closing-file', object: 'pge', sentOn: '2025-11-07', reminders: ['2025-11-20'] },
+      { id: 'req2', family: 'closing-file', object: 'icne', sentOn: '2025-11-07' },
+    ]);
+    expect(Object.keys(read.items[1]!)).not.toContain('reminders');
+    expect(hoursCharged(read, p)).toHaveLength(3);
   });
   it('a request costs a quarter of an hour of the senior', () => {
     expect(p.requests.costHours.request).toBe(0.25);

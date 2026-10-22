@@ -18,9 +18,14 @@ import { GaugesCard } from './GaugesCard';
 import { MissionCard } from './MissionCard';
 import { TeamCard } from './TeamCard';
 
+/** Label of the screen of a route (its query, e.g. a tab, is ignored). */
 function navLabel(to: string): string {
-  return NAV.find((n) => n.to === to)?.label ?? to;
+  const path = to.split('?')[0];
+  return NAV.find((n) => n.to === path)?.label ?? to;
 }
+
+/** Tab « Demandes et confirmations » of the GED. */
+const GED_REQUESTS = '/ged?onglet=demandes';
 
 type Step = { to: string; text: string };
 
@@ -54,7 +59,7 @@ function usePhaseMessage(): PhaseMessage {
       intro: `Vous prenez en charge le dossier pour l’exercice clos le ${formatDateFr(`${years.current}-12-31`)}. Nous sommes en prise de connaissance et planification ; l’intérim commence le ${d(interim.from)}. Je vous propose :`,
       steps: [
         { to: '/ged', text: 'le dossier permanent, les procès-verbaux et les comptes certifiés de l’exercice précédent, pour reprendre connaissance de l’entité ;' },
-        { to: '/ged', text: `une demande au chef comptable de l’extraction comptable au ${d(v.cutoff)}, pour la revue analytique préliminaire ;` },
+        { to: GED_REQUESTS, text: `une demande au chef comptable de l’extraction comptable au ${d(v.cutoff)}, pour la revue analytique préliminaire ;` },
         { to: '/planification', text: 'les seuils de signification, l’évaluation des risques et le programme de travail : partez du programme du cabinet et adaptez-le au dossier.' },
       ],
       outro: 'Je relirai seuils, risques et programme avant l’intérim.',
@@ -66,7 +71,7 @@ function usePhaseMessage(): PhaseMessage {
       intro: `L’équipe vous rejoint pour l’intérim, jusqu’au ${d(interim.to)}. Au programme :`,
       steps: [
         { to: '/travaux', text: 'les prises de connaissance des procédures et les tests de contrôles, dont la revue de la migration du système d’information ;' },
-        { to: '/ged', text: `la préparation des demandes de confirmation des tiers : elles partiront le ${d(sending?.from)} ;` },
+        { to: GED_REQUESTS, text: `la préparation des demandes de confirmation des tiers : elles partiront le ${d(sending?.from)} ;` },
         { to: '/balance', text: 'les premiers travaux sur l’extraction comptable.' },
       ],
       outro: 'Pensez à organiser le travail de l’équipe : chacun a ses heures et ses jours de présence.',
@@ -77,7 +82,7 @@ function usePhaseMessage(): PhaseMessage {
       on: interim?.to ?? startDate,
       intro: `Nous sommes hors site jusqu’au final, qui commence le ${d(final.from)}. D’ici là :`,
       steps: [
-        { to: '/ged', text: 'suivez vos demandes et les réponses des tiers ;' },
+        { to: GED_REQUESTS, text: 'suivez vos demandes et les réponses des tiers ;' },
         { to: '/balance', text: `la balance et le FEC définitifs sont attendus le ${d(v.draftLedger)}, le projet d’états financiers le ${d(v.draftStatements)}.` },
       ],
       outro: 'Vous pouvez avancer d’événement en événement.',

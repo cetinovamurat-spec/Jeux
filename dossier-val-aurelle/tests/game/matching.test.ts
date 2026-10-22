@@ -3,16 +3,17 @@
  * fixture of « expert » findings written from §5 of the specification (at
  * least two wordings per part, a minimal variant, the combined A10 finding),
  * independent of the signatures; a collision matrix (sibling parts, false
- * leads); negative cases (catch-all finding, wrong third party, wrong
- * programme); parts without result impact credited on their basis; the
- * extrapolated A08; and the import guard of game/matching.
+ * leads, generic documents); negative cases (catch-all finding, wrong third
+ * party, wrong programme); points « clos » never reported; parts without
+ * result impact credited on their basis; the extrapolated A08 (and no wider
+ * tolerance without a sample); and the import guard of game/matching.
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { buildFec } from '../../src/engine/fec';
 import type { Evidence, Finding, FindingObject, FindingStatus, FindingTreatment } from '../../src/game/findings';
-import { draftErrors } from '../../src/game/findings';
+import { draftErrors, FINDING_TREATMENTS } from '../../src/game/findings';
 import { acceptedRange, accountsMatch, matchFindings, type MatchInput } from '../../src/game/matching';
 import { initialRecalcs } from '../../src/game/recalcs';
 import { initialSamples, type SamplesState } from '../../src/game/samples';
@@ -330,6 +331,32 @@ describe('aggregation of sibling parts', () => {
     expect(only(combined).partIds).toEqual(['A07.a', 'A07.b']);
   });
 
+  it('the combined A07 (a + b) finding at a justified estimate of A07.a (75 % to 90 %) keeps both parts, quantified: the estimate range is carried into the sum', () => {
+    for (const share of [0.75, 0.8, 0.9]) {
+      const combined = F({ cycle: 'rentReceivables', objects: [acc('4915'), acc('6541')], classification: 'judgemental', treatments: ['adjust'], entry: [...dc('68174', '4915', Math.round(467_250 * share)), ...dc('6541', '4111', 238_000), ...dc('4911', '78174', 119_000)], evidence: [d('stats-recouvrement'), d('decisions-surendettement')] });
+      const m = only(combined);
+      expect(m.partIds, `${share}`).toEqual(['A07.a', 'A07.b']);
+      expect(m.quantified, `${share}`).toBe(true);
+    }
+    // without an estimate range, the tolerance of the sum is applied once (A10: not the sum of the parts' tolerances)
+    const a10 = (euros: number) => only(F({ cycle: 'rentReceivables', objects: [prog('MAR'), doc('fiches-poste-gardiens'), acc('4181')], treatments: ['adjust'], entry: dc('7031', '4181', euros), evidence: [d('regularisation-charges-2025')] }));
+    expect(a10(254_000 - 40_000).quantified).toBe(false);
+  });
+
+  it('a finding proposing the adjustment and its disclosure (A16.a + A16.b) covers both parts, each credited on its own basis', () => {
+    const both = F({ cycle: 'fixedAssets', objects: [prog('TIL'), tp('F0022'), item('contingent-liabilities')], natures: ['completeness'], classification: 'judgemental', treatments: ['adjust', 'disclose'], fix: 'add-missing', entry: dc('2131', '4084', 210_000), evidence: [d('os7-tilleuls'), d('registre-contentieux'), d('reponse-avocate')] });
+    expect(draftErrors(both, { params: P, accounts })).toEqual([]);
+    const m = only(both);
+    expect(m.partIds).toEqual(['A16.a', 'A16.b']);
+    const r = matchFindings([both], input);
+    expect(r.parts.filter((p) => p.anomalyId === 'A16').map((p) => [p.partId, p.detected, p.quantified, p.treatmentOk])).toEqual([
+      ['A16.a', true, true, true],
+      ['A16.b', true, true, true],
+    ]);
+    // without the disclosure treatment, the adjustment alone
+    expect(only({ ...both, id: 'X-A16', treatments: ['adjust'], disclosureFix: null }).partIds).toEqual(['A16.a']);
+  });
+
   it('a single finding on the three disclosures of A12 (annex, special report, irregularity) covers the three parts', () => {
     const all3 = F({ cycle: 'crossCycle', objects: [tp('COTEAUX_SEREIN'), item('off-balance-commitments'), doc('composition-ca')], natures: ['compliance', 'completeness'], treatments: ['disclose', 'specialReport', 'governance'], fix: 'add-missing', evidence: [d('convention-soutien-csh')] });
     const m = only(all3);
@@ -414,6 +441,41 @@ describe('collision matrix', () => {
       [null, 'F7'],
     ]);
   });
+
+  it('a false lead tied to its natural documents stays a false lead (F6 with the bank statement of December is not A18)', () => {
+    const dismissed = (evidence: Evidence[]) => F({ cycle: 'debtTreasury', objects: [acc('5121')], treatments: [], status: 'dismissed', evidence });
+    for (const ev of [
+      [d('rapprochement-bancaire'), d('releve-bancaire-2025-12')],
+      [d('rapprochement-bancaire'), d('releve-bancaire-2025-12'), d('releve-bancaire-2026-01')],
+    ]) {
+      const r = matchFindings([dismissed(ev)], input);
+      expect(r.findings[0]).toMatchObject({ outcome: 'falseLeadDismissed', falseLeadId: 'F6', partIds: [] });
+      expect(r.parts.find((p) => p.partId === 'A18')!.dismissedBy).toEqual([]);
+    }
+    const reported = F({ cycle: 'debtTreasury', objects: [acc('5121')], treatments: ['internalControl'], fix: 'control-recommendation', evidence: [d('rapprochement-bancaire'), d('releve-bancaire-2025-12')] });
+    const r = matchFindings([reported], input);
+    expect(r.findings[0]).toMatchObject({ outcome: 'falseLeadReported', falseLeadId: 'F6', detected: false });
+    expect(r.parts.find((p) => p.partId === 'A18')!.detected).toBe(false);
+  });
+
+  it('a part reached only through a linked document gives way to a false lead whose evidence is linked (F7 and the LOGIGES balance); a named object of the part still wins', () => {
+    const f7 = (status: FindingStatus, objects: FindingObject[]) => F({ cycle: 'rentReceivables', objects, treatments: status === 'finding' ? ['adjust'] : [], status, evidence: [d('rapprochement-reprise-soldes'), d('balance-auxiliaire-logiges')] });
+    expect(only(f7('dismissed', [doc('note-migration')]))).toMatchObject({ outcome: 'falseLeadDismissed', falseLeadId: 'F7' });
+    expect(only(f7('finding', [doc('note-migration')]))).toMatchObject({ outcome: 'falseLeadReported', falseLeadId: 'F7', detected: false });
+    expect(only(f7('finding', [doc('note-migration'), prog('SAU')]))).toMatchObject({ outcome: 'matched', partIds: ['A19'] });
+  });
+
+  it('a generic document (bank statement, fixed-asset table, rent roll, aged balance, prior-year accounts, management report) alone detects nothing', () => {
+    const generic = ['releve-bancaire-2025-12', 'releve-bancaire-2025-09', 'tableau-immobilisations', 'quittancement-programmes', 'comptes-certifies-2024', 'rapport-gestion-2024', 'balance-agee-locataires', 'balance-agee-fournisseurs'];
+    for (const id of generic) {
+      expect(docs.byId.has(id), id).toBe(true);
+      for (const cycle of P.cycles.cycles.map((c) => c.id))
+        for (const treatment of FINDING_TREATMENTS) {
+          const m = only(F({ cycle, objects: [doc(id)], treatments: [treatment], evidence: [d(id)] }));
+          expect(m.detected, `${id} ${cycle} ${treatment}: ${m.partIds.join(',')}`).toBe(false);
+        }
+    }
+  });
 });
 
 describe('false leads', () => {
@@ -448,6 +510,16 @@ describe('false leads', () => {
     expect(r.findings.map((x) => x.outcome)).toEqual(['falseLeadReported', 'falseLeadReported', 'falseLeadTrivial']);
     expect(r.falseLeads.filter((x) => x.reportedWrongly).map((x) => x.id)).toEqual(['F2', 'F4']);
     expect(r.falseLeads.find((x) => x.id === 'F6')!.reportedTrivial).toBe(true);
+  });
+
+  it('« clos » is a point settled with nothing to report: never a reported finding (false lead closed with its evidence, unrelated point, real anomaly closed)', () => {
+    const f2 = F({ cycle: 'crossCycle', objects: [acc('4487')], treatments: [], status: 'closed', evidence: [d('reclamation-tfpb'), d('avis-degrevement-tfpb')] });
+    const unrelated = F({ cycle: 'purchases', objects: [acc('6064')], treatments: [], status: 'closed' });
+    const a20 = { ...EXPERT['A20']![0]!, id: 'X-A20', status: 'closed' as const };
+    const r = matchFindings([f2, unrelated, a20], input);
+    expect(r.findings.map((x) => x.outcome)).toEqual(['falseLeadDismissed', 'none', 'dismissedAnomaly']);
+    expect(r.falseLeads.find((x) => x.id === 'F2')).toMatchObject({ dismissedWithEvidence: true, reportedWrongly: false });
+    expect(r.parts.find((p) => p.partId === 'A20')).toMatchObject({ detected: false, dismissedBy: ['X-A20'] });
   });
 
   it('a dismissed finding about a real anomaly is not credited (A18 dismissed as a mere timing difference)', () => {
@@ -487,7 +559,8 @@ describe('negative cases', () => {
   });
 
   it('duplicates are neutral and do not fall back on a neighbouring part', () => {
-    const [a, b] = [EXPERT['A18']![0]!, EXPERT['A18']![1]!];
+    // the wording linking the detail of the suspense accounts (a key object) holds the part
+    const [a, b] = [EXPERT['A18']![1]!, EXPERT['A18']![0]!];
     const r = matchFindings([a, b], input);
     expect(r.findings[1]).toMatchObject({ outcome: 'duplicate', duplicateOf: a.id, detected: false });
     expect(r.parts.find((p) => p.partId === 'A08')!.detected).toBe(false);
@@ -537,6 +610,21 @@ describe('quantification', () => {
     expect(m).toMatchObject({ partId: 'A08', detected: true, quantified: true, classificationOk: true });
     const factual = only({ ...projected, classification: 'factual' }, { state: { samples, recalcs: initialRecalcs(), savedQueries: [] } });
     expect([factual.detected, factual.quantified]).toEqual([true, false]);
+  });
+
+  it('« extrapolée » widens the tolerance only with a linked sample drawn otherwise than on specific items (A20 at 100 k€ for 184 k€)', () => {
+    const samples: SamplesState = {
+      items: [
+        { id: 'S1', executionId: null, population: 'invoices-2026', method: 'random', seed: 'x', parameters: {}, items: [], drawnOn: '2026-02-25', exceptions: {} },
+        { id: 'S2', executionId: null, population: 'invoices-2026', method: 'specific', seed: 'x', parameters: {}, items: [], drawnOn: '2026-02-25', exceptions: {} },
+      ],
+    };
+    const state = { samples, recalcs: initialRecalcs(), savedQueries: [] };
+    const a20 = (evidence: Evidence[]) => only(F({ cycle: 'purchases', objects: [tp('F0027')], classification: 'projected', treatments: ['adjust'], entry: dc('6281', '4081', 100_000), evidence }), { state });
+    expect(a20([])).toMatchObject({ partId: 'A20', detected: true, quantified: false, classificationOk: false });
+    expect(a20([{ kind: 'sample', id: 'S2' }])).toMatchObject({ partId: 'A20', quantified: false, classificationOk: false });
+    expect(a20([{ kind: 'sample', id: 'S9' }])).toMatchObject({ partId: 'A20', quantified: false, classificationOk: false });
+    expect(a20([{ kind: 'sample', id: 'S1' }])).toMatchObject({ partId: 'A20', quantified: true, classificationOk: true });
   });
 
   it('tolerance: max(± tolerance %, reference clearly-trivial threshold); A07.a widened to its share range', () => {

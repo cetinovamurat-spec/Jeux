@@ -147,6 +147,16 @@ export class DocBuilder {
     return id;
   }
 
+  /**
+   * A clue registered the first time a block is tagged with it: for the
+   * replies built on the date of a request, whose tagged rows may not exist
+   * yet at that date.
+   */
+  clueOnUse(target: ClueTarget, source: ClueSource, text: string, parts?: readonly PartKey[]): () => string {
+    let id: string | undefined;
+    return () => (id ??= this.clue(target, source, text, parts));
+  }
+
   h(text: string, clue?: string): this {
     this.blocks.push({ kind: 'heading', text, ...(clue ? { clue } : {}) });
     return this;

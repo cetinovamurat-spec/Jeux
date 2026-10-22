@@ -74,7 +74,7 @@ export function MisstatementsTab({ onOpen }: { onOpen: (id: string) => void }) {
 
       <Card title={`Anomalies relevées (${t.rows.length})`}>
         {t.rows.length === 0 ? (
-          <EmptyState>Aucun constat au statut « constat » : le tableau se construit à partir des constats retenus (les questions et les points écartés n’y figurent pas).</EmptyState>
+          <EmptyState>Aucun constat au statut « constat » : le tableau se construit à partir des constats retenus (les questions et les points écartés ou clos n’y figurent pas).</EmptyState>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[44rem] text-xs">

@@ -94,11 +94,13 @@ export function GedScreen() {
   const pending = query !== view.query;
   const words = useMemo(() => searchWords(query), [query]);
   const availableIds = useMemo(() => new Set(available.map((d) => d.id)), [available]);
+  // catalogue documents are searched in the case's index, replies built on demand in their own (a reply may share the id of a reference version)
+  const catalogueIds = useMemo(() => new Set(available.filter((d) => c.documentsById.get(d.id) === d).map((d) => d.id)), [c, available]);
   const replyIndex = useMemo(() => buildDocumentIndex(replies), [replies]);
   const hits = useMemo(() => {
     if (!words.length) return null;
-    return [...c.documentIndex().search(query, availableIds), ...replyIndex.search(query)].sort((a, b) => b.score - a.score || (a.docId < b.docId ? -1 : 1));
-  }, [c, query, words, availableIds, replyIndex]);
+    return [...c.documentIndex().search(query, catalogueIds), ...replyIndex.search(query)].sort((a, b) => b.score - a.score || (a.docId < b.docId ? -1 : 1));
+  }, [c, query, words, catalogueIds, replyIndex]);
 
   // '?bloc=N' (1-based) selects and shows block N of the document (links from the risk factors)
   const blocParam = Number(searchParams.get('bloc'));

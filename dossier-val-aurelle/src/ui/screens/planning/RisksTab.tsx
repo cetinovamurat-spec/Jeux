@@ -271,14 +271,15 @@ function RiskFactors() {
   const params = c.params;
   const factors = useGame((s) => s.game.planning.riskFactors);
   const act = useGame((s) => s.act);
-  const docs = useGedDocuments().available;
+  // replies built on demand are offered too: titles and passages are resolved through the GED, not the scenario's index
+  const { available: docs, byId } = useGedDocuments();
   const sorted = useMemo(() => [...docs].sort((a, b) => a.title.localeCompare(b.title, 'fr')), [docs]);
   const [docId, setDocId] = useState('');
   const [block, setBlock] = useState('');
   const [cycle, setCycle] = useState('');
   const [assertion, setAssertion] = useState('');
   const [note, setNote] = useState('');
-  const doc = c.documentsById.get(docId);
+  const doc = docId ? byId(docId) : undefined;
   const add = () => {
     if (!docId || !cycle) return;
     act((s) => captureRiskFactor(s, { docId, block: block === '' ? null : Number(block), cycle, assertion: assertion || null, note }, params));
@@ -295,7 +296,7 @@ function RiskFactors() {
             <li key={f.id} className="flex flex-wrap items-start gap-2 px-3 py-1.5">
               <div className="min-w-0 flex-1">
                 <Link to={`/ged/${encodeURIComponent(f.docId)}${f.block !== null ? `?bloc=${f.block + 1}` : ''}`} className="text-accent hover:underline">
-                  {c.documentsById.get(f.docId)?.title ?? f.docId}
+                  {byId(f.docId)?.title ?? f.docId}
                 </Link>
                 {f.block !== null && <span className="text-xs text-muted"> – bloc {f.block + 1}</span>}
                 <p className="text-xs text-muted">
@@ -304,7 +305,7 @@ function RiskFactors() {
                   {f.note ? ` · ${f.note}` : ''}
                 </p>
               </div>
-              <Button variant="ghost" className="px-1.5 py-0 text-xs" aria-label={`Retirer le facteur relevé dans « ${c.documentsById.get(f.docId)?.title ?? f.docId} »`} onClick={() => act((s) => deleteRiskFactor(s, f.id))}>
+              <Button variant="ghost" className="px-1.5 py-0 text-xs" aria-label={`Retirer le facteur relevé dans « ${byId(f.docId)?.title ?? f.docId} »`} onClick={() => act((s) => deleteRiskFactor(s, f.id))}>
                 Retirer
               </Button>
             </li>

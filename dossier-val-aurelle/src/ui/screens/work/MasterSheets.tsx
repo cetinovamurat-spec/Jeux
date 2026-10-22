@@ -31,7 +31,7 @@ const EMPTY_SHEET = emptyMasterSheet();
 
 function ExplainForm({ cycle, row, onDone }: { cycle: string; row: MasterRow; onDone: () => void }) {
   const fid = `explain-${cycle}-${row.id}`;
-  const docs = useGedDocuments().available;
+  const { available: docs, byId } = useGedDocuments();
   const sorted = useMemo(() => [...docs].sort((a, b) => a.title.localeCompare(b.title, 'fr')), [docs]);
   const sheet = useGame((s) => s.game.worksheets.master[cycle]) ?? EMPTY_SHEET;
   const act = useGame((s) => s.act);
@@ -71,8 +71,8 @@ function ExplainForm({ cycle, row, onDone }: { cycle: string; row: MasterRow; on
         <ul className="space-y-0.5 text-xs">
           {evidence.map((d) => (
             <li key={d} className="flex items-center gap-2">
-              {c.documentsById.get(d)?.title ?? d}
-              <Button variant="ghost" className="px-1 py-0 text-xs" aria-label={`Retirer la pièce « ${c.documentsById.get(d)?.title ?? d} »`} onClick={() => setEvidence((ev) => ev.filter((x) => x !== d))}>
+              {byId(d)?.title ?? d}
+              <Button variant="ghost" className="px-1 py-0 text-xs" aria-label={`Retirer la pièce « ${byId(d)?.title ?? d} »`} onClick={() => setEvidence((ev) => ev.filter((x) => x !== d))}>
                 Retirer
               </Button>
             </li>
@@ -115,6 +115,7 @@ function Sheet({ cycleId }: { cycleId: string }) {
   const game = useGame((s) => s.game);
   const act = useGame((s) => s.act);
   const w = useWorkContext();
+  const { byId } = useGedDocuments();
   const cycle = params.cycles.cycles.find((x) => x.id === cycleId)!;
   const sheet = masterSheetOf(game, cycleId);
   const current = c.view.ledger2025 === 'none' ? null : c.balances().current;
@@ -229,9 +230,14 @@ function Sheet({ cycleId }: { cycleId: string }) {
               const st = executionStatus(e, w.sched.get(e.id), game.clock.date);
               return (
                 <li key={id}>
-                  <button type="button" className="text-left text-accent hover:underline" onClick={() => useWorkView.getState().set({ selected: e.procedureId })}>
+                  <Link
+                    to={`/travaux?procedure=${encodeURIComponent(e.procedureId)}`}
+                    className="text-accent hover:underline"
+                    // the worksheet tab opens on the procedure, even when the address already named it
+                    onClick={() => useWorkView.getState().set({ selected: e.procedureId, filter: 'all' })}
+                  >
                     {procedureDef(params, e.procedureId)?.title ?? e.procedureId}
-                  </button>{' '}
+                  </Link>{' '}
                   <span className="text-xs text-muted">({EXECUTION_STATUS_LABEL[st].toLowerCase()})</span>
                 </li>
               );
@@ -271,7 +277,7 @@ function Sheet({ cycleId }: { cycleId: string }) {
             {docs.map((id) => (
               <li key={id}>
                 <Link to={`/ged/${encodeURIComponent(id)}`} className="text-accent hover:underline">
-                  {c.documentsById.get(id)?.title ?? id}
+                  {byId(id)?.title ?? id}
                 </Link>
               </li>
             ))}
