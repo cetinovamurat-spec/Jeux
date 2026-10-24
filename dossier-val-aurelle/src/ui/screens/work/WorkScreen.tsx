@@ -7,11 +7,11 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { formatDateFr } from '../../../engine/dates';
-import { hoursUsed } from '../../../game/budget';
 import type { MemberId } from '../../../game/calendar';
 import { canLaunch, EXECUTION_STATUS_LABEL, executionOf, executionStatus, procedureDef, type Execution, type ExecutionStatus } from '../../../game/program';
 import type { ProcedureDef } from '../../../scenario/schemas/procedures';
 import { useCase } from '../../app/context';
+import { useHoursUsed } from '../../app/hooks';
 import { useGame } from '../../app/store';
 import { Badge, Card, cx, PageHeader, Select, tabId, tabPanelId, Tabs } from '../../components/ui';
 import { formatHours, memberShort } from '../planning/labels';
@@ -167,7 +167,7 @@ export function WorkScreen() {
   const [search, setSearch] = useSearchParams();
   const tab: WorkTab = search.get('onglet') === 'feuilles' ? 'feuilles' : 'procedures';
   const launched = useGame((s) => s.game.program.executions.length);
-  const used = useGame((s) => hoursUsed(s.game, params).team);
+  const used = useHoursUsed().team;
   const difficulty = useGame((s) => s.game.difficulty);
   const tabsRef = useRef<HTMLDivElement>(null);
 

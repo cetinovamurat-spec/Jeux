@@ -28,6 +28,7 @@ function draft(over: Partial<FindingDraft> = {}): FindingDraft {
     evidence: [{ kind: 'doc', docId: 'facture-x' }],
     status: 'finding',
     comment: '',
+    suspicion: false,
     ...over,
   };
 }

@@ -1,15 +1,28 @@
-/** Game shell: sidebar navigation, top bar (date, period, gauges, budget), command palette, theme. */
-import { useEffect, useMemo, useState } from 'react';
+/** Game shell: sidebar navigation (unread messages), top bar (date, period, gauges, budget), command palette, theme. */
+import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router';
-import { hoursUsed } from '../../game/budget';
+import type { GaugeId } from '../../game/gauges';
 import { setTheme, type ThemeChoice } from '../../game/state';
 import { Badge, cx, Gauge, Kbd, Select } from '../components/ui';
 import { useFullCase } from './context';
 import { useAvailabilityText } from './DataGate';
+import { useGaugeValues, useHoursUsed, useUnreadCount } from './hooks';
 import { TimeControls } from './TimeControls';
 import { CommandPalette } from './CommandPalette';
 import { NAV, type NavItem } from './routes';
 import { useGame } from './store';
+
+/** Number of unread messages, next to the entry of the mailbox. */
+function UnreadBadge() {
+  const n = useUnreadCount();
+  if (n === 0) return null;
+  return (
+    <span className="ml-1.5 rounded-full bg-accent px-1.5 text-[11px] font-semibold text-panel">
+      {n}
+      <span className="sr-only"> {n > 1 ? 'messages non lus' : 'message non lu'}</span>
+    </span>
+  );
+}
 
 function NavEntry({ item }: { item: NavItem }) {
   const unavailable = useAvailabilityText(item.needs);
@@ -23,6 +36,7 @@ function NavEntry({ item }: { item: NavItem }) {
       }
     >
       {item.label}
+      {item.to === '/messagerie' && <UnreadBadge />}
       {unavailable && <span className="sr-only"> (pas encore disponible)</span>}
     </NavLink>
   );
@@ -37,12 +51,8 @@ export function Shell() {
   const c = useFullCase();
   const settings = useGame((s) => s.game.settings);
   const difficulty = useGame((s) => s.game.difficulty);
-  const program = useGame((s) => s.game.program);
-  const requests = useGame((s) => s.game.requests);
-  const confirmations = useGame((s) => s.game.confirmations);
-  const samples = useGame((s) => s.game.samples);
-  const recalcs = useGame((s) => s.game.recalcs);
   const act = useGame((s) => s.act);
+  const gauges = useGaugeValues();
   const [palette, setPalette] = useState(false);
   const location = useLocation();
   const designer = settings.designer;
@@ -68,7 +78,7 @@ export function Shell() {
   useEffect(() => setPalette(false), [location.pathname]);
 
   const budget = gp.budgetHours[difficulty];
-  const used = useMemo(() => hoursUsed({ program, requests, confirmations, samples, recalcs }, c.params).team, [program, requests, confirmations, samples, recalcs, c]);
+  const used = useHoursUsed().team;
 
   return (
     <div className="grid min-h-screen grid-cols-[13.5rem_1fr]">
@@ -102,8 +112,8 @@ export function Shell() {
         <header className="sticky top-0 z-20 flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-line bg-panel/95 px-5 py-2 backdrop-blur">
           <TimeControls />
           <div className="flex flex-wrap gap-4">
-            {Object.entries(gp.gauges).map(([id, g]) => (
-              <Gauge key={id} label={g.label} value={g.initial} low={g.lowThreshold} />
+            {(Object.entries(gp.gauges) as [GaugeId, (typeof gp.gauges)[GaugeId]][]).map(([id, g]) => (
+              <Gauge key={id} label={g.label} value={gauges[id] ?? g.initial} low={g.lowThreshold} />
             ))}
           </div>
           <div className="ml-auto text-right text-xs">

@@ -1,17 +1,9 @@
-/** Designer control screens (J1): clean world, calibration targets, statements, annex, FEC. */
+/** Designer control screens (J1): clean world, calibration targets, statements, annex, FEC; tabs of J5 (registry: tabs.ts). */
 import { NavLink, Outlet } from 'react-router';
 import { DossierProvider } from '../../app/context';
 import { useCase } from '../../app/context';
 import { cx } from '../../components/ui';
-
-export const CONTROL_TABS = [
-  { to: '/controle', label: 'Cibles de calibrage' },
-  { to: '/controle/balance', label: 'Balance (comptes propres)' },
-  { to: '/controle/etats', label: 'États (comptes propres)' },
-  { to: '/controle/annexe', label: 'Annexe (comptes propres)' },
-  { to: '/controle/analyse', label: 'CAF et autofinancement' },
-  { to: '/controle/fec', label: 'FEC (comptes propres)' },
-];
+import { CONTROL_TABS, controlTabTo } from './tabs';
 
 export function ControlScreen() {
   const c = useCase();
@@ -23,7 +15,7 @@ export function ControlScreen() {
       </div>
       <nav aria-label="Contrôle" className="mb-4 flex flex-wrap gap-1 border-b border-line">
         {CONTROL_TABS.map((t) => (
-          <NavLink key={t.to} to={t.to} end className={({ isActive }) => cx('-mb-px rounded-t-md border px-3 py-1.5 text-sm', isActive ? 'border-line border-b-panel bg-panel font-semibold text-accent' : 'border-transparent text-muted hover:text-ink')}>
+          <NavLink key={t.path} to={controlTabTo(t)} end className={({ isActive }) => cx('-mb-px rounded-t-md border px-3 py-1.5 text-sm', isActive ? 'border-line border-b-panel bg-panel font-semibold text-accent' : 'border-transparent text-muted hover:text-ink')}>
             {t.label}
           </NavLink>
         ))}

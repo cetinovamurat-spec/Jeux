@@ -12,6 +12,7 @@ import { fold } from '../../../game/text';
 import { REQUEST_DATED_FAMILIES, requestLabel } from '../../../scenario/documents';
 import type { RequestFamily } from '../../../scenario/schemas/requests';
 import { useCase } from '../../app/context';
+import { useRelationLow } from '../../app/hooks';
 import { useGame } from '../../app/store';
 import { Badge, Button, Card, cx, Select, TextInput } from '../../components/ui';
 import { entryIdsByNumber } from '../fec/entryKey';
@@ -130,6 +131,7 @@ function Catalogue() {
   const items = useGame((s) => s.game.requests.items);
   const date = useGame((s) => s.game.clock.date);
   const difficulty = useGame((s) => s.game.difficulty);
+  const lowRelation = useRelationLow();
   const view = useGedView();
   const idPrefix = useId();
   const family = familyOf(params, view.family) ?? params.requests.families[0]!;
@@ -156,10 +158,10 @@ function Catalogue() {
   const duplicate = duplicateOf(items, family.id, object, date, params);
   const last = previous.reduce<string | null>((m, x) => (m === null || x.sentOn > m ? x.sentOn : m), null);
   const who = interlocutorOf(params, family.id, object);
-  const delay = delayDays(params, family.id, object, difficulty);
+  const delay = delayDays(params, family.id, object, difficulty, lowRelation);
 
   const send = () => {
-    act((s) => sendRequest(s, family.id, object, params));
+    act((s) => sendRequest(s, family.id, object, params, { lowRelation }));
     const due = answerDate(params, cal, { id: '', family: family.id, object, sentOn: date, difficulty });
     setSent(`Demande envoyée le ${formatDateFr(date)} à ${interlocutorText(params, who)} : « ${requestLabel(params, family.id, object, tpName)} ». Réponse attendue le ${formatDateFr(due)}.`);
   };

@@ -76,6 +76,7 @@ function F(s: Spec): Finding {
     escalatedToPartnerOn: null,
     comment: '',
     createdOn: '2026-03-02',
+    suspicion: false,
   };
 }
 

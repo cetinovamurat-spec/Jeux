@@ -78,5 +78,6 @@ export function draftSignature(d: FindingDraft): string {
     d.evidence.map(evidenceKey),
     d.status,
     d.comment,
+    d.suspicion === true,
   ]);
 }

@@ -246,3 +246,32 @@ describe('upcoming events', () => {
     expect(upcomingRequests(s, { ...base, date: '2025-11-10' })).toEqual([]);
   });
 });
+
+describe('numbers and low relation (plan J5 J5-18)', () => {
+  it('numbers the request and its gauge event when the host counts its actions', () => {
+    const h = { ...host(), seq: 7 };
+    const s1 = sendRequest(h, 'programme-components', 'LIL', p);
+    expect(s1.seq).toBe(8);
+    expect(s1.requests.items[0]).toMatchObject({ id: 'req1', seq: 8 });
+    const s2 = sendRequest(s1, 'programme-components', 'LIL', p);
+    expect(s2.seq).toBe(9);
+    expect(s2.gauges.events).toEqual([{ on: '2025-11-07', gauge: 'clientRelation', reason: 'duplicateRequest', ref: 'programme-components:LIL', seq: 9 }]);
+    // a host without counter: nothing numbered
+    expect(sendRequest(host(), 'programme-components', 'LIL', p).requests.items[0]!.seq).toBeUndefined();
+  });
+
+  it('lengthens the delays of a request sent while the client relation is low, fixed at the sending', () => {
+    const low = sendRequest(host(), 'programme-components', 'LIL', p, { lowRelation: true }).requests.items[0]!;
+    expect(low.lowRelation).toBe(true);
+    const normal = item();
+    const base = delayDays(p, 'programme-components', 'LIL');
+    expect(delayDays(p, 'programme-components', 'LIL', 'senior', true)).toBe(Math.ceil(base * 1.5));
+    expect(answerDate(p, cal, { ...normal, lowRelation: true })).toBe(addWorkingDays(cal, normal.sentOn, Math.ceil(base * 1.5)));
+    expect(answerDate(p, cal, normal)).toBe(addWorkingDays(cal, normal.sentOn, base));
+    // cumulated with the factor of the manager level
+    const manager = p.game.difficulty.manager.responseDelayFactor;
+    expect(delayDays(p, 'programme-components', 'LIL', 'manager', true)).toBe(Math.ceil(base * manager * 1.5 - 1e-9));
+    // the flag is saved
+    expect(requestsSchema.parse({ items: [low] }).items[0]!.lowRelation).toBe(true);
+  });
+});

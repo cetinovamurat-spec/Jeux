@@ -284,7 +284,7 @@ describe('leaving the planning (« Aller à l’intérim »)', () => {
     expect(check.missing.map((m) => m.step)).toEqual(['materiality', 'risks', 'program']);
     expect(check.alreadyRecorded).toBe(false);
     s = recordInterimWithoutPlanning(s);
-    expect(s.gauges.events).toEqual([{ on: '2025-11-03', gauge: 'partnerTrust', reason: INTERIM_WITHOUT_PLANNING, ref: 'materiality,risks,program' }]);
+    expect(s.gauges.events).toEqual([{ on: '2025-11-03', gauge: 'partnerTrust', reason: INTERIM_WITHOUT_PLANNING, ref: 'materiality,risks,program', seq: s.seq }]);
     expect(recordInterimWithoutPlanning(s)).toBe(s);
     expect(leavePlanningCheck(s, params, '2026-02-23')!.alreadyRecorded).toBe(true);
     // once in the interim, nothing to check

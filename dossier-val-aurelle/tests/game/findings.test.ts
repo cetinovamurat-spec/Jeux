@@ -13,6 +13,7 @@ import {
   escalateFinding,
   evidenceKey,
   findingAmount,
+  findingMagnitude,
   finalEnd,
   linkEvidence,
   meaningfulLines,
@@ -51,6 +52,7 @@ function draft(over: Partial<FindingDraft> = {}): FindingDraft {
     evidence: [{ kind: 'fec', year: 2025, num: 'OD000189' }],
     status: 'finding',
     comment: '',
+    suspicion: false,
     ...over,
   };
 }
@@ -168,11 +170,11 @@ describe('actions', () => {
     expect(s.findings.items[0]!.updatedOn).toBe('2026-03-02');
     s = updateFinding(s, id, { ...draftOf(s.findings.items[0]!), status: 'finding' }, params);
     expect(s.findings.items[0]!.history).toEqual([
-      { on: '2026-02-24', status: 'question' },
-      { on: '2026-03-02', status: 'finding' },
+      { on: '2026-02-24', status: 'question', magnitude: 0, suspicion: false },
+      { on: '2026-03-02', status: 'finding', magnitude: 0, suspicion: false },
     ]);
     s = setFindingStatus(s, id, 'dismissed');
-    expect(s.findings.items[0]!.history.at(-1)).toEqual({ on: '2026-03-02', status: 'dismissed' });
+    expect(s.findings.items[0]!.history.at(-1)).toEqual({ on: '2026-03-02', status: 'dismissed', magnitude: 0, suspicion: false });
     expect(setFindingStatus(s, id, 'dismissed')).toBe(s);
     expect(updateFinding(s, 'nope', draft(), params)).toBe(s);
   });
@@ -220,5 +222,58 @@ describe('end of the final and save', () => {
     delete raw.findings.items[0].title;
     const r2 = deserialize(JSON.stringify(raw), initialState(params));
     expect(r2.ok && r2.state.findings.items[0]!.title).toBe('');
+  });
+});
+
+describe('findings: suspicion, pieces, magnitude and escalation snapshot (plan J5 §10.3)', () => {
+  it('note the magnitude given by the caller and the flag in the history, an entry when one of them changes', () => {
+    let [s, id] = createFinding(fresh(), draft({ status: 'question', evidence: [] }), params, 300_000 * EUR);
+    expect(s.findings.items[0]!.history).toEqual([{ on: '2026-02-24', status: 'question', magnitude: 300_000 * EUR, suspicion: false }]);
+    expect(s.findings.items[0]!.suspicion).toBe(false);
+    s = { ...s, clock: { date: '2026-03-02', processedUntil: '2026-03-02' } };
+    // same status, magnitude and flag: no entry
+    s = updateFinding(s, id, draftOf(s.findings.items[0]!), params, 300_000 * EUR);
+    expect(s.findings.items[0]!.history).toHaveLength(1);
+    s = updateFinding(s, id, { ...draftOf(s.findings.items[0]!), suspicion: true }, params, 300_000 * EUR);
+    s = updateFinding(s, id, draftOf(s.findings.items[0]!), params, 450_000 * EUR);
+    expect(s.findings.items[0]!.history.slice(1)).toEqual([
+      { on: '2026-03-02', status: 'question', magnitude: 300_000 * EUR, suspicion: true },
+      { on: '2026-03-02', status: 'question', magnitude: 450_000 * EUR, suspicion: true },
+    ]);
+    expect(s.findings.items[0]!.suspicion).toBe(true);
+  });
+
+  it('date the linking of the first and the second pieces, kept when a piece is unlinked', () => {
+    let [s, id] = createFinding(fresh(), draft({ evidence: [] }), params);
+    expect(s.findings.items[0]!.piecesOn).toBeUndefined();
+    s = linkEvidence({ ...s, clock: { date: '2026-02-25', processedUntil: '2026-02-25' } }, id, { kind: 'doc', docId: 'a' });
+    s = linkEvidence({ ...s, clock: { date: '2026-02-27', processedUntil: '2026-02-27' } }, id, { kind: 'fec', year: 2025, num: 'OD000189' });
+    s = linkEvidence({ ...s, clock: { date: '2026-03-02', processedUntil: '2026-03-02' } }, id, { kind: 'doc', docId: 'b' });
+    expect(s.findings.items[0]!.piecesOn).toEqual(['2026-02-25', '2026-02-27']);
+    s = updateFinding(s, id, { ...draftOf(s.findings.items[0]!), evidence: [] }, params);
+    expect(s.findings.items[0]!.piecesOn).toEqual(['2026-02-25', '2026-02-27']);
+    // created with two pieces: both dated at the creation
+    const [two] = createFinding(fresh(), draft({ evidence: [{ kind: 'doc', docId: 'a' }, { kind: 'doc', docId: 'b' }] }), params);
+    expect(two.findings.items[0]!.piecesOn).toEqual(['2026-02-24', '2026-02-24']);
+  });
+
+  it('freeze at the escalation what the partner was told, numbered; acting afterwards does not change it', () => {
+    let [s, id] = createFinding(fresh(), draft({ suspicion: true }), params, 300_000 * EUR);
+    s = escalateFinding(s, id, 300_000 * EUR);
+    const snap = s.findings.items[0]!.escalation!;
+    expect(snap).toEqual({ on: '2026-02-24', seq: s.seq, evidence: s.findings.items[0]!.evidence, magnitude: 300_000 * EUR, status: 'finding', hasEntry: true, suspicion: true });
+    expect(snap.evidence).toHaveLength(1);
+    expect(s.findings.items[0]!.escalatedToPartnerOn).toBe('2026-02-24');
+    expect(escalateFinding(s, id, 1)).toBe(s);
+    s = updateFinding(s, id, { ...draftOf(s.findings.items[0]!), evidence: [], status: 'dismissed', proposedEntry: [], suspicion: false }, params, 0);
+    expect(s.findings.items[0]!.escalation).toEqual(snap);
+    const r = deserialize(serialize(s), initialState(params));
+    expect(r.ok && r.state.findings.items[0]!.escalation).toEqual(snap);
+  });
+
+  it('measure the magnitude of a proposed entry on the result, the equity and the lines of the balance sheet', () => {
+    expect(findingMagnitude(null, params)).toBe(0);
+    expect(findingMagnitude({ result: -120, equity: 80, lines: { A_DISPO: 500, CR_ENTRETIEN: 9_000 } }, params)).toBe(500);
+    expect(findingMagnitude({ result: -1_200, equity: 80, lines: { A_DISPO: 500 } }, params)).toBe(1_200);
   });
 });

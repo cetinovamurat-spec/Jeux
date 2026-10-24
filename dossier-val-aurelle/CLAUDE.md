@@ -15,7 +15,7 @@ Jeu de rôle d'audit légal (navigateur, 100 % client) : le joueur audite les co
 | J2 — Anomalies et contenus | **Validé le 12/10/2026** | 22 anomalies (30 parties), clé de correction calculée, 125 documents et 127 indices, 7 fausses pistes ; 53/53 cibles ; 131 tests verts ; dossier `docs/revue-metier/`. Choix « à valider » de la section G acceptés par défaut |
 | J3 — Consultation | **Livré le 15/10/2026** | Bureau, GED, balance N / N-1, grand livre, explorateur du FEC, états et pointage, revue analytique ; état de jeu pur et sauvegarde automatique ; revue adversariale (18 constats corrigés) ; 279 tests verts |
 | J4 — Mécanique d'audit | **Livré le 22/10/2026** | Horloge et millésimes, planification (seuils, risques, programme), 72 procédures et feuilles de travail, demandes de pièces, confirmations, échantillonnage, recalculs, constats, appariement à la clé, tableau des anomalies ; revue adversariale (39 constats corrigés) ; 636 tests verts |
-| J5 — Personnages | À faire | |
+| J5 — Personnages | En cours | Plan révisé le 24/10/2026 (`docs/plan-j5.md`). J5a socle 1/2 : état v3 (entretiens, données consultées, éthique, messagerie, `seq`, tours de revue, remontées figées), contrats, registres (jauges dérivées, messagerie, heures), routes provisoires |
 | J6 — Synthèse | À faire | |
 | J7 — Finitions | À faire | |
 

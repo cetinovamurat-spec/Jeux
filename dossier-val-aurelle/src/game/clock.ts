@@ -8,6 +8,15 @@ export interface CalendarPeriod {
   to: IsoDate;
 }
 
+/**
+ * Phase of the engagement at a date: the calendar period in progress, or the
+ * last one ended (off site, between two periods); '' before the first one.
+ */
+export function engagementPhaseAt(calendar: readonly CalendarPeriod[], date: IsoDate): string {
+  const p = periodAt(calendar, date);
+  return p.current?.id ?? p.previous?.id ?? '';
+}
+
 /** Current period, or the gap between two periods. */
 export function periodAt(calendar: readonly CalendarPeriod[], date: IsoDate): { current?: CalendarPeriod; next?: CalendarPeriod; previous?: CalendarPeriod } {
   const sorted = [...calendar].sort((a, b) => (a.from < b.from ? -1 : 1));

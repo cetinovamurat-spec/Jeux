@@ -104,9 +104,10 @@ describe('game state', () => {
           { procedureId: 'board-minutes', assignee: 'senior' },
           { procedureId: 'procedure-retiree', assignee: 'senior' },
         ],
+        briefings: [],
         executions: [
-          { id: 'x1', procedureId: 'board-minutes', assignee: 'senior', hours: 7.5, launchedOn: '2025-11-03', conclusion: null, comment: '', refs: [{ kind: 'doc', id: 'kbis' }, { kind: 'doc', id: 'piece-retiree', block: 1 }, { kind: 'query', id: 'q1' }], review: { status: 'pending' } },
-          { id: 'x2', procedureId: 'procedure-retiree', assignee: 'senior', hours: 4, launchedOn: '2025-11-03', conclusion: null, comment: '', refs: [], review: { status: 'pending' } },
+          { id: 'x1', procedureId: 'board-minutes', assignee: 'senior', hours: 7.5, launchedOn: '2025-11-03', conclusion: null, comment: '', refs: [{ kind: 'doc', id: 'kbis' }, { kind: 'doc', id: 'piece-retiree', block: 1 }, { kind: 'query', id: 'q1' }], seq: 1, reviewRounds: [] },
+          { id: 'x2', procedureId: 'procedure-retiree', assignee: 'senior', hours: 4, launchedOn: '2025-11-03', conclusion: null, comment: '', refs: [], seq: 1, reviewRounds: [] },
         ],
       },
       requests: { items: [{ id: 'r1', family: 'interim-extraction', object: '', sentOn: '2025-11-03' }, { id: 'r2', family: 'famille-retiree', object: '', sentOn: '2025-11-03' }] },
@@ -131,7 +132,7 @@ describe('game state', () => {
     const s0 = fresh();
     const s: GameState = {
       ...s0,
-      program: { planned: [], executions: [{ id: 'x2', procedureId: 'procedure-retiree', assignee: 'senior', hours: 4, launchedOn: '2025-11-03', conclusion: null, comment: '', refs: [], review: { status: 'pending' } }] },
+      program: { planned: [], briefings: [], executions: [{ id: 'x2', procedureId: 'procedure-retiree', assignee: 'senior', hours: 4, launchedOn: '2025-11-03', conclusion: null, comment: '', refs: [], seq: 1, reviewRounds: [] }] },
       samples: { items: [{ id: 'smp1', executionId: 'x2', population: 'maintenance-charges', method: 'random', seed: 's1', parameters: {}, items: [], drawnOn: '2025-11-03' }] },
       recalcs: { items: [{ id: 'rc1', executionId: 'x2', tool: 'rent-revision', scope: 'all', assumptions: {}, summary: { computed: 0, recorded: 0 }, on: '2025-11-03' }] },
       confirmations: { items: [{ thirdParty: 'BDT', preparedOn: '2025-11-03', executionId: 'x2' }] },
@@ -161,6 +162,7 @@ describe('game state', () => {
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     expect(r.migratedFrom).toBe(1);
+    expect(r.restarted).toBe(true);
     expect(r.state.clock.date).toBe(fresh().clock.date);
     expect(r.state.settings).toEqual({ theme: 'dark', designer: true });
     expect(r.state.tickMarks.map((m) => m.id)).toEqual(['mark9']);

@@ -5,7 +5,7 @@
  * trial balance, totals per auxiliary account, entry panel (contra accounts),
  * CSV export.
  */
-import { useCallback, useDeferredValue, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { closingBalances } from '../../../engine/balance';
 import { toCsv } from '../../../engine/csv';
@@ -30,7 +30,9 @@ import {
 } from '../../../game/ledger';
 import type { Year } from '../../app/case';
 import { useCase } from '../../app/context';
+import { accountConsultedKey, markConsulted } from '../../../game/consulted';
 import { useDesigner } from '../../app/hooks';
+import { useGame } from '../../app/store';
 import { DataTable, type Column } from '../../components/DataTable';
 import { download } from '../../components/download';
 import { Badge, Button, Card, Checkbox, cx, Kbd, PageHeader, Select } from '../../components/ui';
@@ -319,6 +321,9 @@ function AccountView({ year, account, fec, indices }: { year: Year; account: str
   const closingDate = formatDateFr(year === current ? c.view.cutoff : `${year}-12-31`);
 
   const ledger = useMemo(() => accountLedger(fec, account, indices), [fec, account, indices]);
+  // first opening of the account (questions of the interviews on what was looked at)
+  const act = useGame((s) => s.act);
+  useEffect(() => act((s) => markConsulted(s, accountConsultedKey(account))), [act, account]);
   const entries = useMemo(() => new Set(ledger.rows.map((r) => r.line.entryId)).size, [ledger]);
   const trial = (year === current ? c.balances().current : c.balances().prior).get(account) ?? 0;
 

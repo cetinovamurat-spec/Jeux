@@ -1,9 +1,8 @@
 /** Desk: audit team, hours budget by member and firm supervisors (§4.5, §4.6, §10.9). */
-import { useMemo } from 'react';
-import { hoursUsed } from '../../../game/budget';
 import type { Difficulty } from '../../../game/state';
 import { formatPercent } from '../../../engine/format';
 import { useCase } from '../../app/context';
+import { useHoursUsed } from '../../app/hooks';
 import { useGame } from '../../app/store';
 import { Badge, Card, cx } from '../../components/ui';
 
@@ -65,12 +64,7 @@ export function TeamCard() {
   const gp = c.params.game;
   const budget = gp.budgetHours[difficulty];
   const ceiling = Math.round(budget * (1 + gp.overrunTolerancePct / 100));
-  const program = useGame((s) => s.game.program);
-  const requests = useGame((s) => s.game.requests);
-  const confirmations = useGame((s) => s.game.confirmations);
-  const samples = useGame((s) => s.game.samples);
-  const recalcs = useGame((s) => s.game.recalcs);
-  const used = useMemo(() => hoursUsed({ program, requests, confirmations, samples, recalcs }, c.params), [program, requests, confirmations, samples, recalcs, c]);
+  const used = useHoursUsed();
   const all = gp.team.map((m) => {
     const allotted = m.hoursByDifficulty[difficulty];
     const spent = used.byMember[m.id];

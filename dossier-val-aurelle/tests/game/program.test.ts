@@ -27,13 +27,14 @@ import {
   launchExecution,
   memberName,
   plannedHours,
+  PGE_REVIEW_PROCEDURE,
   previewLaunch,
   planProcedure,
   procedureDef,
   procedureProgress,
   programmeCheck,
   removeExecutionRef,
-  reviewExecution,
+  reviewStatus,
   scheduleExecutions,
   unplanProcedure,
   UNJUSTIFIED_OVERRUN,
@@ -86,6 +87,10 @@ describe('programme: plan, assign, firm programme, validation', () => {
     expect(check.warnings.some((w) => w.includes('dépasse le budget'))).toBe(true);
     const v = validateProgramme(s, params);
     expect(v.planning.validated.program).toBe('2025-11-03');
+    // the journal records whether the programme held the full review of the PGE (ethics event E3, plan J5 §9)
+    expect(v.journal.at(-1)).toMatchObject({ kind: 'program', ref: 'validated', data: { pgeReview: false } });
+    const withPge = validateProgramme(planProcedure(s, params, PGE_REVIEW_PROCEDURE), params);
+    expect(withPge.journal.at(-1)!.data!['pgeReview']).toBe(true);
   });
 
   it('refuses to validate an empty programme or one without the mandatory diligences', () => {
@@ -178,7 +183,7 @@ describe('executions: launch, scheduling, delivery', () => {
 
   it('checks the phase on the day the work would start after the member’s queue, not on the member’s next day on site', () => {
     // the senior's interim (17-20/11, 4 days at 7 h) is full: an interim procedure would start in the final
-    const busy: Execution = { id: 'busy', procedureId: 'payroll', assignee: 'senior', hours: 28, launchedOn: '2025-11-17', conclusion: null, comment: '', refs: [], review: { status: 'pending' } };
+    const busy: Execution = { id: 'busy', procedureId: 'payroll', assignee: 'senior', hours: 28, launchedOn: '2025-11-17', conclusion: null, comment: '', refs: [], seq: 1, reviewRounds: [] };
     const s = advanceTo(fresh(), '2025-11-17');
     const full = { ...s, program: { ...s.program, executions: [busy] } };
     expect(canLaunch(s, params, 'permanent-file', 'senior', ctx(s)).ok).toBe(true);
@@ -196,7 +201,7 @@ describe('executions: launch, scheduling, delivery', () => {
     expect(lea.reasons).toEqual([`La procédure ne pourrait pas être terminée avant la fin de la présence sur site de ${memberName(params, 'lea')}.`]);
     expect(canLaunch(s, params, 'journal-entry-tests', 'senior', ctx(s)).ok).toBe(true);
     // a launch saved before this check: started, never finished
-    const stuck: Execution = { id: 'stuck', procedureId: 'journal-entry-tests', assignee: 'lea', hours: def('journal-entry-tests').hours.assistant!, launchedOn: '2026-03-12', conclusion: null, comment: '', refs: [], review: { status: 'pending' } };
+    const stuck: Execution = { id: 'stuck', procedureId: 'journal-entry-tests', assignee: 'lea', hours: def('journal-entry-tests').hours.assistant!, launchedOn: '2026-03-12', conclusion: null, comment: '', refs: [], seq: 1, reviewRounds: [] };
     let late = advanceTo({ ...s, program: { ...s.program, executions: [stuck] } }, '2026-03-16');
     expect(statusOf(late, stuck)).toBe('unfinishable');
     late = cancelExecution(late, 'stuck', cal, params);
@@ -340,13 +345,23 @@ describe('worksheets: documentation, completion, form check, review', () => {
     expect(done()).toBe(true);
   });
 
-  it('records the review of a delegated worksheet (fields of J5), not of the senior’s own work', () => {
+  it('numbers a launch, without review round; the status of the review is derived from the rounds (J5)', () => {
     let s = launch(fresh(), 'rent-controls', 'lea');
     s = launch(s, 'board-minutes', 'senior');
     const [lea, senior] = s.program.executions;
-    expect(reviewExecution(s, senior!.id, 'accepted', '')).toBe(s);
-    s = reviewExecution(s, lea!.id, 'returned', 'Étendre le test');
-    expect(s.program.executions[0]!.review).toEqual({ status: 'returned', on: '2025-11-03', comment: 'Étendre le test' });
+    expect(lea!.seq).toBeLessThan(senior!.seq);
+    expect(senior!.seq).toBe(s.seq);
+    expect(lea!.id).toBe(`exec${lea!.seq}`);
+    expect(lea!.reviewRounds).toEqual([]);
+    expect(lea!.member).toBeUndefined();
+    expect(reviewStatus(lea!)).toBe('toReview');
+    const round = (decision: 'accepted' | 'returned') => ({ on: '2025-11-20', seq: 40, decision, comment: '' });
+    expect(reviewStatus({ reviewRounds: [round('returned')] })).toBe('rework');
+    expect(reviewStatus({ reviewRounds: [round('returned')] }, true)).toBe('reworkDelivered');
+    expect(reviewStatus({ reviewRounds: [round('returned'), round('accepted')] })).toBe('accepted');
+    // the inputs of a delegated launch are frozen at the launch
+    const withMember = launchExecution(fresh(), params, 'rent-controls', 'lea', ctx(fresh()), { size: 25, seed: 'rent-controls' });
+    expect(withMember.program.executions[0]!.member).toEqual({ size: 25, seed: 'rent-controls' });
   });
 
   describe('delegated worksheet (§7): correct, limited to what the work of the procedure reached', () => {
@@ -361,7 +376,7 @@ describe('worksheets: documentation, completion, form check, review', () => {
       blocks: [{ kind: 'paragraph', text: 'a' }, { kind: 'paragraph', text: 'b', ...(target ? { clue: `${id}-c` } : {}) }],
       clues: target ? [clue(`${id}-c`, target)] : [],
     });
-    const exec = (procedureId: string, assignee: Execution['assignee'] = 'lea', refs: Execution['refs'] = []): Execution => ({ id: 'e1', procedureId, assignee, hours: 1, launchedOn: '2025-11-17', conclusion: null, comment: '', refs, review: { status: 'pending' } });
+    const exec = (procedureId: string, assignee: Execution['assignee'] = 'lea', refs: Execution['refs'] = []): Execution => ({ id: 'e1', procedureId, assignee, hours: 1, launchedOn: '2025-11-17', conclusion: null, comment: '', refs, seq: 1, reviewRounds: [] });
     const cctx = (s: GameState, extra: Partial<CompletionContext> = {}): CompletionContext => ({ params, date: s.clock.date, state: s, answered: new Set(), ...extra });
 
     it('reports nothing and proposes no conclusion before the work criteria are met; never for the senior’s own work or before the delivery', () => {
@@ -418,7 +433,7 @@ describe('worksheets: documentation, completion, form check, review', () => {
 
 describe('budget overrun: arbitration of the partner (J4-4)', () => {
   function overBudget(s: GameState): GameState {
-    const big: Execution = { id: 'big', procedureId: 'payroll', assignee: 'hugo', hours: 370, launchedOn: '2025-11-03', conclusion: null, comment: '', refs: [], review: { status: 'pending' } };
+    const big: Execution = { id: 'big', procedureId: 'payroll', assignee: 'hugo', hours: 370, launchedOn: '2025-11-03', conclusion: null, comment: '', refs: [], seq: 1, reviewRounds: [] };
     return { ...s, program: { ...s.program, executions: [big] } };
   }
 
@@ -516,7 +531,7 @@ describe('Antoine’s advice (plan J4 §14)', () => {
     // once its effective procedures are launched, the cycle is no longer pointed to
     const executions = params.procedures.procedures
       .filter((p) => p.cycle === 'fixedAssets' && p.effectiveFor.length > 0)
-      .map((p, i): Execution => ({ id: `x${i}`, procedureId: p.id, assignee: 'senior', hours: 1, launchedOn: '2025-11-03', conclusion: null, comment: '', refs: [], review: { status: 'pending' } }));
+      .map((p, i): Execution => ({ id: `x${i}`, procedureId: p.id, assignee: 'senior', hours: 1, launchedOn: '2025-11-03', conclusion: null, comment: '', refs: [], seq: 1, reviewRounds: [] }));
     expect(antoineAdvice({ ...s, program: { ...s.program, executions } }, params, s.clock.date).cycle).toBeNull();
   });
 

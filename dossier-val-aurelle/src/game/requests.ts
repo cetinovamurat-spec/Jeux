@@ -22,7 +22,8 @@ import type { RequestFamily } from '../scenario/schemas/requests';
 import type { UpcomingContext, UpcomingEvent } from './advance';
 import type { HoursCharge } from './budget';
 import { addWorkingDays, workCalendar, type WorkCalendar } from './calendar';
-import { periodAt } from './clock';
+import { engagementPhaseAt } from './clock';
+import { gaugeRules } from './gauge-values';
 import { recordGaugeEvent, type GaugesState } from './gauges';
 
 export type RequestDifficulty = 'assistant' | 'senior' | 'manager';
@@ -38,6 +39,10 @@ export interface RequestItem {
   reminders?: IsoDate[];
   /** Difficulty of the game when the request was sent (delay factor of the interlocutors). */
   difficulty?: RequestDifficulty;
+  /** The client relation was low when the request was sent (delays lengthened, fixed at the sending; plan J5 J5-18). */
+  lowRelation?: true;
+  /** Number of the action (state counter), when the host numbers its actions. */
+  seq?: number;
 }
 
 export interface RequestsState {
@@ -69,6 +74,8 @@ export const requestsSchema = z.object({
         reminders: z.array(z.string()).optional(),
         remindedOn: z.string().optional(),
         difficulty: z.enum(['assistant', 'senior', 'manager']).optional(),
+        lowRelation: z.literal(true).optional(),
+        seq: z.number().int().optional(),
       })
       .transform(readReminders),
   ),
@@ -95,16 +102,25 @@ export function interlocutorOf(params: Params, family: string, object: string): 
   return f?.objects?.find((o) => o.id === object)?.interlocutor ?? f?.interlocutor ?? 'chiefAccountant';
 }
 
-/** Delay of the interlocutor in working days (§10.2), times the difficulty factor (§10.9), rounded up. */
-export function delayDays(params: Params, family: string, object: string, difficulty: RequestDifficulty = 'senior'): number {
+/**
+ * Delay of the interlocutor in working days (§10.2), times the difficulty
+ * factor (§10.9) and, when the client relation was low at the sending, the
+ * factor of a low relation (plan J5 J5-18), rounded up.
+ */
+export function delayDays(params: Params, family: string, object: string, difficulty: RequestDifficulty = 'senior', lowRelation = false): number {
   const base = params.game.responseDelaysBusinessDays[interlocutorOf(params, family, object)] ?? 1;
-  const factor = params.game.difficulty[difficulty].responseDelayFactor;
+  const factor = params.game.difficulty[difficulty].responseDelayFactor * (lowRelation ? gaugeRules(params).lowRelation.delayFactor : 1);
   return Math.ceil(base * factor - 1e-9);
+}
+
+/** Delay of the interlocutor for a request sent (factors fixed at the sending). */
+function itemDelay(params: Params, item: RequestItem): number {
+  return delayDays(params, item.family, item.object, item.difficulty, item.lowRelation === true);
 }
 
 /** Date the interlocutor answers the request (« réponse attendue le »). */
 export function answerDate(params: Params, cal: WorkCalendar, item: RequestItem): IsoDate {
-  return addWorkingDays(cal, item.sentOn, delayDays(params, item.family, item.object, item.difficulty));
+  return addWorkingDays(cal, item.sentOn, itemDelay(params, item));
 }
 
 /**
@@ -115,7 +131,7 @@ export function answerDate(params: Params, cal: WorkCalendar, item: RequestItem)
  */
 export function arrivalDate(params: Params, cal: WorkCalendar, item: RequestItem, docDate: IsoDate): IsoDate {
   const due = answerDate(params, cal, item);
-  return docDate <= due ? due : addWorkingDays(cal, docDate, delayDays(params, item.family, item.object, item.difficulty));
+  return docDate <= due ? due : addWorkingDays(cal, docDate, itemDelay(params, item));
 }
 
 /**
@@ -317,19 +333,17 @@ export interface RequestHost {
   requests: RequestsState;
   clock: { date: IsoDate };
   difficulty?: RequestDifficulty;
+  /** Counter of the actions (numbers the request and its gauge event). */
+  seq?: number;
   gauges?: GaugesState;
   journal?: readonly { on: IsoDate; kind: string; ref?: string; data?: Record<string, string | number | boolean> }[];
   planning?: { risks: Record<string, { level: string }> };
   findings?: { items: readonly { cycle: string }[] };
 }
 
-/**
- * Phase of the engagement at a date: the calendar period in progress, or the
- * last one ended (off site, between two periods).
- */
+/** Phase of the engagement at a date (clock.ts → engagementPhaseAt). */
 function phaseAt(params: Params, date: IsoDate): string {
-  const p = periodAt(params.game.calendar, date);
-  return p.current?.id ?? p.previous?.id ?? '';
+  return engagementPhaseAt(params.game.calendar, date);
 }
 
 /**
@@ -343,28 +357,44 @@ export function duplicateOf(items: readonly RequestItem[], family: string, objec
   return items.find((it) => requestKey(it.family, it.object) === key && phaseAt(params, it.sentOn) === phase);
 }
 
+export interface SendRequestOptions {
+  /** The client relation is low at the game date (computed by the caller: game/gauge-values.ts → relationLow); the delays are lengthened, fixed at the sending. */
+  lowRelation?: boolean;
+}
+
 /**
  * Sends a document request (family × object) at the game date; the answer
  * arrives later (interlocutor delay, date of the document). Cost: a quarter
  * of an hour of the senior (hoursCharged). A duplicate request (same family
  * and object already asked in the same phase of the engagement: asking again
  * at a later visit updates the documents built on the request date) is
- * recorded as a gauge event for J5 ('duplicateRequest'), and so is a request
- * about a cycle assessed at low risk without any finding on it
- * ('unrelatedRequest').
+ * recorded as a gauge event ('duplicateRequest'), and so is a request about
+ * a cycle assessed at low risk without any finding on it ('unrelatedRequest';
+ * the first ones of a phase are free, game/gauge-values.ts). The request and
+ * its event are numbered when the host counts its actions (`seq`).
  */
-export function sendRequest<S extends RequestHost>(s: S, family: string, object: string, params: Params = loadParams()): S {
+export function sendRequest<S extends RequestHost>(s: S, family: string, object: string, params: Params = loadParams(), opts: SendRequestOptions = {}): S {
   const date = s.clock.date;
   const key = requestKey(family, object);
   const duplicate = duplicateOf(s.requests.items, family, object, date, params) !== undefined;
-  const item: RequestItem = { id: `req${s.requests.items.length + 1}`, family, object, sentOn: date, ...(s.difficulty ? { difficulty: s.difficulty } : {}) };
-  let next: S = { ...s, requests: { items: [...s.requests.items, item] } };
+  const seq = s.seq === undefined ? undefined : s.seq + 1;
+  const item: RequestItem = {
+    id: `req${s.requests.items.length + 1}`,
+    family,
+    object,
+    sentOn: date,
+    ...(s.difficulty ? { difficulty: s.difficulty } : {}),
+    ...(opts.lowRelation ? { lowRelation: true as const } : {}),
+    ...(seq !== undefined ? { seq } : {}),
+  };
+  let next: S = { ...s, requests: { items: [...s.requests.items, item] }, ...(seq !== undefined ? { seq } : {}) };
   if (next.gauges) {
     const f = familyOf(params, family);
     const cycle = f?.cycle;
     const unrelated = !duplicate && !!cycle && cycle !== 'crossCycle' && s.planning?.risks[cycle]?.level === 'low' && !(s.findings?.items ?? []).some((x) => x.cycle === cycle);
-    if (duplicate) next = { ...next, gauges: recordGaugeEvent(next.gauges!, { on: date, gauge: 'clientRelation', reason: 'duplicateRequest', ref: key }) };
-    else if (unrelated) next = { ...next, gauges: recordGaugeEvent(next.gauges!, { on: date, gauge: 'clientRelation', reason: 'unrelatedRequest', ref: key }) };
+    const stamp = seq !== undefined ? { seq } : {};
+    if (duplicate) next = { ...next, gauges: recordGaugeEvent(next.gauges!, { on: date, gauge: 'clientRelation', reason: 'duplicateRequest', ref: key, ...stamp }) };
+    else if (unrelated) next = { ...next, gauges: recordGaugeEvent(next.gauges!, { on: date, gauge: 'clientRelation', reason: 'unrelatedRequest', ref: key, ...stamp }) };
   }
   if (next.journal) next = { ...next, journal: [...next.journal, { on: date, kind: 'request', ref: key, data: { title: requestLabel(params, family, object) } }] };
   return next;

@@ -4,18 +4,25 @@
  * hours, matching) is not stored. The UI store only calls these functions
  * (state, action → new state).
  *
- * J3 sections (documents, ticking, saved queries) live here; the J4 sections
- * each have their own module (types, initial value, save schema, actions):
- * planning, program, worksheets, requests, confirmations, samples, recalcs,
- * findings, gauges.
+ * J3 sections (documents, ticking, saved queries) live here; the J4 and J5
+ * sections each have their own module (types, initial value, save schema,
+ * actions): planning, program, worksheets, requests, confirmations, samples,
+ * recalcs, findings, gauges (J4); interviews, consulted, ethics, messages (J5).
+ *
+ * Every stored action carries a number (`seq`, the counter of nextId and
+ * nextSeq): the derived events of a same day are ordered by it.
  */
 import type { IsoDate } from '../engine/dates';
 import { SCENARIO_HASH } from '../scenario/fingerprint';
 import type { Params } from '../scenario/params';
 import { initialConfirmations, type ConfirmationsState } from './confirmations';
+import { initialConsulted, type ConsultedState } from './consulted';
+import { initialEthics, type EthicsState } from './ethics';
 import { EMPTY_QUERY, type FecQuery } from './fec-query';
 import { initialFindings, type FindingsState } from './findings';
 import { initialGauges, type GaugesState } from './gauges';
+import { initialInterviews, type InterviewsState } from './interviews';
+import { initialMessages, type MessagesState } from './messages';
 import { initialPlanning, type PlanningState } from './planning';
 import { initialProgram, type ProgramState } from './program';
 import { initialRecalcs, type RecalcsState } from './recalcs';
@@ -23,13 +30,13 @@ import { initialRequests, type RequestsState } from './requests';
 import { initialSamples, type SamplesState } from './samples';
 import { initialWorksheets, type WorksheetsState } from './worksheets';
 
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 /**
  * Version of the game content (procedure and request catalogues, documents,
  * anomaly parts): bumped when a change can leave saved references orphaned.
  */
-export const CONTENT_VERSION = 1;
+export const CONTENT_VERSION = 2;
 
 export type Difficulty = 'assistant' | 'senior' | 'manager';
 export type ThemeChoice = 'system' | 'light' | 'dark';
@@ -104,6 +111,13 @@ export interface GameState {
   recalcs: RecalcsState;
   findings: FindingsState;
   gauges: GaugesState;
+  // --- J5 sections -------------------------------------------------------------
+  interviews: InterviewsState;
+  /** First opening of an account in the general ledger and of an entry in the FEC. */
+  consulted: ConsultedState;
+  ethics: EthicsState;
+  /** Read marks of the messages (the inbox is derived). */
+  messages: MessagesState;
 }
 
 export const DEFAULT_TICK_MARKS: readonly TickMark[] = [
@@ -138,6 +152,10 @@ export function initialState(params: Params, difficulty: Difficulty = 'senior'):
     recalcs: initialRecalcs(),
     findings: initialFindings(),
     gauges: initialGauges(),
+    interviews: initialInterviews(),
+    consulted: initialConsulted(),
+    ethics: initialEthics(),
+    messages: initialMessages(),
   };
 }
 
@@ -149,6 +167,12 @@ export function initialState(params: Params, difficulty: Difficulty = 'senior'):
 export function nextId(s: GameState, prefix: string): [string, GameState] {
   const seq = s.seq + 1;
   return [`${prefix}${seq}`, { ...s, seq }];
+}
+
+/** New number of an action from the state counter (shared with nextId: the numbers are unique and increasing). */
+export function nextSeq<S extends { seq: number }>(s: S): [number, S] {
+  const seq = s.seq + 1;
+  return [seq, { ...s, seq }];
 }
 
 /** Appends an event to the journal, dated at the game date. */

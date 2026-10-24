@@ -14,6 +14,7 @@ import { fecToText } from '../../../engine/fec';
 import { formatDateFr } from '../../../engine/dates';
 import { formatEuro } from '../../../engine/format';
 import { describeQuery, fecToCsv, isEmptyQuery, journalSummary, runQuery, sameQuery, standardTests, type FecQuery } from '../../../game/fec-query';
+import { fecEntryConsultedKey, markConsulted } from '../../../game/consulted';
 import type { SavedQuery } from '../../../game/state';
 import type { Year } from '../../app/case';
 import { useCase } from '../../app/context';
@@ -168,6 +169,11 @@ export function FecScreen() {
   const height = useFillHeight(fillRef);
   const entryId = entryParam === null ? null : (entryIdsByNumber(index).get(entryParam) ?? null);
   const entryFound = entryId !== null;
+  // first opening of the entry (questions of the interviews on what was looked at), by its FEC number
+  const openedNumber = entryId === null ? undefined : entryNumber(index, entryId);
+  useEffect(() => {
+    if (openedNumber !== undefined) useGame.getState().act((s) => markConsulted(s, fecEntryConsultedKey(year, openedNumber)));
+  }, [year, openedNumber]);
   const threshold = view.rareOn ? rareThreshold(view.rareText) : gp.rarePairMaxOccurrences;
   const blank = isEmptyQuery(view.query) && !view.accountsText.trim() && !view.minText.trim() && !view.maxText.trim();
   const activeFilters = describeQuery(view.query).length;

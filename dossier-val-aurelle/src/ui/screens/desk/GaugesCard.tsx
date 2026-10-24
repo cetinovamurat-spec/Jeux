@@ -1,13 +1,19 @@
-/** Desk: relationship gauges (§10.2) with a one-line explanation of each. */
+/**
+ * Desk: relationship gauges (§10.2) with a one-line explanation of each, their
+ * value derived at the game date (game/gauge-values.ts) and their last
+ * variations, with a generic label (plan J5 §10.5: never a lead).
+ */
+import { formatDateFr } from '../../../engine/dates';
+import type { GaugeId } from '../../../game/gauges';
 import { useCase } from '../../app/context';
+import { useGaugeReport } from '../../app/hooks';
 import { Card, cx } from '../../components/ui';
 
-/**
- * Current value of a gauge. The gauges move with the player's actions from
- * J4/J5 on (interviews, requests, escalations); until then, the initial value.
- */
-function gaugeValue(initial: number): number {
-  return initial;
+/** Number of the last variations shown under each gauge. */
+const LAST_VARIATIONS = 5;
+
+function signed(n: number): string {
+  return n > 0 ? `+${n}` : n < 0 ? `−${-n}` : '0';
 }
 
 function explanation(id: string, low: number, chiefAccountant: string): string {
@@ -31,15 +37,17 @@ function tone(value: number, low: number): string {
 
 export function GaugesCard() {
   const c = useCase();
-  const gauges = Object.entries(c.params.game.gauges);
+  const gauges = Object.entries(c.params.game.gauges) as [GaugeId, (typeof c.params.game.gauges)[GaugeId]][];
   const chiefAccountant = c.params.documents.people['chiefAccountant']?.name ?? 'chef comptable';
+  const report = useGaugeReport();
 
   return (
     <Card title="Jauges">
       <ul className="divide-y divide-line">
         {gauges.map(([id, g]) => {
-          const value = gaugeValue(g.initial);
+          const value = report.values[id] ?? g.initial;
           const text = explanation(id, g.lowThreshold, chiefAccountant);
+          const last = report.history.filter((h) => h.gauge === id && h.delta !== 0).slice(-LAST_VARIATIONS).reverse();
           return (
             <li key={id} className="px-3 py-2.5">
               <div className="flex items-baseline justify-between gap-3">
@@ -65,6 +73,17 @@ export function GaugesCard() {
               </div>
               {g.lowThreshold > 0 && <p className="mt-1 text-[11px] text-muted">Seuil bas : {g.lowThreshold}</p>}
               {text && <p className="mt-1 text-xs leading-relaxed text-muted">{text}</p>}
+              {last.length > 0 && (
+                <ul className="mt-1.5 space-y-0.5 text-xs" aria-label={`Dernières variations : ${g.label}`}>
+                  {last.map((h, i) => (
+                    <li key={i} className="flex items-baseline gap-2">
+                      <span className="w-20 shrink-0 font-mono text-muted">{formatDateFr(h.on)}</span>
+                      <span className="min-w-0 flex-1">{h.label}</span>
+                      <span className={cx('shrink-0 font-mono', h.delta < 0 ? 'text-ko' : 'text-ok')}>{signed(h.delta)}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </li>
           );
         })}

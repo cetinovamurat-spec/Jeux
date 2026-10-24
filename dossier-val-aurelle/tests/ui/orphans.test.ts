@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { prepareConfirmation } from '../../src/game/confirmations';
 import { availabilityContext, isAvailable } from '../../src/game/documents';
+import { interviewNoteId } from '../../src/game/interviews';
 import { cleanOrphans } from '../../src/game/persistence';
 import { initialState, markRead, type GameState } from '../../src/game/state';
 import type { Synthesis } from '../../src/scenario/anomalies/synthesis';
@@ -71,6 +72,23 @@ describe('orphan references of a save', () => {
     const r = cleanOrphans(s, P, knownDocuments(c, s));
     expect(Object.keys(r.state.documents).sort()).toEqual([later.id, inv.id, versionedId('factures-peupliers', '2026-02-23')].sort());
     expect(r.removed).toHaveLength(1);
+    expect(cleanOrphans(r.state, P, knownDocuments(c, r.state))).toEqual({ state: r.state, removed: [] });
+  });
+
+  it('the record of an answer of the interviews of the save is known (kept at every load); another one is an orphan', () => {
+    const note = interviewNoteId('chiefAccountant:entry:2025:OD000189', '2026-02-24');
+    const other = interviewNoteId('chiefAccountant:entry:2025:OD000190', '2026-02-24');
+    const s0 = fresh();
+    const s: GameState = {
+      ...s0,
+      interviews: { sessions: [{ id: 'session1', seq: 1, person: 'chiefAccountant', on: '2026-02-24', audience: 'alone', closed: true, actions: [{ kind: 'ask', seq: 2, question: 'chiefAccountant:entry:2025:OD000189', variant: 'full' }] }] },
+    };
+    const withReads = markRead(markRead(s, note), other);
+    const known = knownDocuments(c, withReads);
+    expect(known(note)).toBe(true);
+    expect(known(other)).toBe(false);
+    const r = cleanOrphans(withReads, P, known);
+    expect(Object.keys(r.state.documents)).toEqual([note]);
     expect(cleanOrphans(r.state, P, knownDocuments(c, r.state))).toEqual({ state: r.state, removed: [] });
   });
 

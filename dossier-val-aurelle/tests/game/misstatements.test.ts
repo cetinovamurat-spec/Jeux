@@ -38,6 +38,7 @@ function finding(lines: [string, number, number][], status: Finding['status'] = 
     escalatedToPartnerOn: null,
     comment: '',
     createdOn: '2026-03-02',
+    suspicion: false,
     ...over,
   };
 }

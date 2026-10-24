@@ -8,16 +8,24 @@
  * a status with its dated history, the date it was escalated to the partner
  * and a free comment that the engine never reads.
  *
+ * J5 (plan §10.3): a « suspicion of fraud / irregularity » flag, the dates
+ * the first and second pieces of evidence were linked, the magnitude and the
+ * flag noted in every history entry (the magnitude is computed by the caller
+ * from the proposed entry, findingMagnitude) and the snapshot frozen at the
+ * escalation to the partner.
+ *
  * The matching to the correction key is computed (game/matching.ts, designer
  * mode and J6 only), never stored. Section of the game state owned by J4d:
  * types, initial value, save schema and pure actions.
  */
 import { z } from 'zod';
 import type { IsoDate } from '../engine/dates';
+import type { Impact } from '../scenario/anomalies/presented';
 import type { Classification, Nature } from '../scenario/anomalies/types';
 import type { Params } from '../scenario/params';
 import { FINDING_TREATMENT_IDS } from '../scenario/schemas/disclosure-items';
-import { log, nextId, type GameState } from './state';
+import { evidenceSchema, type Evidence } from './evidence';
+import { log, nextId, nextSeq, type GameState } from './state';
 
 // ---------------------------------------------------------------------------
 // types
@@ -41,11 +49,7 @@ export const FINDING_CLASSIFICATIONS = ['factual', 'judgemental', 'projected'] a
 export const FINDING_TREATMENTS = FINDING_TREATMENT_IDS;
 export type FindingTreatment = (typeof FINDING_TREATMENTS)[number];
 
-/** Typed evidence: never the internal id of an entry (it can name an anomaly). */
-export type Evidence =
-  | { kind: 'doc'; docId: string; block?: number }
-  | { kind: 'fec'; year: number; num: string }
-  | { kind: 'sample' | 'recalc' | 'query' | 'execution' | 'confirmation'; id: string };
+export { evidenceSchema, type Evidence } from './evidence';
 
 export interface ProposedLine {
   account: string;
@@ -70,6 +74,24 @@ export interface FindingSeed {
 export interface FindingHistoryEntry {
   on: IsoDate;
   status: FindingStatus;
+  /** Magnitude of the proposed entry at the entry (cents, findingMagnitude; absent in the saves of J4: 0). */
+  magnitude?: number;
+  /** Suspicion flag at the entry (absent in the saves of J4: false). */
+  suspicion?: boolean;
+}
+
+/** What the partner was told, frozen at the escalation (plan J5 §10.3, J5-19). */
+export interface EscalationSnapshot {
+  on: IsoDate;
+  seq: number;
+  /** Evidence linked at the escalation. */
+  evidence: Evidence[];
+  /** Magnitude of the proposed entry at the escalation (cents; 0 for the escalations of J4). */
+  magnitude: number;
+  status: FindingStatus;
+  /** A correction entry was proposed. */
+  hasEntry: boolean;
+  suspicion: boolean;
 }
 
 export interface Finding {
@@ -94,10 +116,16 @@ export interface Finding {
   updatedOn?: IsoDate;
   /** Amount noted in the context of the creation (cents, shown in the form; never read by the matching). */
   contextAmount?: number;
+  /** « Suspicion de fraude / irrégularité » (proposed on every finding). */
+  suspicion: boolean;
+  /** Dates the first and the second pieces of evidence were linked (kept when evidence is unlinked afterwards). */
+  piecesOn?: IsoDate[];
+  /** Snapshot frozen at the escalation to the partner. */
+  escalation?: EscalationSnapshot;
 }
 
 /** What the form edits (the rest is managed by the actions). */
-export type FindingDraft = Pick<Finding, 'title' | 'cycle' | 'objects' | 'natures' | 'classification' | 'treatments' | 'proposedEntry' | 'disclosureFix' | 'evidence' | 'status' | 'comment'> & { contextAmount?: number };
+export type FindingDraft = Pick<Finding, 'title' | 'cycle' | 'objects' | 'natures' | 'classification' | 'treatments' | 'proposedEntry' | 'disclosureFix' | 'evidence' | 'status' | 'comment' | 'suspicion'> & { contextAmount?: number };
 
 export interface FindingsState {
   items: Finding[];
@@ -108,11 +136,7 @@ export function initialFindings(): FindingsState {
 }
 
 const status = z.enum(FINDING_STATUSES);
-const evidence = z.union([
-  z.object({ kind: z.literal('doc'), docId: z.string(), block: z.number().int().optional() }),
-  z.object({ kind: z.literal('fec'), year: z.number().int(), num: z.string() }),
-  z.object({ kind: z.enum(['sample', 'recalc', 'query', 'execution', 'confirmation']), id: z.string() }),
-]);
+const evidence = evidenceSchema;
 export const findingsSchema = z.object({
   items: z.array(
     z.object({
@@ -127,12 +151,17 @@ export const findingsSchema = z.object({
       disclosureFix: z.string().nullable(),
       evidence: z.array(evidence),
       status,
-      history: z.array(z.object({ on: z.string(), status })),
+      history: z.array(z.object({ on: z.string(), status, magnitude: z.number().int().min(0).optional(), suspicion: z.boolean().optional() })),
       escalatedToPartnerOn: z.string().nullable(),
       comment: z.string(),
       createdOn: z.string(),
       updatedOn: z.string().optional(),
       contextAmount: z.number().int().optional(),
+      suspicion: z.boolean(),
+      piecesOn: z.array(z.string()).max(2).optional(),
+      escalation: z
+        .object({ on: z.string(), seq: z.number().int(), evidence: z.array(evidence), magnitude: z.number().int().min(0), status, hasEntry: z.boolean(), suspicion: z.boolean() })
+        .optional(),
     }),
   ),
 });
@@ -211,6 +240,20 @@ export function findingAmount(f: Pick<Finding, 'proposedEntry'>): number {
 }
 
 /**
+ * Magnitude of a proposed entry (plan J5 §10.3): the largest of the absolute
+ * impacts on the result, on the equity and on a line of the balance sheet
+ * (cents). The form computes the impact (impactOfLines) and passes the
+ * magnitude to the actions; 0 without an entry.
+ */
+export function findingMagnitude(impact: Pick<Impact, 'result' | 'equity' | 'lines'> | null, params: Params): number {
+  if (!impact) return 0;
+  const balanceSheet = new Set(params.statements.filter((l) => l.statement !== 'income').map((l) => l.id));
+  let max = Math.max(Math.abs(impact.result), Math.abs(impact.equity));
+  for (const [id, v] of Object.entries(impact.lines)) if (balanceSheet.has(id)) max = Math.max(max, Math.abs(v));
+  return Math.round(max);
+}
+
+/**
  * Lines with an account and an amount: what is saved, matched and shown in the
  * table (empty lines of the form are dropped; a line with an amount and no
  * account is reported by draftErrors). The form computes its totals on them.
@@ -247,6 +290,7 @@ export function draftFromSeed(seed: FindingSeed, params: Params, statusOf: Findi
     evidence: uniqueEvidence(seed.evidence ?? []),
     status: statusOf,
     comment: '',
+    suspicion: false,
     ...(seed.amount !== undefined && seed.amount !== 0 ? { contextAmount: Math.round(Math.abs(seed.amount)) } : {}),
   };
 }
@@ -264,6 +308,7 @@ export function draftOf(f: Finding): FindingDraft {
     evidence: f.evidence,
     status: f.status,
     comment: f.comment,
+    suspicion: f.suspicion,
     ...(f.contextAmount !== undefined ? { contextAmount: f.contextAmount } : {}),
   };
 }
@@ -328,6 +373,7 @@ function clean(d: FindingDraft, params: Params): FindingDraft {
     evidence: uniqueEvidence(d.evidence),
     status: d.status,
     comment: d.comment,
+    suspicion: d.suspicion === true,
     ...(d.contextAmount !== undefined ? { contextAmount: d.contextAmount } : {}),
   };
 }
@@ -342,15 +388,45 @@ function withFindings(s: GameState, items: Finding[]): GameState {
   return { ...s, findings: { ...s.findings, items } };
 }
 
+/** Dates the first and second pieces were linked, completed with a count reached on `on` (never shortened). */
+function notePieces(piecesOn: readonly IsoDate[] | undefined, count: number, on: IsoDate): IsoDate[] | undefined {
+  const list = [...(piecesOn ?? [])];
+  while (list.length < Math.min(2, count)) list.push(on);
+  return list.length ? list : undefined;
+}
+
+function withPieces(f: Finding, on: IsoDate): Finding {
+  const piecesOn = notePieces(f.piecesOn, f.evidence.length, on);
+  if (piecesOn === undefined || (f.piecesOn && piecesOn.length === f.piecesOn.length)) return f;
+  return { ...f, piecesOn };
+}
+
+function lastEntry(f: Finding): FindingHistoryEntry | undefined {
+  return f.history[f.history.length - 1];
+}
+
+/** History completed with an entry when the status, the magnitude or the flag changed. */
+function withHistory(f: Finding, on: IsoDate, statusTo: FindingStatus, magnitude: number, suspicion: boolean): FindingHistoryEntry[] {
+  const last = lastEntry(f);
+  if (last && last.status === statusTo && (last.magnitude ?? 0) === magnitude && (last.suspicion ?? false) === suspicion) return f.history;
+  return [...f.history, { on, status: statusTo, magnitude, suspicion }];
+}
+
 // ---------------------------------------------------------------------------
 // actions
 // ---------------------------------------------------------------------------
 
-/** Creates a finding (or a question) from a draft; the draft is assumed checked (draftErrors). Returns the state and the new id. */
-export function createFinding(s: GameState, draft: FindingDraft, params: Params): [GameState, string] {
+/**
+ * Creates a finding (or a question) from a draft; the draft is assumed
+ * checked (draftErrors). `magnitude`: of its proposed entry, computed by the
+ * caller (findingMagnitude). Returns the state and the new id.
+ */
+export function createFinding(s: GameState, draft: FindingDraft, params: Params, magnitude = 0): [GameState, string] {
   const d = clean(draft, params);
   const [id, s1] = nextId(s, 'C');
-  const f: Finding = { id, ...d, history: [{ on: s1.clock.date, status: d.status }], escalatedToPartnerOn: null, createdOn: s1.clock.date };
+  const on = s1.clock.date;
+  const created: Finding = { id, ...d, history: [{ on, status: d.status, magnitude: Math.round(magnitude), suspicion: d.suspicion }], escalatedToPartnerOn: null, createdOn: on };
+  const f = withPieces(created, on);
   const s2 = withFindings(s1, [...s1.findings.items, f]);
   return [log(s2, 'finding', id, { action: 'create', status: d.status, title: journalTitle(id, d.title, `${STATUS_TEXT[d.status]} créé${d.status === 'question' ? 'e' : ''}`) }), id];
 }
@@ -360,32 +436,45 @@ export function captureQuestion(s: GameState, seed: FindingSeed, params: Params)
   return createFinding(s, draftFromSeed(seed, params, 'question', s.samples), params);
 }
 
-/** Saves the form; a change of status is added to the history. */
-export function updateFinding(s: GameState, id: string, draft: FindingDraft, params: Params): GameState {
+/**
+ * Saves the form; a change of status, of magnitude (of the proposed entry,
+ * computed by the caller) or of the suspicion flag is added to the history.
+ */
+export function updateFinding(s: GameState, id: string, draft: FindingDraft, params: Params, magnitude = 0): GameState {
   const f = s.findings.items.find((x) => x.id === id);
   if (!f) return s;
   const d = clean(draft, params);
-  const history = d.status === f.status ? f.history : [...f.history, { on: s.clock.date, status: d.status }];
-  const next: Finding = { ...f, ...d, history, updatedOn: s.clock.date };
+  const history = withHistory(f, s.clock.date, d.status, Math.round(magnitude), d.suspicion);
+  const next: Finding = withPieces({ ...f, ...d, history, updatedOn: s.clock.date }, s.clock.date);
   if (d.contextAmount === undefined) delete next.contextAmount;
   const s1 = withFindings(s, s.findings.items.map((x) => (x.id === id ? next : x)));
   const what = d.status === f.status ? 'mis à jour' : `statut : ${STATUS_TEXT[d.status]}`;
   return log(s1, 'finding', id, { action: d.status === f.status ? 'update' : 'status', status: d.status, title: journalTitle(id, d.title, what) });
 }
 
-export function setFindingStatus(s: GameState, id: string, statusTo: FindingStatus): GameState {
+/** Changes the status; the magnitude noted in the history is the caller's, the last one noted otherwise. */
+export function setFindingStatus(s: GameState, id: string, statusTo: FindingStatus, magnitude?: number): GameState {
   const f = s.findings.items.find((x) => x.id === id);
   if (!f || f.status === statusTo) return s;
-  const next: Finding = { ...f, status: statusTo, history: [...f.history, { on: s.clock.date, status: statusTo }], updatedOn: s.clock.date };
+  const m = magnitude !== undefined ? Math.round(magnitude) : (lastEntry(f)?.magnitude ?? 0);
+  const next: Finding = { ...f, status: statusTo, history: [...f.history, { on: s.clock.date, status: statusTo, magnitude: m, suspicion: f.suspicion }], updatedOn: s.clock.date };
   return log(withFindings(s, s.findings.items.map((x) => (x.id === id ? next : x))), 'finding', id, { action: 'status', status: statusTo, title: journalTitle(id, f.title, `statut : ${STATUS_TEXT[statusTo]}`) });
 }
 
-/** Escalation to the partner (dated once; J5 reads its timeliness). */
-export function escalateFinding(s: GameState, id: string): GameState {
+/**
+ * Escalation to the partner, dated once, with a frozen snapshot of what she
+ * was told (evidence, magnitude of the proposed entry computed by the
+ * caller, status, entry, flag): unlinking, downgrading or deleting the
+ * finding afterwards does not change it.
+ */
+export function escalateFinding(s: GameState, id: string, magnitude = 0): GameState {
   const f = s.findings.items.find((x) => x.id === id);
   if (!f || f.escalatedToPartnerOn !== null) return s;
-  const next: Finding = { ...f, escalatedToPartnerOn: s.clock.date, updatedOn: s.clock.date };
-  return log(withFindings(s, s.findings.items.map((x) => (x.id === id ? next : x))), 'finding', id, { action: 'escalate', title: journalTitle(id, f.title, 'remonté à l’associée') });
+  const [seq, s1] = nextSeq(s);
+  const on = s1.clock.date;
+  const escalation: EscalationSnapshot = { on, seq, evidence: f.evidence.map((e) => ({ ...e })), magnitude: Math.round(magnitude), status: f.status, hasEntry: f.proposedEntry.length > 0, suspicion: f.suspicion };
+  const next: Finding = { ...f, escalatedToPartnerOn: on, escalation, updatedOn: on };
+  return log(withFindings(s1, s1.findings.items.map((x) => (x.id === id ? next : x))), 'finding', id, { action: 'escalate', title: journalTitle(id, f.title, 'remonté à l’associée') });
 }
 
 export function deleteFinding(s: GameState, id: string): GameState {
@@ -400,7 +489,7 @@ export function linkEvidence(s: GameState, id: string, ev: Evidence): GameState 
   if (!f) return s;
   const list = uniqueEvidence([...f.evidence, ev]);
   if (list.length === f.evidence.length) return s;
-  return withFindings(s, s.findings.items.map((x) => (x.id === id ? { ...x, evidence: list, updatedOn: s.clock.date } : x)));
+  return withFindings(s, s.findings.items.map((x) => (x.id === id ? withPieces({ ...x, evidence: list, updatedOn: s.clock.date }, s.clock.date) : x)));
 }
 
 // ---------------------------------------------------------------------------

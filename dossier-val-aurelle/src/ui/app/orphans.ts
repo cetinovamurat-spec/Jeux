@@ -7,8 +7,10 @@
  * A document is known when it is a scenario document — every one, whatever
  * its availability at the game date (a piece not yet received is not an
  * orphan) — or a later version of one (`<id>~date`), or a reply built for the
- * requests and confirmations of the save, whatever its arrival date.
+ * requests and confirmations of the save, whatever its arrival date, or the
+ * record of an answer in the interviews of the save (plan J5 §5.6).
  */
+import { interviewNoteIds } from '../../game/interviews';
 import { cleanOrphans } from '../../game/persistence';
 import { requestKey } from '../../game/requests';
 import type { GameState } from '../../game/state';
@@ -36,15 +38,20 @@ function builtReplyIds(c: CaseData, s: GameState): ReadonlySet<string> | null {
 }
 
 /**
- * Whether a document id is known to the current case (see above). The replies
+ * Whether a document id is known to the current case (see above): the
+ * records of the interviews are those derivable from the sessions of the
+ * save (game/interviews.ts → interviewNoteIds). The replies
  * are built only when an id is not a scenario document; when one of them
  * cannot be built, every document is deemed known (nothing is removed on a
  * doubt).
  */
 export function knownDocuments(c: CaseData, s: GameState): (id: string) => boolean {
   let built: ReadonlySet<string> | null | undefined;
+  let notes: ReadonlySet<string> | undefined;
   return (id) => {
     if (c.documentsById.has(id) || c.documentsById.has(baseDocumentId(id))) return true;
+    notes ??= interviewNoteIds(s.interviews);
+    if (notes.has(id)) return true;
     if (built === undefined) built = builtReplyIds(c, s);
     return built === null || built.has(id);
   };

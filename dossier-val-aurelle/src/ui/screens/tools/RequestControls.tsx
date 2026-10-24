@@ -9,6 +9,7 @@ import { formatDateFr } from '../../../engine/dates';
 import { delayDays, familyOf, interlocutorOf, notYetEstablishedText, requestKey, sendRequest, type RequestStatus } from '../../../game/requests';
 import { requestLabel, requestObjectLabel } from '../../../scenario/documents';
 import { useCase } from '../../app/context';
+import { useRelationLow } from '../../app/hooks';
 import { useGame } from '../../app/store';
 import { Badge, Button, cx } from '../../components/ui';
 import { delayText, interlocutorText } from '../ged/labels';
@@ -86,6 +87,7 @@ export function RequestButton({ family, object, label = 'Demander la pièce', co
   const act = useGame((s) => s.act);
   const rows = useRequestRows();
   const difficulty = useGame((s) => s.game.difficulty);
+  const lowRelation = useRelationLow();
   const key = requestKey(family, object);
   const row = rowOfKey(rows, key);
   const tpName = useThirdPartyName();
@@ -111,9 +113,9 @@ export function RequestButton({ family, object, label = 'Demander la pièce', co
   return (
     <Button
       className={compact ? 'px-1.5 py-0 text-xs' : undefined}
-      title={`${what} – auprès de ${who}, réponse sous ${delayText(delayDays(c.params, family, object, difficulty))} (${c.params.requests.costHours.request.toLocaleString('fr-FR')} h)`}
+      title={`${what} – auprès de ${who}, réponse sous ${delayText(delayDays(c.params, family, object, difficulty, lowRelation))} (${c.params.requests.costHours.request.toLocaleString('fr-FR')} h)`}
       aria-label={`${label} : ${what}`}
-      onClick={() => act((s) => sendRequest(s, family, object, c.params))}
+      onClick={() => act((s) => sendRequest(s, family, object, c.params, { lowRelation }))}
     >
       {label}
     </Button>

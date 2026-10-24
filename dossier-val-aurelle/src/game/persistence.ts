@@ -4,10 +4,15 @@
  */
 import { z } from 'zod';
 import type { Params } from '../scenario/params';
+import { workCalendar } from './calendar';
 import { EMPTY_QUERY } from './fec-query';
 import { confirmationsSchema } from './confirmations';
+import { consultedSchema } from './consulted';
+import { ethicsSchema } from './ethics';
 import { findingsSchema } from './findings';
 import { gaugesSchema } from './gauges';
+import { interviewsSchema } from './interviews';
+import { knownMessageIds, messagesSchema } from './messages';
 import { planningSchema } from './planning';
 import { detachExecutionWork, programSchema } from './program';
 import { recalcsSchema } from './recalcs';
@@ -64,18 +69,48 @@ const stateSchema = z.object({
   recalcs: recalcsSchema,
   findings: findingsSchema,
   gauges: gaugesSchema,
+  interviews: interviewsSchema,
+  consulted: consultedSchema,
+  ethics: ethicsSchema,
+  messages: messagesSchema,
 });
+
+type Raw = Record<string, unknown>;
+
+function isRaw(v: unknown): v is Raw {
+  return typeof v === 'object' && v !== null && !Array.isArray(v);
+}
+
+/** Number at the end of an id made by nextId ('exec12' → 12), or the fallback. */
+function idNumber(id: unknown, fallback: number): number {
+  const m = typeof id === 'string' ? /(\d+)$/.exec(id) : null;
+  return m ? Number(m[1]) : fallback;
+}
+
+/** Maps the items of a list field of a raw section (unchanged when the shape is not the expected one: the schema then refuses the save). */
+function mapList(section: unknown, field: string, f: (item: Raw, index: number) => Raw): unknown {
+  if (!isRaw(section) || !Array.isArray(section[field])) return section;
+  return { ...section, [field]: (section[field] as unknown[]).map((x, i) => (isRaw(x) ? f(x, i) : x)) };
+}
 
 /**
  * Migrations from older schema versions, applied in sequence. Each receives
  * the raw object and a fresh state of the current version.
  *
- * 1 → 2 (J3 → J4): a J3 game is fixed at 23/02/2026, without planning, and its
- * confirmations can no longer be sent: the game restarts at the beginning of
- * the engagement, keeping the settings, the custom tick marks and the saved
- * FEC queries (the ids counter is kept so that no id is reused).
+ * 1 → (current) (J3 → J4): a J3 game is fixed at 23/02/2026, without
+ * planning, and its confirmations can no longer be sent: the game restarts
+ * at the beginning of the engagement (a fresh state of the current version),
+ * keeping the settings, the custom tick marks and the saved FEC queries (the
+ * ids counter is kept so that no id is reused).
+ *
+ * 2 → 3 (J4 → J5): the sections of J5 are added (fresh values); the review
+ * of J4 (no effect) is dropped for the review rounds (the journal keeps it);
+ * the launches are numbered (`seq`, from their id), the programme gets its
+ * briefings, every finding the suspicion flag (off), an already escalated
+ * finding a frozen snapshot (magnitude 0), and the gauge events are numbered
+ * in their order.
  */
-const MIGRATIONS: Record<number, (raw: Record<string, unknown>, fresh: GameState) => Record<string, unknown>> = {
+const MIGRATIONS: Record<number, (raw: Raw, fresh: GameState) => Raw> = {
   1: (raw, fresh) => {
     const keep = <T>(schema: z.ZodType<T>, v: unknown, fallback: T): T => {
       const r = schema.safeParse(v);
@@ -89,6 +124,35 @@ const MIGRATIONS: Record<number, (raw: Record<string, unknown>, fresh: GameState
       seq: typeof raw['seq'] === 'number' ? raw['seq'] : fresh.seq,
     };
   },
+  2: (raw, fresh) => {
+    let program: unknown = mapList(raw['program'], 'executions', (e, i) => {
+      const { review: _dropped, ...rest } = e;
+      return { ...rest, seq: typeof e['seq'] === 'number' ? e['seq'] : idNumber(e['id'], i + 1), reviewRounds: [] };
+    });
+    if (isRaw(program) && !Array.isArray(program['briefings'])) program = { ...program, briefings: [] };
+    const findings = mapList(raw['findings'], 'items', (f) => {
+      const escalated = typeof f['escalatedToPartnerOn'] === 'string' ? (f['escalatedToPartnerOn'] as string) : null;
+      const evidence = Array.isArray(f['evidence']) ? f['evidence'] : [];
+      const entry = Array.isArray(f['proposedEntry']) ? f['proposedEntry'] : [];
+      return {
+        ...f,
+        suspicion: false,
+        ...(escalated ? { escalation: { on: escalated, seq: idNumber(f['id'], 0), evidence, magnitude: 0, status: f['status'], hasEntry: entry.length > 0, suspicion: false } } : {}),
+      };
+    });
+    const gauges = mapList(raw['gauges'], 'events', (e, i) => ({ ...e, seq: i + 1 }));
+    return {
+      ...raw,
+      schemaVersion: 3,
+      program,
+      findings,
+      gauges,
+      interviews: fresh.interviews,
+      consulted: fresh.consulted,
+      ethics: fresh.ethics,
+      messages: fresh.messages,
+    };
+  },
 };
 
 export function serialize(state: GameState): string {
@@ -99,8 +163,10 @@ export type LoadResult =
   | {
       ok: true;
       state: GameState;
-      /** Schema version the save was migrated from (the player is told when the game restarted). */
+      /** Schema version the save was migrated from. */
       migratedFrom?: number;
+      /** The engagement restarted at its beginning (a save of J3, schema 1): the player is told. */
+      restarted?: boolean;
       /** The save was made with another generated world or another content version: references may be orphaned. */
       contentChanged?: boolean;
     }
@@ -135,6 +201,7 @@ export function deserialize(text: string, fresh: GameState): LoadResult {
     // the save adopts the current content (the next autosave writes it): the change is reported once
     state: { ...state, scenarioHash: fresh.scenarioHash, contentVersion: fresh.contentVersion, savedQueries: state.savedQueries.map((q) => ({ ...q, query: { ...EMPTY_QUERY, ...q.query } })) },
     ...(from < SCHEMA_VERSION ? { migratedFrom: from } : {}),
+    ...(from === 1 ? { restarted: true } : {}),
     ...(contentChanged ? { contentChanged } : {}),
   };
 }
@@ -151,10 +218,12 @@ function plural(n: number, one: string, many: string): string {
 
 /**
  * Removes the references of a save that the current content no longer knows
- * (plan J4 §15, J4-15): procedures planned or launched, request families,
- * documents (read and annotated, linked to a worksheet, a variation, a risk
- * factor or a finding). `isKnownDocument` answers for the scenario documents
- * and the replies built for the requests and confirmations of the save.
+ * (plan J4 §15, J4-15; plan J5 §14): procedures planned or launched, request
+ * families, documents (read and annotated, linked to a worksheet, a
+ * variation, a risk factor or a finding), read marks of messages the state
+ * no longer implies. `isKnownDocument` answers for the scenario documents,
+ * the replies built for the requests and confirmations of the save and the
+ * records of its interviews (ui/app/orphans.ts → knownDocuments).
  * Idempotent: a save without orphans is returned unchanged.
  */
 export function cleanOrphans(s: GameState, params: Params, isKnownDocument: (id: string) => boolean): OrphanCleanup {
@@ -215,15 +284,21 @@ export function cleanOrphans(s: GameState, params: Params, isKnownDocument: (id:
   const documents = Object.fromEntries(Object.entries(s.documents).filter(([id]) => isKnownDocument(id)));
   count(Object.keys(s.documents).length - Object.keys(documents).length, (n) => `Pièces : ${plural(n, 'lecture ou annotation d’une pièce qui n’existe plus retirée', 'lectures ou annotations de pièces qui n’existent plus retirées')}.`);
 
+  const readIds = Object.keys(s.messages.read);
+  const knownMessages = readIds.length ? knownMessageIds(s, { params, cal: workCalendar(params) }) : new Set<string>();
+  const read = Object.fromEntries(Object.entries(s.messages.read).filter(([id]) => knownMessages.has(id)));
+  count(readIds.length - Object.keys(read).length, (n) => `Messagerie : ${plural(n, 'marque de lecture d’un message qui n’existe plus retirée', 'marques de lecture de messages qui n’existent plus retirées')}.`);
+
   if (removed.length === 0) return { state: s, removed };
   let state: GameState = {
     ...s,
     documents,
     planning: { ...s.planning, riskFactors },
-    program: { planned, executions },
+    program: { ...s.program, planned, executions },
     worksheets: { ...s.worksheets, master },
     requests: { ...s.requests, items: requests },
     findings: { ...s.findings, items: findings },
+    messages: { ...s.messages, read },
   };
   // the samples, recalculations and confirmations of a removed worksheet stay, charged on their own
   for (const e of s.program.executions) if (!procedures.has(e.procedureId)) state = detachExecutionWork(state, e.id);

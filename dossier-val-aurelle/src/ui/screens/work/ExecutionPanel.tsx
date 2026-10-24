@@ -2,7 +2,9 @@
  * Worksheet of a procedure (plan J4 §7, J4-10): before the launch, the
  * assignee and the launch check; after it, the status and dates, the tool of
  * the procedure, the work prepared by a delegated member, the completion
- * criteria, the references, the conclusion and the review fields of J5.
+ * criteria, the references, the conclusion and the status of its review
+ * (rounds of J5; the review itself is made on the screen « Revue de
+ * l'équipe »).
  */
 import { useMemo, useState, type ReactNode } from 'react';
 import { useGedDocuments } from '../ged/replies';
@@ -29,7 +31,8 @@ import {
   procedureDef,
   procedureHours,
   removeExecutionRef,
-  reviewExecution,
+  REVIEW_STATUS_LABEL,
+  reviewStatus,
   updateExecution,
   type Execution,
   type ExecutionStatus,
@@ -41,7 +44,7 @@ import type { Tone } from '../../../game/state';
 import type { ProcedureDef } from '../../../scenario/schemas/procedures';
 import { useCase } from '../../app/context';
 import { useGame } from '../../app/store';
-import { Badge, Button, cx, Select, TextInput } from '../../components/ui';
+import { Badge, Button, cx, Select } from '../../components/ui';
 import { NewFindingButton } from '../findings/NewFindingButton';
 import { Field } from '../planning/Field';
 import { cycleLabel, formatHours, MANDATORY_LABEL, memberLabel, memberShort, outputText, OVERRIDE_LABEL, phasesText } from '../planning/labels';
@@ -202,7 +205,6 @@ function Worksheet({ def, e }: { def: ProcedureDef; e: Execution }) {
   const [conclusion, setConclusion] = useState(e.conclusion ?? '');
   const [comment, setComment] = useState(e.comment);
   const [docRef, setDocRef] = useState('');
-  const [reviewComment, setReviewComment] = useState(e.review.comment ?? '');
   const delivered = status === 'delivered' || status === 'documented';
   const id = `work-${e.id}`;
 
@@ -393,17 +395,27 @@ function Worksheet({ def, e }: { def: ProcedureDef; e: Execution }) {
       </Section>
       {e.assignee !== 'senior' && delivered && (
         <Section title="Revue du senior" id={`${id}-review`}>
-          <div className="flex flex-wrap items-end gap-2 text-sm">
-            <Badge tone={e.review.status === 'accepted' ? 'ok' : e.review.status === 'returned' ? 'warn' : 'muted'}>{e.review.status === 'accepted' ? `Acceptée le ${formatDateFr(e.review.on ?? '')}` : e.review.status === 'returned' ? `Renvoyée le ${formatDateFr(e.review.on ?? '')}` : 'À revoir'}</Badge>
-            <TextInput aria-label="Commentaire de revue" placeholder="Commentaire de revue (requis pour renvoyer)" value={reviewComment} onChange={(ev) => setReviewComment(ev.target.value)} className="min-w-0 flex-1" />
-            <Button onClick={() => act((s) => reviewExecution(s, e.id, 'accepted', reviewComment, params))}>Accepter</Button>
-            <Button onClick={() => act((s) => reviewExecution(s, e.id, 'returned', reviewComment, params))} disabled={!reviewComment.trim()}>
-              Renvoyer
-            </Button>
-          </div>
+          <ReviewSummary e={e} />
         </Section>
       )}
     </>
+  );
+}
+
+/** Status of the review of a delegated worksheet, derived from its rounds; the decisions are taken on the screen « Revue de l'équipe ». */
+function ReviewSummary({ e }: { e: Execution }) {
+  const status = reviewStatus(e);
+  const last = e.reviewRounds[e.reviewRounds.length - 1];
+  return (
+    <div className="flex flex-wrap items-center gap-2 text-sm">
+      <Badge tone={status === 'accepted' ? 'ok' : status === 'toReview' ? 'muted' : 'warn'}>
+        {REVIEW_STATUS_LABEL[status]}
+        {last ? ` le ${formatDateFr(last.on)}` : ''}
+      </Badge>
+      <Link to="/equipe" className="text-xs text-accent hover:underline">
+        Revue de l’équipe
+      </Link>
+    </div>
   );
 }
 

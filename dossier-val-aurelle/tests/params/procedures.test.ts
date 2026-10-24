@@ -229,7 +229,7 @@ describe('procedure library: real work and scope of the delegated work (plan J4 
   });
 
   it('limits a delegated reading of the board minutes to the governance documents', () => {
-    const e = { id: 'e1', procedureId: 'board-minutes', assignee: 'lea' as const, hours: 1, launchedOn: '2025-11-17', conclusion: null, comment: '', refs: [], review: { status: 'pending' as const } };
+    const e = { id: 'e1', procedureId: 'board-minutes', assignee: 'lea' as const, hours: 1, launchedOn: '2025-11-17', conclusion: null, comment: '', refs: [], seq: 1, reviewRounds: [] };
     const reach = executionReach(e, byId.get('board-minutes')!, { params, state: initialState(params) });
     const reached = documents().documents.filter(reach);
     expect(reached.length).toBeGreaterThan(0);

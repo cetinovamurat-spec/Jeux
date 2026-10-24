@@ -27,7 +27,7 @@ function load(): GameState {
     if (!text) return fresh;
     const r = deserialize(text, fresh);
     if (!r.ok) return fresh;
-    if (r.migratedFrom !== undefined) loadNotice = { restarted: true, contentChanged: false, removed: [] };
+    if (r.restarted) loadNotice = { restarted: true, contentChanged: false, removed: [] };
     else if (r.contentChanged) loadNotice = { restarted: false, contentChanged: true, removed: [] };
     return r.state;
   } catch {

@@ -4,16 +4,15 @@ import { setDesigner } from '../../game/state';
 import { loadParams } from '../../scenario/params';
 import { AnalysisScreen } from '../screens/analysis/AnalysisScreen';
 import { BalanceScreen } from '../screens/balance/BalanceScreen';
-import { AnalysisScreen as ControlAnalysis } from '../screens/control/Analysis';
-import { AnnexScreen as ControlAnnex } from '../screens/control/Annex';
-import { BalanceScreen as ControlBalance } from '../screens/control/Balance';
 import { ControlScreen } from '../screens/control/ControlScreen';
-import { FecScreen as ControlFec } from '../screens/control/Fec';
-import { StatementsScreen as ControlStatements } from '../screens/control/Statements';
-import { Targets } from '../screens/control/Targets';
+import { CONTROL_TABS } from '../screens/control/tabs';
 import { DeskScreen } from '../screens/desk/DeskScreen';
 import { FindingsScreen } from '../screens/findings/FindingsScreen';
+import { InterviewsScreen } from '../screens/interviews/InterviewsScreen';
+import { MemoScreen } from '../screens/memo/MemoScreen';
+import { MessagesScreen } from '../screens/messages/MessagesScreen';
 import { PlanningScreen } from '../screens/planning/PlanningScreen';
+import { TeamScreen } from '../screens/team/TeamScreen';
 import { WorkScreen } from '../screens/work/WorkScreen';
 import { FecScreen } from '../screens/fec/FecScreen';
 import { GedScreen } from '../screens/ged/GedScreen';
@@ -38,9 +37,15 @@ const router = createHashRouter([
         errorElement: <ScreenError />,
         children: [
           { index: true, element: <DeskScreen /> },
+          { path: 'messagerie', element: <MessagesScreen /> },
+          { path: 'messagerie/:id', element: <MessagesScreen /> },
           { path: 'planification', element: <PlanningScreen /> },
           { path: 'travaux', element: <WorkScreen /> },
+          { path: 'equipe', element: <TeamScreen /> },
+          { path: 'entretiens', element: <InterviewsScreen /> },
+          { path: 'entretiens/:personne', element: <InterviewsScreen /> },
           { path: 'constats', element: <FindingsScreen /> },
+          { path: 'memo', element: <MemoScreen /> },
           { path: 'ged', element: <GedScreen /> },
           { path: 'ged/:docId', element: <GedScreen /> },
           {
@@ -69,14 +74,7 @@ const router = createHashRouter([
                 <ControlScreen />
               </DesignerOnly>
             ),
-            children: [
-              { index: true, element: <Targets /> },
-              { path: 'balance', element: <ControlBalance /> },
-              { path: 'etats', element: <ControlStatements /> },
-              { path: 'annexe', element: <ControlAnnex /> },
-              { path: 'analyse', element: <ControlAnalysis /> },
-              { path: 'fec', element: <ControlFec /> },
-            ],
+            children: CONTROL_TABS.map(({ path, Component }) => (path ? { path, element: <Component /> } : { index: true, element: <Component /> })),
           },
           { path: '*', element: <NotFound /> },
         ],

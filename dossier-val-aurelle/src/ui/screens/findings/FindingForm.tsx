@@ -2,14 +2,16 @@
  * Finding form (plan J4 §13.1): cycle, objects (three at most, closed lists),
  * natures (two at most), classification, treatments, proposed correction
  * entry (balanced lines on accounts of the chart; amounts typed in euros) or
- * disclosure fix, typed evidence, status with its dated history, escalation
- * to the partner, free comment. The impacts are derived from the entry with
+ * disclosure fix, typed evidence, status with its dated history, suspicion
+ * of fraud or irregularity, escalation to the partner, free comment. The
+ * magnitude of the proposed entry (findingMagnitude) is passed to the
+ * actions, which note it in the history and in the escalation snapshot. The impacts are derived from the entry with
  * the code of the key (result, equity, CAF, net self-financing), never typed.
  * The draft lives in the form: the game state changes only on « Enregistrer ».
  * On the Constats screen it is kept in memory (findingsStore) until saved,
  * deleted or cancelled; the dialog asks before closing it (onDirtyChange).
  */
-import { useEffect, useId, useMemo, useState, type FormEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useId, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { formatDateFr } from '../../../engine/dates';
 import { blockText } from '../../../game/documents';
@@ -22,6 +24,7 @@ import {
   entryTotals,
   escalateFinding,
   evidenceKey,
+  findingMagnitude,
   FINDING_CLASSIFICATIONS,
   FINDING_NATURES,
   FINDING_OBJECT_KINDS,
@@ -30,6 +33,7 @@ import {
   meaningfulLines,
   updateFinding,
   type Evidence,
+  type FindingHistoryEntry,
   type FindingDraft,
   type FindingObjectKind,
   type ProposedLine,
@@ -79,6 +83,11 @@ function excerpt(text: string, n = 60): string {
 
 const EMPTY_LINE: ProposedLine = { account: '', debit: 0, credit: 0 };
 
+/** Entries of the history that change the status (the others note a new magnitude or flag). */
+function statusChanges(history: readonly FindingHistoryEntry[]): FindingHistoryEntry[] {
+  return history.filter((h, i) => i === 0 || h.status !== history[i - 1]!.status);
+}
+
 export function FindingForm({ findingId, initial, context, onDone, hideCancel, draftKey, onDirtyChange }: FindingFormProps) {
   const uid = useId().replace(/[^a-zA-Z0-9]/g, '');
   const c = useCase();
@@ -109,7 +118,14 @@ export function FindingForm({ findingId, initial, context, onDone, hideCancel, d
   const warnings = useMemo(() => draftWarnings(d), [d]);
   const lines = useMemo(() => meaningfulLines(d.proposedEntry), [d.proposedEntry]);
   const totals = entryTotals(lines);
-  const impact = useMemo(() => (lines.length >= 2 && totals.balanced && lines.every((l) => catalog.accounts.has(l.account)) ? impactOfLines(presentedFigures(c.presented, params), lines, { world: c.presented, params }) : null), [lines, totals.balanced, catalog.accounts, c, params]);
+  /** Impacts of balanced lines on accounts of the chart, null otherwise. */
+  const entryImpact = useCallback(
+    (ls: readonly ProposedLine[]) => (ls.length >= 2 && entryTotals(ls).balanced && ls.every((l) => catalog.accounts.has(l.account)) ? impactOfLines(presentedFigures(c.presented, params), ls, { world: c.presented, params }) : null),
+    [catalog.accounts, c, params],
+  );
+  const impact = useMemo(() => entryImpact(lines), [entryImpact, lines]);
+  const magnitude = findingMagnitude(impact, params);
+  const savedMagnitude = useMemo(() => (saved ? findingMagnitude(entryImpact(saved.proposedEntry), params) : 0), [saved, entryImpact, params]);
   const fixes = params.disclosureItems.fixes.filter((f) => f.treatments.some((t) => d.treatments.includes(t)));
 
   const save = (e?: FormEvent) => {
@@ -118,10 +134,10 @@ export function FindingForm({ findingId, initial, context, onDone, hideCancel, d
     if (errors.length) return;
     drop();
     if (findingId) {
-      act((s) => updateFinding(s, findingId, d, params));
+      act((s) => updateFinding(s, findingId, d, params, magnitude));
       onDone(findingId);
     } else {
-      act((s) => createFinding(s, d, params)[0]);
+      act((s) => createFinding(s, d, params, magnitude)[0]);
       onDone(useGame.getState().game.findings.items.at(-1)?.id ?? null);
     }
   };
@@ -180,6 +196,7 @@ export function FindingForm({ findingId, initial, context, onDone, hideCancel, d
           <p id={`${uid}-status-help`} className="text-xs text-muted">
             {STATUS_HELP[d.status]}
           </p>
+          <Checkbox id={`${uid}-suspicion`} label="Suspicion de fraude / irrégularité" checked={d.suspicion === true} onChange={(v) => set({ suspicion: v })} />
         </div>
         <Section title="Classification">
           <div role="radiogroup" aria-label="Classification" className="flex flex-wrap gap-x-4 gap-y-1">
@@ -264,7 +281,7 @@ export function FindingForm({ findingId, initial, context, onDone, hideCancel, d
           <div>
             <p className="font-semibold">Historique</p>
             <ol className="mt-0.5 space-y-0.5">
-              {saved.history.map((h, i) => (
+              {statusChanges(saved.history).map((h, i) => (
                 <li key={i}>
                   <span className="font-mono">{formatDateFr(h.on)}</span> – <Badge tone={STATUS_TONES[h.status]}>{STATUS_LABELS[h.status]}</Badge>
                 </li>
@@ -276,7 +293,7 @@ export function FindingForm({ findingId, initial, context, onDone, hideCancel, d
             {saved.escalatedToPartnerOn ? (
               <Badge tone="accent">Remonté à l’associée le {formatDateFr(saved.escalatedToPartnerOn)}</Badge>
             ) : (
-              <Button onClick={() => act((s) => escalateFinding(s, saved.id))} title={`Porter le constat à la connaissance de l’associée (daté du ${formatDateFr(date)})`}>
+              <Button onClick={() => act((s) => escalateFinding(s, saved.id, savedMagnitude))} title={`Porter le constat à la connaissance de l’associée (daté du ${formatDateFr(date)})`}>
                 Remonter à l’associée
               </Button>
             )}

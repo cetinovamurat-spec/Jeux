@@ -13,7 +13,7 @@ import type { ProcedureOutput } from '../scenario/schemas/procedures';
 import { recordGaugeEvent } from './gauges';
 import { riskRank, type RiskLevel } from './planning';
 import { executionOf } from './program';
-import { log, type GameState } from './state';
+import { log, nextSeq, type GameState } from './state';
 
 export type AidMode = 'free' | 'partnerTrust' | 'unavailable';
 
@@ -86,6 +86,9 @@ export function askAntoine(s: GameState, params: Params): GameState {
   const advice = antoineAdvice(s, params, s.clock.date);
   const manager = params.game.firm.find((f) => f.id === 'manager')?.name ?? 'le manager';
   let next = log(s, 'aid', advice.cycle ?? '', { mode, title: `conseil de méthode demandé à ${manager}` });
-  if (mode === 'partnerTrust') next = { ...next, gauges: recordGaugeEvent(next.gauges, { on: s.clock.date, gauge: 'partnerTrust', reason: AID_USED, ...(advice.cycle ? { ref: advice.cycle } : {}) }) };
+  if (mode === 'partnerTrust') {
+    const [seq, numbered] = nextSeq(next);
+    next = { ...numbered, gauges: recordGaugeEvent(numbered.gauges, { on: s.clock.date, gauge: 'partnerTrust', reason: AID_USED, ...(advice.cycle ? { ref: advice.cycle } : {}), seq }) };
+  }
   return next;
 }

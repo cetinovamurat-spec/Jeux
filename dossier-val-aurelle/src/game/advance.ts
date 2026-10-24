@@ -3,11 +3,17 @@
  * (next working day, next event); everything that arrives is derived from
  * the date, so moving the clock (even backwards, in designer mode) never
  * leaves the state inconsistent. Pure.
+ *
+ * J5 (plan §11.3): the clock also stops at the arrival of new messages (not
+ * listed: a message is not known in advance), and the deadlines of the
+ * ethics events are listed (kind 'deadline').
  */
 import { formatDateFr, type IsoDate } from '../engine/dates';
 import type { Params } from '../scenario/params';
 import { nextWorkingDay, type WorkCalendar } from './calendar';
 import { upcomingConfirmations } from './confirmations';
+import { ethicsDeadlines } from './ethics';
+import { messageStops } from './messages';
 import { upcomingProgram } from './program';
 import { answeredRequests, upcomingRequests } from './requests';
 import { log, type GameState } from './state';
@@ -40,7 +46,7 @@ export function upcomingEvents(s: GameState, ctx: UpcomingContext): UpcomingEven
     out.push({ date: v.interimDelivered, kind: 'data', label: `Remise de l’extraction comptable au ${formatDateFr(v.cutoff)} (à défaut de demande préalable)`, to: '/balance' });
   out.push({ date: v.draftLedger, kind: 'data', label: 'Balance et FEC définitifs 2025', to: '/balance' });
   out.push({ date: v.draftStatements, kind: 'data', label: 'Projet d’états financiers et d’annexe 2025', to: '/etats' });
-  out.push(...upcomingProgram(s.program, ctx), ...upcomingRequests(s.requests, ctx), ...upcomingConfirmations(s.confirmations, ctx));
+  out.push(...upcomingProgram(s.program, ctx), ...upcomingRequests(s.requests, ctx), ...upcomingConfirmations(s.confirmations, ctx), ...ethicsDeadlines(s, ctx));
   return out.filter((e) => e.date > ctx.date).sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
 }
 
@@ -56,7 +62,10 @@ export function advanceOneDay(s: GameState, cal: WorkCalendar): GameState {
   return advanceTo(s, nextWorkingDay(cal, s.clock.date));
 }
 
-/** Date of the next upcoming event, or the next working day when nothing is expected. */
+/** Date of the next upcoming event or of the next new message, or the next working day when nothing is expected. */
 export function nextEventDate(s: GameState, ctx: UpcomingContext): IsoDate {
-  return upcomingEvents(s, ctx)[0]?.date ?? nextWorkingDay(ctx.cal, s.clock.date);
+  const event = upcomingEvents(s, ctx)[0]?.date;
+  const message = messageStops(s, ctx)[0];
+  const next = event !== undefined && message !== undefined ? (event < message ? event : message) : (event ?? message);
+  return next ?? nextWorkingDay(ctx.cal, s.clock.date);
 }

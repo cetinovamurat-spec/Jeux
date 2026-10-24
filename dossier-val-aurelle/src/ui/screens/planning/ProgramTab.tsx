@@ -304,7 +304,7 @@ export function ProgramTab() {
   const [confirmFirm, setConfirmFirm] = useState(false);
   const [tried, setTried] = useState(false);
   const manager = params.game.firm.find((f) => f.id === 'manager')?.name ?? 'Le manager';
-  const firmHours = useMemo(() => plannedHours({ planned: params.procedures.firmProgramme2024, executions: [] }, params).team, [params]);
+  const firmHours = useMemo(() => plannedHours({ planned: params.procedures.firmProgramme2024 }, params).team, [params]);
   const adopt = () => {
     // confirmation only when the player's own choices would be replaced (the required procedures are kept)
     const own = game.program.planned.some((p) => {

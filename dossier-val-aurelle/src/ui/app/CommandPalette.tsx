@@ -1,6 +1,7 @@
 /**
  * Command palette (Ctrl+K / Cmd+K): go to a screen, open a document, jump to
- * an account in the general ledger, run a saved FEC query.
+ * an account in the general ledger, run a saved FEC query, open a message…
+ * The items come from the registry of sources (palette-sources.ts).
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useGedDocuments } from '../screens/ged/replies';
@@ -8,8 +9,8 @@ import { useNavigate } from 'react-router';
 import { normalize } from '../../game/fec-query';
 import { cx, Kbd } from '../components/ui';
 import { useCase } from './context';
-import { useDesigner } from './hooks';
-import { NAV } from './routes';
+import { useDesigner, useMessageContext } from './hooks';
+import { PALETTE_SOURCES } from './palette-sources';
 import { useGame } from './store';
 
 interface Item {
@@ -29,7 +30,8 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   const navigate = useNavigate();
   const docs = useGedDocuments().available;
   const designer = useDesigner();
-  const saved = useGame((s) => s.game.savedQueries);
+  const game = useGame((s) => s.game);
+  const messages = useMessageContext();
   const [q, setQ] = useState('');
   const [active, setActive] = useState(0);
   const input = useRef<HTMLInputElement>(null);
@@ -46,22 +48,19 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     }
   }, [open]);
 
-  const items = useMemo<Item[]>(() => {
+  const items = useMemo<(Item & { byDefault: boolean })[]>(() => {
+    if (!open) return [];
     const go = (to: string) => () => {
       navigate(to);
       onClose();
     };
-    return [
-      ...NAV.filter((n) => designer || !n.designerOnly).map((n) => ({ id: `nav:${n.to}`, group: 'Écrans', label: n.label, hint: n.description, run: go(n.to) })),
-      ...docs.map((d) => ({ id: `doc:${d.id}`, group: 'Documents', label: d.title, hint: d.issuer, run: go(`/ged/${encodeURIComponent(d.id)}`) })),
-      ...c.balanceRows().map((r) => ({ id: `acc:${r.account}`, group: 'Comptes', label: `${r.account} – ${r.label}`, run: go(`/grand-livre?compte=${encodeURIComponent(r.account)}`) })),
-      ...saved.map((s) => ({ id: `query:${s.id}`, group: 'Requêtes FEC', label: s.name, run: go(`/fec?requete=${encodeURIComponent(s.id)}`) })),
-    ];
-  }, [c, docs, designer, saved, navigate, onClose]);
+    const ctx = { c, game, docs, designer, messages };
+    return PALETTE_SOURCES.flatMap((src) => src.items(ctx).map((it) => ({ id: it.id, group: src.group, label: it.label, ...(it.hint !== undefined ? { hint: it.hint } : {}), run: go(it.to), byDefault: src.shownByDefault === true })));
+  }, [open, c, game, docs, designer, messages, navigate, onClose]);
 
   const shown = useMemo(() => {
     const words = normalize(q).split(/\s+/).filter(Boolean);
-    const list = words.length ? items.filter((it) => words.every((w) => normalize(`${it.label} ${it.hint ?? ''}`).includes(w))) : items.filter((it) => it.group === 'Écrans');
+    const list = words.length ? items.filter((it) => words.every((w) => normalize(`${it.label} ${it.hint ?? ''}`).includes(w))) : items.filter((it) => it.byDefault);
     return list.slice(0, 40);
   }, [items, q]);
 

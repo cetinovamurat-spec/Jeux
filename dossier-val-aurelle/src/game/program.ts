@@ -2,8 +2,9 @@
  * Work programme and executions (plan J4 §6.3 and §7): procedures planned and
  * assigned, then launched (scheduled on the member's working days on site)
  * and documented. The worksheet of a procedure is its execution: preparer,
- * dates (derived from the scheduling), references, conclusion, review fields
- * of J5. Section of the game state owned by J4b.
+ * dates (derived from the scheduling), references, conclusion, review rounds
+ * (J5, game/review.ts) and the inputs of a delegated launch frozen at the
+ * launch. Section of the game state owned by J4b.
  *
  * Hours are the budget: an execution charges the procedure's cost for the
  * assignee's profile. Beyond the tolerance of the budget, the partner
@@ -50,18 +51,53 @@ export interface Execution {
   updatedOn?: IsoDate;
   /** References pinned by the player (the references produced by the tools are derived). */
   refs: WorkRef[];
-  /** Review by the senior (J5): accepted or returned with a comment. */
-  review: { status: 'pending' | 'accepted' | 'returned'; on?: IsoDate; comment?: string };
+  /** Number of the launch (state counter). */
+  seq: number;
+  /** Review rounds of a delegated worksheet by the senior (J5, game/review.ts), oldest first; its status is derived (reviewStatus). */
+  reviewRounds: Round[];
+  /** Inputs of the work of a delegated member, frozen at the launch (plan J5 §8.1): sample size and seed. */
+  member?: ExecutionMember;
+}
+
+/** Review decision of the senior on a delegated worksheet (plan J5 §8.3). */
+export interface Round {
+  on: IsoDate;
+  seq: number;
+  decision: 'accepted' | 'returned';
+  /** Motive of a return (params/review.json → returnMotives). */
+  motive?: string;
+  /** Free comment, never read by the engine. */
+  comment: string;
+  /** Hours of the rework of the member, frozen at the return. */
+  reworkHours?: number;
+}
+
+export interface ExecutionMember {
+  size: number;
+  seed: string;
+}
+
+/** Briefing of a member for a phase (plan J5 §8.5, J5-15). */
+export interface Briefing {
+  member: MemberId;
+  /** Calendar period of the briefing ('interim', 'final'). */
+  phase: string;
+  /** Point of the briefing (params/review.json → briefings). */
+  point: string;
+  on: IsoDate;
+  seq: number;
 }
 
 export interface ProgramState {
   planned: PlannedProcedure[];
   /** In launch order (scheduling order). */
   executions: Execution[];
+  /** Briefings of the members (J5). */
+  briefings: Briefing[];
 }
 
 export function initialProgram(): ProgramState {
-  return { planned: [], executions: [] };
+  return { planned: [], executions: [], briefings: [] };
 }
 
 const member = z.enum(['senior', 'lea', 'hugo', 'sofia']);
@@ -83,10 +119,49 @@ export const programSchema = z.object({
       documentedOn: z.string().optional(),
       updatedOn: z.string().optional(),
       refs: z.array(workRef).default([]),
-      review: z.object({ status: z.enum(['pending', 'accepted', 'returned']), on: z.string().optional(), comment: z.string().optional() }),
+      seq: z.number().int(),
+      reviewRounds: z.array(
+        z.object({
+          on: z.string(),
+          seq: z.number().int(),
+          decision: z.enum(['accepted', 'returned']),
+          motive: z.string().optional(),
+          comment: z.string(),
+          reworkHours: z.number().optional(),
+        }),
+      ),
+      member: z.object({ size: z.number().int().min(0), seed: z.string() }).optional(),
     }),
   ),
+  briefings: z.array(z.object({ member, phase: z.string(), point: z.string(), on: z.string(), seq: z.number().int() })),
 });
+
+// ---------------------------------------------------------------------------
+// review status (derived from the rounds)
+// ---------------------------------------------------------------------------
+
+/** à revoir, acceptée, en reprise, reprise livrée. */
+export type ReviewStatus = 'toReview' | 'accepted' | 'rework' | 'reworkDelivered';
+
+export const REVIEW_STATUS_LABEL: Record<ReviewStatus, string> = {
+  toReview: 'À revoir',
+  accepted: 'Acceptée',
+  rework: 'En reprise',
+  reworkDelivered: 'Reprise livrée',
+};
+
+/**
+ * Status of the review of a worksheet, derived from its rounds: none, to
+ * review; last decision an acceptance, accepted; a return, in rework until
+ * the rework is delivered (`reworkDelivered`, from the scheduling of the
+ * rework: game/review.ts).
+ */
+export function reviewStatus(e: Pick<Execution, 'reviewRounds'>, reworkDelivered = false): ReviewStatus {
+  const last = e.reviewRounds[e.reviewRounds.length - 1];
+  if (!last) return 'toReview';
+  if (last.decision === 'accepted') return 'accepted';
+  return reworkDelivered ? 'reworkDelivered' : 'rework';
+}
 
 // ---------------------------------------------------------------------------
 // procedures and profiles
@@ -182,7 +257,7 @@ export interface PlannedHours {
 }
 
 /** Hours of the programme by member (planned procedures at the assignee's cost). */
-export function plannedHours(program: ProgramState, params: Params): PlannedHours {
+export function plannedHours(program: Pick<ProgramState, 'planned'>, params: Params): PlannedHours {
   const byMember: Record<MemberId, number> = { senior: 0, lea: 0, hugo: 0, sofia: 0 };
   for (const p of program.planned) {
     const def = procedureDef(params, p.procedureId);
@@ -221,10 +296,19 @@ export function programmeCheck(s: GameState, params: Params): ProgrammeCheck {
   return { errors, warnings };
 }
 
-/** Validates the programme (desk checklist); refused while a mandatory diligence is missing. */
+/** Full review of the employee benefits provision (PGE): its presence in a validated programme triggers the ethics event E3 (plan J5 §9). */
+export const PGE_REVIEW_PROCEDURE = 'pge-review';
+
+/**
+ * Validates the programme (desk checklist); refused while a mandatory
+ * diligence is missing. The journal entry records whether the programme
+ * held the full review of the PGE (`pgeReview`, read by the ethics event E3:
+ * fixed at the validation, a later change of the programme does not move it).
+ */
 export function validateProgramme(s: GameState, params: Params): GameState {
   if (programmeCheck(s, params).errors.length) return s;
-  return log({ ...s, planning: { ...s.planning, validated: { ...s.planning.validated, program: s.clock.date } } }, 'program', 'validated', { action: 'validate', title: 'programme validé' });
+  const pgeReview = s.program.planned.some((p) => p.procedureId === PGE_REVIEW_PROCEDURE);
+  return log({ ...s, planning: { ...s.planning, validated: { ...s.planning.validated, program: s.clock.date } } }, 'program', 'validated', { action: 'validate', pgeReview, title: 'programme validé' });
 }
 
 function fmtHours(h: number): string {
@@ -244,7 +328,7 @@ export function scheduleExecutions(program: ProgramState, cal: WorkCalendar): Ma
 /** Start and delivery dates a launch would get today (after the member's queue), without launching it. */
 export function previewLaunch(program: ProgramState, cal: WorkCalendar, m: MemberId, hours: number, date: IsoDate): ScheduledTask {
   const id = '\u0000preview';
-  const probe: Execution = { id, procedureId: '', assignee: m, hours, launchedOn: date, conclusion: null, comment: '', refs: [], review: { status: 'pending' } };
+  const probe: Execution = { id, procedureId: '', assignee: m, hours, launchedOn: date, conclusion: null, comment: '', refs: [], seq: Number.MAX_SAFE_INTEGER, reviewRounds: [] };
   return scheduleExecutions({ ...program, executions: [...program.executions, probe] }, cal).get(id)!;
 }
 
@@ -388,19 +472,21 @@ export function launchBudgetImpact(s: GameState, params: Params, procedureId: st
 /**
  * Launches a procedure: it joins the queue of the member (scheduled on the
  * member's working days on site) and charges its hours. Beyond the budget
- * tolerance, the partner arbitrates.
+ * tolerance, the partner arbitrates. `member` freezes the inputs of the work
+ * of a delegated member (sample size computed by the caller at the launch,
+ * seed; plan J5 §8.1).
  */
-export function launchExecution(s: GameState, params: Params, procedureId: string, m: MemberId, ctx: LaunchContext): GameState {
+export function launchExecution(s: GameState, params: Params, procedureId: string, m: MemberId, ctx: LaunchContext, member?: ExecutionMember): GameState {
   if (!canLaunch(s, params, procedureId, m, ctx).ok) return s;
   const def = procedureDef(params, procedureId)!;
   const hours = procedureHours(def, m, params)!;
   const impact = launchBudgetImpact(s, params, procedureId, m);
   const [id, s1] = nextId(s, 'exec');
-  const e: Execution = { id, procedureId, assignee: m, hours, launchedOn: s1.clock.date, conclusion: null, comment: '', refs: [], review: { status: 'pending' } };
+  const e: Execution = { id, procedureId, assignee: m, hours, launchedOn: s1.clock.date, conclusion: null, comment: '', refs: [], seq: s1.seq, reviewRounds: [], ...(member ? { member: { ...member } } : {}) };
   const planned = s1.program.planned.some((p) => p.procedureId === procedureId)
     ? s1.program.planned.map((p) => (p.procedureId === procedureId ? { ...p, assignee: m } : p))
     : [...s1.program.planned, { procedureId, assignee: m }];
-  let next = log(withProgram(s1, { planned, executions: [...s1.program.executions, e] }), 'execution', procedureId, {
+  let next = log(withProgram(s1, { ...s1.program, planned, executions: [...s1.program.executions, e] }), 'execution', procedureId, {
     action: 'launch',
     assignee: m,
     hours,
@@ -411,7 +497,7 @@ export function launchExecution(s: GameState, params: Params, procedureId: strin
     const { justified } = impact;
     const overrun = Math.round((impact.after - impact.budget) * 10) / 10;
     const gauges = { ...next.gauges, arbitrations: [...next.gauges.arbitrations, { on: next.clock.date, overrunHours: overrun, justified, executionId: id }] };
-    next = log({ ...next, gauges: justified ? gauges : recordGaugeEvent(gauges, { on: next.clock.date, gauge: 'partnerTrust', reason: UNJUSTIFIED_OVERRUN, ref: procedureId, executionId: id }) }, 'arbitration', procedureId, {
+    next = log({ ...next, gauges: justified ? gauges : recordGaugeEvent(gauges, { on: next.clock.date, gauge: 'partnerTrust', reason: UNJUSTIFIED_OVERRUN, ref: procedureId, executionId: id, seq: e.seq }) }, 'arbitration', procedureId, {
       justified,
       overrun,
       title: `arbitrage de l’associée : dépassement du budget de ${fmtHours(overrun)} h, ${justified ? 'justifié par le risque du cycle' : 'non justifié'}`,
@@ -491,14 +577,6 @@ export function addExecutionRef(s: GameState, executionId: string, ref: WorkRef)
 
 export function removeExecutionRef(s: GameState, executionId: string, ref: WorkRef): GameState {
   return withExecution(s, executionId, (x) => ({ ...x, refs: x.refs.filter((r) => !sameRef(r, ref)) }));
-}
-
-/** Review of a delegated worksheet by the senior (fields of J5; no effect in J4). */
-export function reviewExecution(s: GameState, executionId: string, status: 'accepted' | 'returned', comment: string, params?: Params): GameState {
-  const e = s.program.executions.find((x) => x.id === executionId);
-  if (!e || e.assignee === 'senior') return s;
-  const review = { status, on: s.clock.date, ...(comment.trim() ? { comment: comment.trim() } : {}) };
-  return log(withExecution(s, executionId, (x) => ({ ...x, review })), 'worksheet', e.procedureId, { action: 'review', status, title: `« ${procTitle(params, e.procedureId)} » ${status === 'accepted' ? 'acceptée' : 'renvoyée'} en revue` });
 }
 
 // ---------------------------------------------------------------------------

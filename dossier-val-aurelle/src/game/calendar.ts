@@ -7,7 +7,7 @@
  * the dates of the accounting world and which ignores public holidays: the
  * world (and the scenario lock) must not depend on the game calendar.
  */
-import { addDays, isWeekend, type IsoDate } from '../engine/dates';
+import { addDays, isWeekend, toDayNumber, type IsoDate } from '../engine/dates';
 import type { Params } from '../scenario/params';
 import { periodAt, type CalendarPeriod } from './clock';
 
@@ -50,6 +50,24 @@ export function addWorkingDays(cal: WorkCalendar, date: IsoDate, n: number): Iso
   let d = workingDayOnOrAfter(cal, date);
   for (let i = 0; i < n; i++) d = nextWorkingDay(cal, d);
   return d;
+}
+
+/** Number of weekdays (Monday to Friday) from 1970-01-01 to the date included. */
+function weekdaysUpTo(date: IsoDate): number {
+  const n = toDayNumber(date);
+  // day 0 (1970-01-01) is a Thursday: shift so that a week starts on Monday
+  const shifted = n + 3;
+  const weeks = Math.floor(shifted / 7);
+  const rest = shifted - weeks * 7; // 0 = Monday … 6 = Sunday
+  return weeks * 5 + Math.min(rest + 1, 5);
+}
+
+/** Number of working days after `from` up to `to` included (0 when `to` ≤ `from`), computed without walking the days. */
+export function workingDaysBetween(cal: WorkCalendar, from: IsoDate, to: IsoDate): number {
+  if (to <= from) return 0;
+  let n = weekdaysUpTo(to) - weekdaysUpTo(from);
+  for (const h of cal.holidays) if (h > from && h <= to && !isWeekend(h)) n--;
+  return n;
 }
 
 /** Calendar period id at a date (undefined between periods: off site). */

@@ -22,7 +22,7 @@ import type { CycleDef } from '../scenario/schemas/cycles';
 import { MATERIALITY_VINTAGES, RISK_LEVELS, type MaterialityVintage, type PlanningBase, type RiskLevel } from '../scenario/schemas/planning';
 import { recordGaugeEvent } from './gauges';
 import type { ProgramState } from './program';
-import { log, nextId, type Difficulty, type GameState } from './state';
+import { log, nextId, nextSeq, type Difficulty, type GameState } from './state';
 import type { DataView } from './vintages';
 
 export type { MaterialityVintage, RiskLevel };
@@ -586,6 +586,7 @@ export function leavePlanningCheck(s: GameState, params: Params, target: IsoDate
 export function recordInterimWithoutPlanning(s: GameState): GameState {
   if (s.gauges.events.some((e) => e.reason === INTERIM_WITHOUT_PLANNING)) return s;
   const missing = planningWarnings(s.planning).map((m) => m.step);
-  const gauges = recordGaugeEvent(s.gauges, { on: s.clock.date, gauge: 'partnerTrust', reason: INTERIM_WITHOUT_PLANNING, ref: missing.join(',') });
-  return log({ ...s, gauges }, 'gaugeEvent', INTERIM_WITHOUT_PLANNING, { missing: missing.join(','), title: 'intérim commencé sans planification validée' });
+  const [seq, s1] = nextSeq(s);
+  const gauges = recordGaugeEvent(s1.gauges, { on: s1.clock.date, gauge: 'partnerTrust', reason: INTERIM_WITHOUT_PLANNING, ref: missing.join(','), seq });
+  return log({ ...s1, gauges }, 'gaugeEvent', INTERIM_WITHOUT_PLANNING, { missing: missing.join(','), title: 'intérim commencé sans planification validée' });
 }
